@@ -41,7 +41,11 @@ export interface SyncedImage {
 
 // Initialize database tables
 export function initDatabase() {
-  log("INFO", "Initializing database...")
+  log("INFO", "Initializing database...", { dbPath: DB_PATH })
+
+  // Check if database file exists
+  const dbFile = Bun.file(DB_PATH)
+  log("INFO", "Database file exists:", dbFile.size > 0 ? "yes" : "no (will be created)")
 
   // Users table
   db.run(`

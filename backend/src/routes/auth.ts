@@ -42,7 +42,10 @@ export const authRoutes = {
         const text = await req.text()
         const { email, password } = text ? JSON.parse(text) : {}
 
+        log("INFO", "Login attempt", { email, hasPassword: !!password })
+
         if (!email || !password) {
+          log("WARN", "Login missing credentials", { email, hasPassword: !!password })
           return Response.json(
             { error: "Email and password are required" },
             { status: 400 }
@@ -52,9 +55,11 @@ export const authRoutes = {
         const result = await loginUser(email, password)
 
         if ("error" in result) {
+          log("WARN", "Login failed", { email, error: result.error })
           return Response.json({ error: result.error }, { status: 401 })
         }
 
+        log("INFO", "Login successful", { email, userId: result.user.id })
         return Response.json({
           message: "Login successful",
           user: result.user,

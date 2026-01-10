@@ -54,12 +54,20 @@ export function useSpeechToText(language: Language = "en"): UseSpeechToTextRetur
       setInterimTranscript(interim)
     }
 
+    recognition.onstart = () => {
+      console.log("Speech recognition started")
+      setIsListening(true)
+      setError(null)
+    }
+
     recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error)
       setError(event.error)
       setIsListening(false)
     }
 
     recognition.onend = () => {
+      console.log("Speech recognition ended")
       setIsListening(false)
       setInterimTranscript("")
     }
@@ -115,9 +123,11 @@ export function useSpeechToText(language: Language = "en"): UseSpeechToTextRetur
     finalTranscriptRef.current = ""
 
     try {
+      console.log("Starting speech recognition...")
       recognitionRef.current.start()
-      setIsListening(true)
+      // Note: isListening will be set to true by onstart event
     } catch (err) {
+      console.error("Failed to start speech recognition:", err)
       setError("Failed to start speech recognition")
     }
   }, [createRecognition])

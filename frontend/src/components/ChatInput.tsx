@@ -34,6 +34,7 @@ export function ChatInput({
     stopListening,
     resetTranscript,
     isSupported,
+    error: speechError,
   } = useSpeechToText(language)
 
   // Update input when final transcript changes
@@ -166,6 +167,12 @@ export function ChatInput({
           </Button>
         </div>
       </div>
+
+      {speechError && (
+        <p className="text-[10px] sm:text-xs text-center text-red-500 mt-1.5 sm:mt-2 px-2">
+          Mic error: {speechError}
+        </p>
+      )}
 
       <p className="text-[10px] sm:text-xs text-center text-muted-foreground mt-1.5 sm:mt-2 px-2 hidden sm:block">
         {footer}

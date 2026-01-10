@@ -5,6 +5,13 @@ import { log } from "../utils"
 const JWT_SECRET = process.env.JWT_SECRET || "promptink-secret-change-in-production"
 const JWT_EXPIRES_IN = 7 * 24 * 60 * 60 // 7 days in seconds
 
+// Log JWT configuration status at module load
+if (!process.env.JWT_SECRET) {
+  console.warn("[AUTH] WARNING: JWT_SECRET not set, using default (insecure for production)")
+} else {
+  console.log("[AUTH] JWT_SECRET configured from environment")
+}
+
 export interface JWTPayload {
   userId: number
   email: string
@@ -161,14 +168,21 @@ export async function loginUser(
 ): Promise<{ user: AuthUser; token: string } | { error: string }> {
   try {
     // Find user
-    const user = userQueries.findByEmail.get(email.toLowerCase())
+    const normalizedEmail = email.toLowerCase()
+    log("DEBUG", "Looking up user", { email: normalizedEmail })
+
+    const user = userQueries.findByEmail.get(normalizedEmail)
     if (!user) {
+      log("DEBUG", "User not found in database", { email: normalizedEmail })
       return { error: "Invalid email or password" }
     }
+
+    log("DEBUG", "User found", { userId: user.id, email: user.email })
 
     // Verify password
     const isValid = await verifyPassword(password, user.password_hash)
     if (!isValid) {
+      log("DEBUG", "Password verification failed", { userId: user.id })
       return { error: "Invalid email or password" }
     }
 
