@@ -4,7 +4,7 @@ no_screen_padding: 'no'
 dark_mode: 'no'
 static_data: ''
 polling_verb: get
-polling_url: http://localhost:3000/api/trmnl/webhook
+polling_url: https://promptink-production.up.railway.app/api/trmnl/webhook/1
 polling_headers: ''
 polling_body: 
 id: 221038
