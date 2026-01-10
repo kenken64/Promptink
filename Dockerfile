@@ -28,6 +28,10 @@ COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY backend ./backend
 COPY frontend ./frontend
 
+# Build frontend for production
+WORKDIR /app/frontend
+RUN bun run build.ts
+
 WORKDIR /app/backend
 
 # Create data directory for SQLite
