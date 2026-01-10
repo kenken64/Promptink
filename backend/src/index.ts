@@ -8,6 +8,7 @@ import index from "../../frontend/index.html"
 initDatabase()
 
 const isDev = process.env.NODE_ENV !== "production"
+log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isDev}`)
 
 Bun.serve({
   port: config.server.port,
@@ -20,7 +21,8 @@ Bun.serve({
     log("INFO", `${req.method} ${url.pathname}`)
     return new Response("Not Found", { status: 404 })
   },
-  development: isDev,
+  // Only enable development features in non-production
+  ...(isDev ? { development: { hmr: true, console: true } } : {}),
 })
 
 log("INFO", `TRMNL Backend running on http://localhost:${config.server.port}`)
