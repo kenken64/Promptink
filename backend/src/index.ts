@@ -12,8 +12,10 @@ log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isD
 
 Bun.serve({
   port: config.server.port,
-  routes: {
+  static: {
     "/": index,
+  },
+  routes: {
     ...routes,
   },
   fetch(req) {
@@ -21,8 +23,7 @@ Bun.serve({
     log("INFO", `${req.method} ${url.pathname}`)
     return new Response("Not Found", { status: 404 })
   },
-  // Only enable development features in non-production
-  ...(isDev ? { development: { hmr: true, console: true } } : {}),
+  development: isDev,
 })
 
 log("INFO", `TRMNL Backend running on http://localhost:${config.server.port}`)
