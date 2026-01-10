@@ -12,10 +12,8 @@ log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isD
 
 Bun.serve({
   port: config.server.port,
-  static: {
-    "/": index,
-  },
   routes: {
+    "/": index,
     ...routes,
   },
   fetch(req) {
@@ -23,7 +21,7 @@ Bun.serve({
     log("INFO", `${req.method} ${url.pathname}`)
     return new Response("Not Found", { status: 404 })
   },
-  development: isDev,
+  development: true, // Required for HTML imports to work with bundling
 })
 
 log("INFO", `TRMNL Backend running on http://localhost:${config.server.port}`)
