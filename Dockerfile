@@ -28,9 +28,9 @@ COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY backend ./backend
 COPY frontend ./frontend
 
-# Build frontend for production
+# Build frontend for production (JS bundle + Tailwind CSS)
 WORKDIR /app/frontend
-RUN bun run build.ts
+RUN bun run build
 
 WORKDIR /app/backend
 

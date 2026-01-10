@@ -31,7 +31,7 @@ if (isDev) {
   // Production: serve pre-built static files
   const frontendDist = join(import.meta.dir, "../../frontend/dist")
   const indexHtml = await Bun.file(join(import.meta.dir, "../../frontend/index.prod.html")).text()
-  const stylesCSS = await Bun.file(join(import.meta.dir, "../../frontend/src/assets/styles.css")).text()
+  const stylesCSS = await Bun.file(join(frontendDist, "styles.css")).text()
 
   Bun.serve({
     port: config.server.port,

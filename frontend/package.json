@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot ../backend/src/index.ts"
+    "dev": "bun --hot ../backend/src/index.ts",
+    "build:css": "bunx tailwindcss -i ./src/assets/styles.css -o ./dist/styles.css --minify",
+    "build": "bun run build.ts && bun run build:css"
   },
   "dependencies": {
     "react": "^19.0.0",
