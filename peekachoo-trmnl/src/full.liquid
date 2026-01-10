@@ -1,0 +1,13 @@
+{% if has_image %}
+<div class="view view--full" style="display: flex; align-items: center; justify-content: center; background: #000;">
+  <img src="{{ image_url }}" alt="PromptInk Generated Image" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;" />
+</div>
+{% else %}
+<div class="view view--full layout layout--col gap--space-between">
+  <div class="content content--center">
+    <div class="title title--large">PromptInk</div>
+    <div class="label label--medium">No image synced yet</div>
+    <div class="label label--small">Generate an image and click sync</div>
+  </div>
+</div>
+{% endif %}

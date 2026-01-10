@@ -1,0 +1,265 @@
+import { useState, useEffect, FormEvent } from "react"
+import { Settings, Key, Wifi, ArrowLeft, Loader2, Check, Copy, ExternalLink, Eye, EyeOff } from "lucide-react"
+import { Button } from "../components/ui/button"
+import { cn } from "../lib/utils"
+
+interface SettingsPageProps {
+  userId: number
+  authHeaders: { Authorization?: string }
+  onBack: () => void
+  translations: {
+    title: string
+    subtitle: string
+    deviceApiKeyLabel: string
+    deviceApiKeyPlaceholder: string
+    macAddressLabel: string
+    macAddressPlaceholder: string
+    saveButton: string
+    saving: string
+    saveSuccess: string
+    saveError: string
+    backToChat: string
+    webhookUrl: string
+    webhookUrlNote: string
+    notConfigured: string
+  }
+}
+
+interface UserSettings {
+  trmnl_device_api_key: string | null
+  trmnl_mac_address: string | null
+}
+
+export function SettingsPage({ userId, authHeaders, onBack, translations: t }: SettingsPageProps) {
+  const [deviceApiKey, setDeviceApiKey] = useState("")
+  const [macAddress, setMacAddress] = useState("")
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const webhookUrl = `${window.location.origin}/api/trmnl/webhook/${userId}`
+
+  // Fetch current settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/settings", {
+          headers: authHeaders,
+        })
+        if (response.ok) {
+          const data: UserSettings = await response.json()
+          setDeviceApiKey(data.trmnl_device_api_key || "")
+          setMacAddress(data.trmnl_mac_address || "")
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchSettings()
+  }, [authHeaders])
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          trmnl_device_api_key: deviceApiKey || null,
+          trmnl_mac_address: macAddress || null,
+        }),
+      })
+
+      if (response.ok) {
+        setMessage({ type: "success", text: t.saveSuccess })
+      } else {
+        const error = await response.json()
+        setMessage({ type: "error", text: error.error || t.saveError })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: t.saveError })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const copyWebhookUrl = async () => {
+    await navigator.clipboard.writeText(webhookUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md relative">
+        {/* Back button */}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t.backToChat}
+        </button>
+
+        {/* Card */}
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+          {/* Header */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
+              <Settings className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+            <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
+          </div>
+
+          {/* Message */}
+          {message && (
+            <div
+              className={cn(
+                "mb-6 p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
+                message.type === "success"
+                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/10 border border-red-500/20 text-red-400"
+              )}
+            >
+              {message.text}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Device API Key */}
+            <div className="space-y-2">
+              <label htmlFor="deviceApiKey" className="block text-sm font-medium text-slate-300">
+                {t.deviceApiKeyLabel}
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <input
+                  id="deviceApiKey"
+                  type={showApiKey ? "text" : "password"}
+                  value={deviceApiKey}
+                  onChange={(e) => setDeviceApiKey(e.target.value)}
+                  placeholder={t.deviceApiKeyPlaceholder}
+                  className="w-full pl-10 pr-12 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {showApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* MAC Address */}
+            <div className="space-y-2">
+              <label htmlFor="macAddress" className="block text-sm font-medium text-slate-300">
+                {t.macAddressLabel}
+              </label>
+              <div className="relative">
+                <Wifi className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <input
+                  id="macAddress"
+                  type="text"
+                  value={macAddress}
+                  onChange={(e) => setMacAddress(e.target.value)}
+                  placeholder={t.macAddressPlaceholder}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Submit button */}
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className={cn(
+                "w-full py-3 rounded-xl font-semibold text-white transition-all duration-300",
+                "bg-gradient-to-r from-teal-500 to-emerald-500",
+                "hover:from-teal-400 hover:to-emerald-400",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40"
+              )}
+            >
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {t.saving}
+                </span>
+              ) : (
+                t.saveButton
+              )}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-700" />
+            </div>
+          </div>
+
+          {/* Webhook URL */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-slate-300">
+              {t.webhookUrl}
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-slate-300 text-sm font-mono truncate">
+                {webhookUrl}
+              </div>
+              <button
+                type="button"
+                onClick={copyWebhookUrl}
+                className={cn(
+                  "p-3 rounded-xl border transition-all",
+                  copied
+                    ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
+                    : "bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"
+                )}
+              >
+                {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+              </button>
+            </div>
+            <p className="text-slate-500 text-xs flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" />
+              {t.webhookUrlNote}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-slate-500 text-xs mt-6">
+          Powered by DALL-E 3 & TRMNL
+        </p>
+      </div>
+    </div>
+  )
+}

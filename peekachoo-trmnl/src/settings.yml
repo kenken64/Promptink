@@ -1,0 +1,12 @@
+---
+strategy: polling
+no_screen_padding: 'no'
+dark_mode: 'no'
+static_data: ''
+polling_verb: get
+polling_url: http://localhost:3000/api/trmnl/webhook
+polling_headers: ''
+polling_body: 
+id: 221038
+name: PromptInk
+refresh_interval: 15

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#1a1b1e" />
+    <title>PromptInk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          screens: {
+            'xs': '375px',
+            'sm': '640px',
+            'md': '768px',
+            'lg': '1024px',
+            'xl': '1280px',
+            '2xl': '1536px',
+          },
+          extend: {
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover))',
+                foreground: 'hsl(var(--popover-foreground))',
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
+              },
+            },
+            borderRadius: {
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)',
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 10%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 10%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 10%;
+        --primary: 0 0% 10%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 0 0% 96%;
+        --secondary-foreground: 0 0% 10%;
+        --muted: 0 0% 96%;
+        --muted-foreground: 0 0% 45%;
+        --accent: 0 0% 96%;
+        --accent-foreground: 0 0% 10%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 0 0% 90%;
+        --input: 0 0% 90%;
+        --ring: 0 0% 10%;
+        --radius: 0.75rem;
+      }
+
+      .dark {
+        --background: 220 13% 10%;
+        --foreground: 0 0% 95%;
+        --card: 220 13% 10%;
+        --card-foreground: 0 0% 95%;
+        --popover: 220 13% 10%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 0 0% 95%;
+        --primary-foreground: 220 13% 10%;
+        --secondary: 220 13% 18%;
+        --secondary-foreground: 0 0% 95%;
+        --muted: 220 13% 18%;
+        --muted-foreground: 0 0% 65%;
+        --accent: 220 13% 18%;
+        --accent-foreground: 0 0% 95%;
+        --destructive: 0 62% 50%;
+        --destructive-foreground: 0 0% 95%;
+        --border: 220 13% 20%;
+        --input: 220 13% 20%;
+        --ring: 0 0% 95%;
+      }
+
+      * {
+        border-color: hsl(var(--border));
+      }
+
+      body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.3);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.5);
+      }
+
+      /* Typing animation */
+      @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+      }
+
+      .typing-cursor::after {
+        content: '▋';
+        animation: blink 1s infinite;
+        margin-left: 2px;
+      }
+
+      /* Mobile optimizations */
+      html, body {
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Prevent pull-to-refresh on mobile */
+      body {
+        overscroll-behavior-y: contain;
+      }
+
+      /* Safe area for notched devices */
+      @supports (padding: max(0px)) {
+        .safe-area-bottom {
+          padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+        .safe-area-top {
+          padding-top: max(0.75rem, env(safe-area-inset-top));
+        }
+      }
+
+      /* Touch-friendly tap targets */
+      @media (hover: none) and (pointer: coarse) {
+        button, [role="button"] {
+          min-height: 44px;
+          min-width: 44px;
+        }
+      }
+
+      /* Hide scrollbar on mobile but keep functionality */
+      @media (max-width: 640px) {
+        ::-webkit-scrollbar {
+          display: none;
+        }
+        * {
+          scrollbar-width: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/index.tsx"></script>
+  </body>
+</html>

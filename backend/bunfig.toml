@@ -1,0 +1,7 @@
+[run]
+# Auto-reload on file changes
+watch = true
+
+[install]
+# Use exact versions for reproducible installs
+exact = true

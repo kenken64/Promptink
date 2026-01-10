@@ -1,0 +1,11 @@
+{% if has_image %}
+<div class="view view--quadrant" style="display: flex; align-items: center; justify-content: center; background: #000;">
+  <img src="{{ image_url }}" alt="PromptInk" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;" />
+</div>
+{% else %}
+<div class="view view--quadrant layout layout--col">
+  <div class="content content--center">
+    <div class="title title--small">PromptInk</div>
+  </div>
+</div>
+{% endif %}
