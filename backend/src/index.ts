@@ -7,6 +7,8 @@ import index from "../../frontend/index.html"
 // Initialize database
 initDatabase()
 
+const isDev = process.env.NODE_ENV !== "production"
+
 Bun.serve({
   port: config.server.port,
   routes: {
@@ -18,10 +20,7 @@ Bun.serve({
     log("INFO", `${req.method} ${url.pathname}`)
     return new Response("Not Found", { status: 404 })
   },
-  development: {
-    hmr: true,
-    console: true,
-  },
+  development: isDev,
 })
 
 log("INFO", `TRMNL Backend running on http://localhost:${config.server.port}`)
