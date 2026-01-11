@@ -79,15 +79,53 @@ export function ChatInput({
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // Convert image to PNG using canvas
+  const convertToPng = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"))
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const pngFile = new File([blob], "image.png", { type: "image/png" })
+              resolve(pngFile)
+            } else {
+              reject(new Error("Failed to convert image to PNG"))
+            }
+          },
+          "image/png",
+          1.0
+        )
+      }
+      img.onerror = () => reject(new Error("Failed to load image"))
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && file.type.startsWith("image/")) {
-      setAttachedImage(file)
-      const reader = new FileReader()
-      reader.onload = () => {
-        setImagePreview(reader.result as string)
+      try {
+        // Convert to PNG if not already PNG
+        const pngFile = file.type === "image/png" ? file : await convertToPng(file)
+        setAttachedImage(pngFile)
+        const reader = new FileReader()
+        reader.onload = () => {
+          setImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(pngFile)
+      } catch (error) {
+        console.error("Failed to process image:", error)
       }
-      reader.readAsDataURL(file)
     }
     // Reset input so same file can be selected again
     e.target.value = ""
