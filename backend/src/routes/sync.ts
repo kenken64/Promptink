@@ -1,6 +1,50 @@
 import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { syncedImageQueries, userQueries } from "../db"
+import { config } from "../config"
+
+// Trigger TRMNL plugin data update (may trigger screen regeneration)
+async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
+  const pluginUuid = config.trmnl.customPluginUuid
+
+  if (!pluginUuid) {
+    log("WARN", "TRMNL_CUSTOM_PLUGIN_UUID not configured, skipping TRMNL update")
+    return { success: false, error: "Plugin UUID not configured" }
+  }
+
+  try {
+    // Use the custom_plugins webhook endpoint (no auth required for webhook)
+    const url = `https://usetrmnl.com/api/custom_plugins/${pluginUuid}`
+    log("INFO", "Sending data to TRMNL custom plugin", { url })
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        merge_variables: {
+          has_image: true,
+          image_url: imageUrl,
+          prompt: prompt,
+          updated_at: new Date().toISOString(),
+        },
+      }),
+    })
+
+    if (response.ok) {
+      log("INFO", "TRMNL plugin data updated successfully")
+      return { success: true }
+    } else {
+      const errorText = await response.text()
+      log("WARN", "TRMNL plugin update failed", { status: response.status, error: errorText })
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` }
+    }
+  } catch (error) {
+    log("ERROR", "TRMNL plugin update error", error)
+    return { success: false, error: String(error) }
+  }
+}
 
 export const syncRoutes = {
   // Sync image - stores the image URL for TRMNL to poll (authenticated)
@@ -26,11 +70,17 @@ export const syncRoutes = {
         // Generate the user's webhook URL
         const webhookUrl = `/api/trmnl/webhook/${user.id}`
 
+        // Trigger TRMNL plugin update
+        const updateResult = await triggerTrmnlUpdate(imageUrl, prompt || "")
+
         return Response.json({
           success: true,
-          message: "Image synced successfully. TRMNL will pick it up on next poll.",
+          message: updateResult.success
+            ? "Image synced and sent to TRMNL!"
+            : "Image synced successfully. TRMNL will pick it up on next poll.",
           syncedAt: syncedImage.synced_at,
           webhookUrl,
+          trmnlUpdate: updateResult,
         })
       } catch (error) {
         log("ERROR", "Failed to sync image", error)

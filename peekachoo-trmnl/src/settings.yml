@@ -1,12 +1,12 @@
 ---
-strategy: polling
+strategy: webhook
 no_screen_padding: 'no'
 dark_mode: 'no'
 static_data: ''
 polling_verb: get
 polling_url: https://promptink-production.up.railway.app/api/trmnl/webhook/1
 polling_headers: ''
-polling_body: 
+polling_body: ''
 id: 221038
 name: PromptInk
 refresh_interval: 15
