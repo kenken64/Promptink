@@ -1,4 +1,5 @@
 import { useState } from "react"
+import type { Language } from "./useLanguage"
 
 interface GeneratedImage {
   url?: string
@@ -15,8 +16,14 @@ interface AuthHeaders {
   Authorization?: string
 }
 
+interface GenerateImageOptions {
+  prompt: string
+  language?: Language
+  authHeaders?: AuthHeaders
+}
+
 interface UseImageGenerationReturn {
-  generateImage: (prompt: string, authHeaders?: AuthHeaders) => Promise<ImageGenerationResponse>
+  generateImage: (options: GenerateImageOptions) => Promise<ImageGenerationResponse>
   isLoading: boolean
   error: string | null
 }
@@ -25,7 +32,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const generateImage = async (prompt: string, authHeaders?: AuthHeaders): Promise<ImageGenerationResponse> => {
+  const generateImage = async ({ prompt, language, authHeaders }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
     setIsLoading(true)
     setError(null)
 
@@ -38,6 +45,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
         },
         body: JSON.stringify({
           prompt,
+          language,
           model: "dall-e-3",
           size: "1024x1024",
           quality: "standard",

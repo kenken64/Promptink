@@ -3,6 +3,55 @@ import { log } from "../utils"
 
 const OPENAI_API_BASE = "https://api.openai.com/v1"
 
+// Translate text using OpenAI Chat API
+export async function translateText(
+  text: string,
+  targetLanguage: "zh" | "en"
+): Promise<string> {
+  if (!config.openai.apiKey) {
+    throw new Error("OPENAI_API_KEY not configured")
+  }
+
+  const languageName = targetLanguage === "zh" ? "Chinese (Simplified)" : "English"
+
+  log("INFO", "Translating text", { targetLanguage, textLength: text.length })
+
+  const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.openai.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a translator. Translate the following text to ${languageName}. Only return the translated text, nothing else.`,
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+      max_tokens: 1000,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    log("ERROR", "Translation API error", error)
+    throw new Error(error.error?.message || "Failed to translate text")
+  }
+
+  const result = await response.json()
+  const translatedText = result.choices?.[0]?.message?.content?.trim() || text
+
+  log("INFO", "Translation completed", { originalLength: text.length, translatedLength: translatedText.length })
+
+  return translatedText
+}
+
 export type ImageSize = "1024x1024" | "1024x1792" | "1792x1024" | "256x256" | "512x512"
 export type ImageModel = "dall-e-2" | "dall-e-3"
 export type ImageQuality = "standard" | "hd"

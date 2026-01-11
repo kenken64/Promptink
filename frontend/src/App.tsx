@@ -64,7 +64,7 @@ export default function App() {
     ])
 
     try {
-      const result = await generateImage(prompt, getAuthHeader())
+      const result = await generateImage({ prompt, language, authHeaders: getAuthHeader() })
       const imageUrl = result.data[0]?.url
       const revisedPrompt = result.data[0]?.revised_prompt
 
