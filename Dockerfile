@@ -34,8 +34,8 @@ RUN bun run build
 
 WORKDIR /app/backend
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data
+# Note: /app/data directory is created by Railway volume mount
+# Do NOT create it here as it can interfere with volume mounting
 
 # Environment variables (Railway injects these at runtime)
 ENV NODE_ENV=production
