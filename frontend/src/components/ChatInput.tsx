@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, KeyboardEvent } from "react"
-import { Mic, MicOff, ArrowUp, ImageIcon } from "lucide-react"
+import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from "react"
+import { Mic, MicOff, ArrowUp, ImageIcon, X } from "lucide-react"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { useSpeechToText } from "../hooks/useSpeechToText"
@@ -7,7 +7,7 @@ import { cn } from "../lib/utils"
 import type { Language } from "../hooks/useLanguage"
 
 interface ChatInputProps {
-  onSend: (message: string) => void
+  onSend: (message: string, imageFile?: File) => void
   disabled?: boolean
   language: Language
   placeholder: string
@@ -24,7 +24,10 @@ export function ChatInput({
   footer,
 }: ChatInputProps) {
   const [input, setInput] = useState("")
+  const [attachedImage, setAttachedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const baseInputRef = useRef("")
   const {
     isListening,
@@ -60,14 +63,39 @@ export function ChatInput({
   const handleSubmit = () => {
     const textToSend = input.trim()
     if (textToSend && !disabled) {
-      onSend(textToSend)
+      onSend(textToSend, attachedImage || undefined)
       setInput("")
+      setAttachedImage(null)
+      setImagePreview(null)
       baseInputRef.current = ""
       resetTranscript()
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto"
       }
     }
+  }
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith("image/")) {
+      setAttachedImage(file)
+      const reader = new FileReader()
+      reader.onload = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+    // Reset input so same file can be selected again
+    e.target.value = ""
+  }
+
+  const handleRemoveImage = () => {
+    setAttachedImage(null)
+    setImagePreview(null)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -100,6 +128,26 @@ export function ChatInput({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
+      {/* Image preview */}
+      {imagePreview && (
+        <div className="mb-2 relative inline-block">
+          <img
+            src={imagePreview}
+            alt="Attached"
+            className="h-20 w-20 object-cover rounded-lg border"
+          />
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            onClick={handleRemoveImage}
+            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       <div className={cn(
         "relative flex items-end gap-1 sm:gap-2 rounded-2xl border bg-secondary/50 p-1.5 sm:p-2 shadow-sm transition-all",
         isListening && "border-red-500 ring-2 ring-red-500/20"
@@ -118,12 +166,26 @@ export function ChatInput({
           )}
         />
 
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
         <div className="flex items-center gap-1 pr-0.5 sm:pr-1">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 sm:h-9 sm:w-9 rounded-full shrink-0 touch-manipulation text-muted-foreground hover:text-foreground"
+            onClick={handleAttachClick}
+            disabled={disabled}
+            className={cn(
+              "h-10 w-10 sm:h-9 sm:w-9 rounded-full shrink-0 touch-manipulation text-muted-foreground hover:text-foreground",
+              attachedImage && "text-teal-500 hover:text-teal-600"
+            )}
             aria-label="Attach image"
           >
             <ImageIcon className="h-5 w-5 sm:h-4 sm:w-4" />

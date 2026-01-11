@@ -44,13 +44,22 @@ export default function App() {
     }
   }, [messages])
 
-  const handleSend = async (prompt: string) => {
+  const handleSend = async (prompt: string, imageFile?: File) => {
     const userMessageId = Date.now().toString()
     const assistantMessageId = (Date.now() + 1).toString()
 
+    // Create user message with optional image preview
+    let userContent = prompt
+    let userImageUrl: string | undefined
+
+    if (imageFile) {
+      userImageUrl = URL.createObjectURL(imageFile)
+      userContent = `[Image attached] ${prompt}`
+    }
+
     setMessages((prev) => [
       ...prev,
-      { id: userMessageId, type: "user", content: prompt },
+      { id: userMessageId, type: "user", content: userContent, imageUrl: userImageUrl },
     ])
 
     setMessages((prev) => [
@@ -58,13 +67,37 @@ export default function App() {
       {
         id: assistantMessageId,
         type: "assistant",
-        content: t.generatingImage,
+        content: imageFile ? t.editingImage || "Editing image..." : t.generatingImage,
         isLoading: true,
       },
     ])
 
     try {
-      const result = await generateImage({ prompt, language, authHeaders: getAuthHeader() })
+      let result
+      if (imageFile) {
+        // Use image edit API
+        const formData = new FormData()
+        formData.append("image", imageFile)
+        formData.append("prompt", prompt)
+        formData.append("size", "1024x1024")
+
+        const response = await fetch("/api/images/edit", {
+          method: "POST",
+          headers: getAuthHeader(),
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to edit image")
+        }
+
+        result = await response.json()
+      } else {
+        // Use regular image generation
+        result = await generateImage({ prompt, language, authHeaders: getAuthHeader() })
+      }
+
       const imageUrl = result.data[0]?.url
       const revisedPrompt = result.data[0]?.revised_prompt
 
