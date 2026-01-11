@@ -1,16 +1,44 @@
 import { Database, Statement } from "bun:sqlite"
 import { log } from "../utils"
-import { mkdirSync } from "fs"
+import { mkdirSync, existsSync, readdirSync, statSync } from "fs"
 import { dirname } from "path"
 
 const DB_PATH = process.env.DB_PATH || "./data/promptink.db"
+const DATA_DIR = dirname(DB_PATH)
+
+// Log volume/directory status at startup
+console.log(`[DB] DB_PATH: ${DB_PATH}`)
+console.log(`[DB] DATA_DIR: ${DATA_DIR}`)
+console.log(`[DB] DATA_DIR exists before mkdir: ${existsSync(DATA_DIR)}`)
+
+// List what's in /app to see if volume is mounted
+try {
+  const appContents = readdirSync("/app")
+  console.log(`[DB] /app contents: ${appContents.join(", ")}`)
+
+  if (existsSync(DATA_DIR)) {
+    const dataContents = readdirSync(DATA_DIR)
+    console.log(`[DB] ${DATA_DIR} contents: ${dataContents.length > 0 ? dataContents.join(", ") : "(empty)"}`)
+  }
+} catch (e) {
+  console.log(`[DB] Error listing directories: ${e}`)
+}
 
 // Ensure data directory exists
 try {
-  mkdirSync(dirname(DB_PATH), { recursive: true })
-} catch {}
+  mkdirSync(DATA_DIR, { recursive: true })
+  console.log(`[DB] DATA_DIR exists after mkdir: ${existsSync(DATA_DIR)}`)
+} catch (e) {
+  console.log(`[DB] mkdir error: ${e}`)
+}
+
+// Check if DB file already exists (indicates persistence)
+const dbExisted = existsSync(DB_PATH)
+console.log(`[DB] Database file existed before open: ${dbExisted}`)
 
 export const db = new Database(DB_PATH)
+
+console.log(`[DB] Database opened successfully`)
 
 // User type
 export interface User {
