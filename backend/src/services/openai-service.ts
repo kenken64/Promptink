@@ -142,12 +142,12 @@ export async function generateImageEdit(
   log("INFO", "Editing image", { prompt, size: options?.size })
 
   const formData = new FormData()
-  formData.append("image", new Blob([image]), "image.png")
+  formData.append("image", new Blob([image], { type: "image/png" }), "image.png")
   formData.append("prompt", prompt)
   formData.append("model", "dall-e-2")
 
   if (options?.mask) {
-    formData.append("mask", new Blob([options.mask]), "mask.png")
+    formData.append("mask", new Blob([options.mask], { type: "image/png" }), "mask.png")
   }
   if (options?.n) {
     formData.append("n", String(options.n))
@@ -191,7 +191,7 @@ export async function generateImageVariation(
   log("INFO", "Creating image variation", { size: options?.size })
 
   const formData = new FormData()
-  formData.append("image", new Blob([image]), "image.png")
+  formData.append("image", new Blob([image], { type: "image/png" }), "image.png")
   formData.append("model", "dall-e-2")
 
   if (options?.n) {
