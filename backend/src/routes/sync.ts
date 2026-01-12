@@ -2,6 +2,7 @@ import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { syncedImageQueries, userQueries } from "../db"
 import { config } from "../config"
+import { getCurrentScreen } from "../services"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 
@@ -44,6 +45,19 @@ async function downloadAndSaveImage(imageUrl: string, userId: number): Promise<s
   })
 
   return filePath
+}
+
+// Advance TRMNL playlist by calling display endpoint (triggers device to get new content on next wake)
+async function advanceTrmnlPlaylist(): Promise<{ success: boolean; error?: string }> {
+  try {
+    log("INFO", "Advancing TRMNL playlist to trigger screen update")
+    const screen = await getCurrentScreen()
+    log("INFO", "TRMNL playlist advanced", { imageUrl: screen.image_url, refreshRate: screen.refresh_rate })
+    return { success: true }
+  } catch (error) {
+    log("WARN", "Failed to advance TRMNL playlist", error)
+    return { success: false, error: String(error) }
+  }
 }
 
 // Trigger TRMNL plugin data update with permanent image URL
@@ -126,6 +140,9 @@ export const syncRoutes = {
         // Trigger TRMNL plugin update with permanent URL
         const updateResult = await triggerTrmnlUpdate(permanentImageUrl, prompt || "")
 
+        // Advance TRMNL playlist to trigger device refresh on next wake
+        const advanceResult = await advanceTrmnlPlaylist()
+
         return Response.json({
           success: true,
           message: updateResult.success
@@ -134,6 +151,7 @@ export const syncRoutes = {
           syncedAt: syncedImage.synced_at,
           imageUrl: permanentImageUrl,
           trmnlUpdate: updateResult,
+          playlistAdvanced: advanceResult.success,
         })
       } catch (error) {
         log("ERROR", "Failed to sync image", error)
