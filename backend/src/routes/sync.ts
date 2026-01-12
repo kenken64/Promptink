@@ -2,10 +2,29 @@ import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { syncedImageQueries, userQueries } from "../db"
 import { config } from "../config"
+import { mkdirSync, existsSync } from "fs"
+import { join } from "path"
 
-// Download image and convert to base64 data URL
-async function imageUrlToBase64(imageUrl: string): Promise<string> {
-  log("INFO", "Downloading image to convert to base64", { imageUrl: imageUrl.substring(0, 100) + "..." })
+// Ensure images directory exists
+const IMAGES_DIR = config.storage.imagesDir
+if (!existsSync(IMAGES_DIR)) {
+  mkdirSync(IMAGES_DIR, { recursive: true })
+  log("INFO", "Created images directory", { path: IMAGES_DIR })
+}
+
+// Get the file path for a user's synced image
+function getUserImagePath(userId: number): string {
+  return join(IMAGES_DIR, `user_${userId}.png`)
+}
+
+// Get the public URL for a user's synced image
+function getUserImageUrl(userId: number): string {
+  return `${config.server.baseUrl}/api/images/synced/${userId}`
+}
+
+// Download image from URL and save to file
+async function downloadAndSaveImage(imageUrl: string, userId: number): Promise<string> {
+  log("INFO", "Downloading image", { imageUrl: imageUrl.substring(0, 100) + "...", userId })
 
   const response = await fetch(imageUrl)
   if (!response.ok) {
@@ -13,20 +32,22 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
   }
 
   const arrayBuffer = await response.arrayBuffer()
-  const base64 = Buffer.from(arrayBuffer).toString("base64")
-  const contentType = response.headers.get("content-type") || "image/png"
+  const filePath = getUserImagePath(userId)
 
-  log("INFO", "Image converted to base64", {
-    originalSize: arrayBuffer.byteLength,
-    base64Length: base64.length,
-    contentType
+  // Write the image file
+  await Bun.write(filePath, arrayBuffer)
+
+  log("INFO", "Image saved to file", {
+    userId,
+    filePath,
+    size: arrayBuffer.byteLength
   })
 
-  return `data:${contentType};base64,${base64}`
+  return filePath
 }
 
-// Trigger TRMNL plugin data update with base64 image (image already converted)
-async function triggerTrmnlUpdate(base64ImageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
+// Trigger TRMNL plugin data update with permanent image URL
+async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
   const pluginUuid = config.trmnl.customPluginUuid
 
   if (!pluginUuid) {
@@ -35,9 +56,8 @@ async function triggerTrmnlUpdate(base64ImageUrl: string, prompt: string): Promi
   }
 
   try {
-    // Use the custom_plugins webhook endpoint (no auth required for webhook)
     const url = `https://usetrmnl.com/api/custom_plugins/${pluginUuid}`
-    log("INFO", "Sending base64 image data to TRMNL custom plugin", { url, base64Length: base64ImageUrl.length })
+    log("INFO", "Sending image URL to TRMNL custom plugin", { url, imageUrl })
 
     const response = await fetch(url, {
       method: "POST",
@@ -47,7 +67,7 @@ async function triggerTrmnlUpdate(base64ImageUrl: string, prompt: string): Promi
       body: JSON.stringify({
         merge_variables: {
           has_image: true,
-          image_url: base64ImageUrl,
+          image_url: imageUrl,
           prompt: prompt,
           updated_at: new Date().toISOString(),
         },
@@ -69,7 +89,7 @@ async function triggerTrmnlUpdate(base64ImageUrl: string, prompt: string): Promi
 }
 
 export const syncRoutes = {
-  // Sync image - converts to base64 and stores for TRMNL (authenticated)
+  // Sync image - downloads and stores physical copy for TRMNL (authenticated)
   "/api/sync/trmnl": {
     POST: withAuth(async (req, user) => {
       try {
@@ -82,29 +102,29 @@ export const syncRoutes = {
 
         log("INFO", "Syncing image for TRMNL", { userId: user.id, imageUrl: imageUrl.substring(0, 100) + "...", prompt })
 
-        // Convert DALL-E URL to base64 to prevent expiration
-        let base64ImageUrl: string
+        // Download and save image to file system
+        let filePath: string
         try {
-          base64ImageUrl = await imageUrlToBase64(imageUrl)
+          filePath = await downloadAndSaveImage(imageUrl, user.id)
         } catch (downloadError) {
-          log("ERROR", "Failed to download and convert image to base64", downloadError)
+          log("ERROR", "Failed to download image", downloadError)
           return Response.json({ error: `Failed to download image: ${String(downloadError)}` }, { status: 500 })
         }
 
-        // Store base64 image in database for this user
-        const syncedImage = syncedImageQueries.create.get(user.id, base64ImageUrl, prompt || null)
+        // Get permanent URL for this user's image
+        const permanentImageUrl = getUserImageUrl(user.id)
+
+        // Store reference in database
+        const syncedImage = syncedImageQueries.create.get(user.id, permanentImageUrl, prompt || null)
 
         if (!syncedImage) {
-          return Response.json({ error: "Failed to store image" }, { status: 500 })
+          return Response.json({ error: "Failed to store image reference" }, { status: 500 })
         }
 
-        log("INFO", "Base64 image stored in database", { userId: user.id, imageId: syncedImage.id, base64Length: base64ImageUrl.length })
+        log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl })
 
-        // Generate the user's webhook URL
-        const webhookUrl = `/api/trmnl/webhook/${user.id}`
-
-        // Trigger TRMNL plugin update with base64 image
-        const updateResult = await triggerTrmnlUpdate(base64ImageUrl, prompt || "")
+        // Trigger TRMNL plugin update with permanent URL
+        const updateResult = await triggerTrmnlUpdate(permanentImageUrl, prompt || "")
 
         return Response.json({
           success: true,
@@ -112,7 +132,7 @@ export const syncRoutes = {
             ? "Image synced and sent to TRMNL!"
             : "Image synced successfully. TRMNL will pick it up on next poll.",
           syncedAt: syncedImage.synced_at,
-          webhookUrl,
+          imageUrl: permanentImageUrl,
           trmnlUpdate: updateResult,
         })
       } catch (error) {
@@ -122,7 +142,39 @@ export const syncRoutes = {
     }),
   },
 
-  // TRMNL webhook endpoint - returns the latest synced image for a specific user (public)
+  // Serve synced image file (public - for TRMNL to fetch)
+  "/api/images/synced/:userId": {
+    GET: async (req: Request & { params: { userId: string } }) => {
+      try {
+        const userId = parseInt(req.params.userId, 10)
+
+        if (isNaN(userId)) {
+          return new Response("Invalid user ID", { status: 400 })
+        }
+
+        const filePath = getUserImagePath(userId)
+        const file = Bun.file(filePath)
+
+        if (!(await file.exists())) {
+          return new Response("Image not found", { status: 404 })
+        }
+
+        log("INFO", "Serving synced image", { userId, filePath })
+
+        return new Response(file, {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to serve image", error)
+        return new Response("Internal server error", { status: 500 })
+      }
+    },
+  },
+
+  // TRMNL webhook endpoint - returns the latest synced image info for a specific user (public)
   "/api/trmnl/webhook/:userId": {
     GET: async (req: Request & { params: { userId: string } }) => {
       try {
@@ -144,23 +196,27 @@ export const syncRoutes = {
           })
         }
 
-        // Get latest synced image for this user
-        const latestImage = syncedImageQueries.findLatestByUserId.get(userId)
+        // Check if image file exists
+        const filePath = getUserImagePath(userId)
+        const file = Bun.file(filePath)
 
-        if (!latestImage) {
+        if (!(await file.exists())) {
           return Response.json({
             has_image: false,
             message: "No image synced yet",
           })
         }
 
-        log("INFO", "TRMNL polling - returning latest image", { userId, imageId: latestImage.id })
+        // Get latest synced image metadata from database
+        const latestImage = syncedImageQueries.findLatestByUserId.get(userId)
+
+        log("INFO", "TRMNL polling - returning latest image", { userId })
 
         return Response.json({
           has_image: true,
-          image_url: latestImage.image_url,
-          prompt: latestImage.prompt || "",
-          synced_at: latestImage.synced_at,
+          image_url: getUserImageUrl(userId),
+          prompt: latestImage?.prompt || "",
+          synced_at: latestImage?.synced_at || new Date().toISOString(),
         })
       } catch (error) {
         log("ERROR", "TRMNL webhook error", error)
@@ -172,13 +228,16 @@ export const syncRoutes = {
   // Get current sync status (authenticated)
   "/api/sync/status": {
     GET: withAuth(async (req, user) => {
+      const filePath = getUserImagePath(user.id)
+      const file = Bun.file(filePath)
+      const hasImage = await file.exists()
+
       const latestImage = syncedImageQueries.findLatestByUserId.get(user.id)
-      const webhookUrl = `/api/trmnl/webhook/${user.id}`
 
       return Response.json({
-        hasSyncedImage: !!latestImage,
+        hasSyncedImage: hasImage,
         syncedAt: latestImage?.synced_at || null,
-        webhookUrl,
+        imageUrl: hasImage ? getUserImageUrl(user.id) : null,
       })
     }),
   },
@@ -197,8 +256,21 @@ export const syncRoutes = {
   // Clear sync history (authenticated)
   "/api/sync/clear": {
     DELETE: withAuth(async (req, user) => {
+      // Delete the image file
+      const filePath = getUserImagePath(user.id)
+      const file = Bun.file(filePath)
+      if (await file.exists()) {
+        await Bun.write(filePath, "") // Clear the file
+        const { unlinkSync } = await import("fs")
+        try {
+          unlinkSync(filePath)
+        } catch {}
+      }
+
+      // Clear database records
       syncedImageQueries.deleteByUserId.run(user.id)
-      log("INFO", "Cleared sync history", { userId: user.id })
+      log("INFO", "Cleared sync history and image", { userId: user.id })
+
       return Response.json({
         success: true,
         message: "Sync history cleared",

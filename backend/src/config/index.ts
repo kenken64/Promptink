@@ -11,5 +11,9 @@ export const config = {
   },
   server: {
     port: parseInt(process.env.PORT || "3000"),
+    baseUrl: process.env.BASE_URL || "http://localhost:3000",
+  },
+  storage: {
+    imagesDir: process.env.IMAGES_DIR || "/app/data/images",
   },
 }

@@ -31,32 +31,43 @@ PromptInk is an AI image generation application that integrates with TRMNL e-ink
 
 **Problem**: DALL-E image URLs expire after approximately 1 hour. When we store the original DALL-E URL and send it to TRMNL, the image works initially but becomes a broken link after the URL expires.
 
-**Solution**: Convert DALL-E images to base64 data URLs before storage.
+**Solution**: Store physical image files on the server with permanent URLs.
 
 **Implementation**:
-1. When a user syncs an image, the backend immediately downloads the image from the DALL-E URL
-2. The image is converted to a base64 data URL (`data:image/png;base64,...`)
-3. The base64 data URL is stored in the SQLite database instead of the expiring DALL-E URL
-4. The same base64 data URL is sent to TRMNL's webhook API
-5. Both the TRMNL webhook push and polling endpoint now serve permanent, non-expiring image data
+1. When a user syncs an image, the backend downloads the image from the DALL-E URL
+2. The image is saved as a physical file: `/app/data/images/user_{userId}.png`
+3. One image per user (overwrites on each sync to save storage)
+4. A dedicated endpoint serves the image: `/api/images/synced/{userId}`
+5. The permanent URL (e.g., `https://promptink-production.up.railway.app/api/images/synced/1`) is sent to TRMNL
+6. Images are stored on Railway's persistent volume at `/app/data`
 
 **Trade-offs**:
-- **Storage**: Base64 images are ~33% larger than binary. A 1MB image becomes ~1.33MB in base64
-- **Database size**: SQLite handles large text fields well, but database size will grow faster
-- **Benefit**: Images never expire, ensuring reliable display on TRMNL devices
+- **Storage**: Binary images are stored directly (no base64 overhead)
+- **One image per user**: Simplifies storage, always shows latest synced image
+- **Persistent volume required**: Railway volume must be mounted at `/app/data`
+- **Benefit**: Images never expire, efficient storage, simple URL structure
 
 **Code location**: `backend/src/routes/sync.ts`
 
 ```typescript
-// Download image and convert to base64 data URL
-async function imageUrlToBase64(imageUrl: string): Promise<string> {
+// Download image from URL and save to file
+async function downloadAndSaveImage(imageUrl: string, userId: number): Promise<string> {
   const response = await fetch(imageUrl)
   const arrayBuffer = await response.arrayBuffer()
-  const base64 = Buffer.from(arrayBuffer).toString("base64")
-  const contentType = response.headers.get("content-type") || "image/png"
-  return `data:${contentType};base64,${base64}`
+  const filePath = `/app/data/images/user_${userId}.png`
+  await Bun.write(filePath, arrayBuffer)
+  return filePath
+}
+
+// Get the public URL for a user's synced image
+function getUserImageUrl(userId: number): string {
+  return `${config.server.baseUrl}/api/images/synced/${userId}`
 }
 ```
+
+**Environment Variables Required**:
+- `BASE_URL` - Production URL (e.g., `https://promptink-production.up.railway.app`)
+- `IMAGES_DIR` - Image storage directory (default: `/app/data/images`)
 
 ### 2. TRMNL Integration Strategy
 
