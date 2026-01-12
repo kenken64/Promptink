@@ -31,10 +31,18 @@ export const imageRoutes = {
 
         const result = await generateImage(options)
 
+        log("INFO", "Image generated", {
+          language: body.language,
+          hasRevisedPrompt: !!result.data?.[0]?.revised_prompt,
+          revisedPromptPreview: result.data?.[0]?.revised_prompt?.substring(0, 50)
+        })
+
         // If language is Chinese, translate the revised_prompt back to Chinese
         if (body.language === "zh" && result.data?.[0]?.revised_prompt) {
+          log("INFO", "Translating revised_prompt to Chinese")
           try {
             const translatedPrompt = await translateText(result.data[0].revised_prompt, "zh")
+            log("INFO", "Translation completed", { translatedPreview: translatedPrompt.substring(0, 50) })
             result.data[0].revised_prompt = translatedPrompt
           } catch (translateError) {
             log("WARN", "Failed to translate revised_prompt", translateError)
