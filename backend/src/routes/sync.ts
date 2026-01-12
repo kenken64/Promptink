@@ -3,8 +3,30 @@ import { withAuth } from "../middleware/auth"
 import { syncedImageQueries, userQueries } from "../db"
 import { config } from "../config"
 
-// Trigger TRMNL plugin data update (may trigger screen regeneration)
-async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
+// Download image and convert to base64 data URL
+async function imageUrlToBase64(imageUrl: string): Promise<string> {
+  log("INFO", "Downloading image to convert to base64", { imageUrl: imageUrl.substring(0, 100) + "..." })
+
+  const response = await fetch(imageUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to download image: HTTP ${response.status}`)
+  }
+
+  const arrayBuffer = await response.arrayBuffer()
+  const base64 = Buffer.from(arrayBuffer).toString("base64")
+  const contentType = response.headers.get("content-type") || "image/png"
+
+  log("INFO", "Image converted to base64", {
+    originalSize: arrayBuffer.byteLength,
+    base64Length: base64.length,
+    contentType
+  })
+
+  return `data:${contentType};base64,${base64}`
+}
+
+// Trigger TRMNL plugin data update with base64 image (image already converted)
+async function triggerTrmnlUpdate(base64ImageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
   const pluginUuid = config.trmnl.customPluginUuid
 
   if (!pluginUuid) {
@@ -15,7 +37,7 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ s
   try {
     // Use the custom_plugins webhook endpoint (no auth required for webhook)
     const url = `https://usetrmnl.com/api/custom_plugins/${pluginUuid}`
-    log("INFO", "Sending data to TRMNL custom plugin", { url })
+    log("INFO", "Sending base64 image data to TRMNL custom plugin", { url, base64Length: base64ImageUrl.length })
 
     const response = await fetch(url, {
       method: "POST",
@@ -25,7 +47,7 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ s
       body: JSON.stringify({
         merge_variables: {
           has_image: true,
-          image_url: imageUrl,
+          image_url: base64ImageUrl,
           prompt: prompt,
           updated_at: new Date().toISOString(),
         },
@@ -47,7 +69,7 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ s
 }
 
 export const syncRoutes = {
-  // Sync image - stores the image URL for TRMNL to poll (authenticated)
+  // Sync image - converts to base64 and stores for TRMNL (authenticated)
   "/api/sync/trmnl": {
     POST: withAuth(async (req, user) => {
       try {
@@ -58,20 +80,31 @@ export const syncRoutes = {
           return Response.json({ error: "imageUrl is required" }, { status: 400 })
         }
 
-        log("INFO", "Storing image for TRMNL sync", { userId: user.id, imageUrl, prompt })
+        log("INFO", "Syncing image for TRMNL", { userId: user.id, imageUrl: imageUrl.substring(0, 100) + "...", prompt })
 
-        // Store in database for this user
-        const syncedImage = syncedImageQueries.create.get(user.id, imageUrl, prompt || null)
+        // Convert DALL-E URL to base64 to prevent expiration
+        let base64ImageUrl: string
+        try {
+          base64ImageUrl = await imageUrlToBase64(imageUrl)
+        } catch (downloadError) {
+          log("ERROR", "Failed to download and convert image to base64", downloadError)
+          return Response.json({ error: `Failed to download image: ${String(downloadError)}` }, { status: 500 })
+        }
+
+        // Store base64 image in database for this user
+        const syncedImage = syncedImageQueries.create.get(user.id, base64ImageUrl, prompt || null)
 
         if (!syncedImage) {
           return Response.json({ error: "Failed to store image" }, { status: 500 })
         }
 
+        log("INFO", "Base64 image stored in database", { userId: user.id, imageId: syncedImage.id, base64Length: base64ImageUrl.length })
+
         // Generate the user's webhook URL
         const webhookUrl = `/api/trmnl/webhook/${user.id}`
 
-        // Trigger TRMNL plugin update
-        const updateResult = await triggerTrmnlUpdate(imageUrl, prompt || "")
+        // Trigger TRMNL plugin update with base64 image
+        const updateResult = await triggerTrmnlUpdate(base64ImageUrl, prompt || "")
 
         return Response.json({
           success: true,
