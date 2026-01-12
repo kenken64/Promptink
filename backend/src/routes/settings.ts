@@ -11,6 +11,7 @@ export const settingsRoutes = {
       return Response.json({
         trmnl_device_api_key: settings?.trmnl_device_api_key || null,
         trmnl_mac_address: settings?.trmnl_mac_address || null,
+        trmnl_background_color: settings?.trmnl_background_color || "black",
       })
     }),
 
@@ -29,17 +30,21 @@ export const settingsRoutes = {
         const newMacAddress = body.trmnl_mac_address !== undefined
           ? body.trmnl_mac_address
           : currentSettings?.trmnl_mac_address || null
+        const newBackgroundColor = body.trmnl_background_color !== undefined
+          ? body.trmnl_background_color
+          : currentSettings?.trmnl_background_color || "black"
 
         // Update settings
-        userQueries.updateSettings.run(newApiKey, newMacAddress, user.id)
+        userQueries.updateSettings.run(newApiKey, newMacAddress, newBackgroundColor, user.id)
 
-        log("INFO", "User settings updated", { userId: user.id })
+        log("INFO", "User settings updated", { userId: user.id, backgroundColor: newBackgroundColor })
 
         return Response.json({
           success: true,
           settings: {
             trmnl_device_api_key: newApiKey,
             trmnl_mac_address: newMacAddress,
+            trmnl_background_color: newBackgroundColor,
           },
         })
       } catch (error) {

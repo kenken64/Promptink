@@ -6,6 +6,12 @@ import { getCurrentScreen } from "../services"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 
+// Get user's background color preference
+function getUserBackgroundColor(userId: number): string {
+  const settings = userQueries.getSettings.get(userId)
+  return settings?.trmnl_background_color || "black"
+}
+
 // Ensure images directory exists
 const IMAGES_DIR = config.storage.imagesDir
 if (!existsSync(IMAGES_DIR)) {
@@ -61,7 +67,7 @@ async function advanceTrmnlPlaylist(): Promise<{ success: boolean; error?: strin
 }
 
 // Trigger TRMNL plugin data update with permanent image URL
-async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ success: boolean; error?: string }> {
+async function triggerTrmnlUpdate(imageUrl: string, prompt: string, backgroundColor: string): Promise<{ success: boolean; error?: string }> {
   const pluginUuid = config.trmnl.customPluginUuid
 
   if (!pluginUuid) {
@@ -71,7 +77,8 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ s
 
   try {
     const url = `https://usetrmnl.com/api/custom_plugins/${pluginUuid}`
-    log("INFO", "Sending image URL to TRMNL custom plugin", { url, imageUrl })
+    const bgHex = backgroundColor === "white" ? "#fff" : "#000"
+    log("INFO", "Sending image URL to TRMNL custom plugin", { url, imageUrl, backgroundColor: bgHex })
 
     const response = await fetch(url, {
       method: "POST",
@@ -83,6 +90,7 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string): Promise<{ s
           has_image: true,
           image_url: imageUrl,
           prompt: prompt,
+          background_color: bgHex,
           updated_at: new Date().toISOString(),
         },
       }),
@@ -135,10 +143,13 @@ export const syncRoutes = {
           return Response.json({ error: "Failed to store image reference" }, { status: 500 })
         }
 
-        log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl })
+        // Get user's background color preference
+        const backgroundColor = getUserBackgroundColor(user.id)
 
-        // Trigger TRMNL plugin update with permanent URL
-        const updateResult = await triggerTrmnlUpdate(permanentImageUrl, prompt || "")
+        log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl, backgroundColor })
+
+        // Trigger TRMNL plugin update with permanent URL and background color
+        const updateResult = await triggerTrmnlUpdate(permanentImageUrl, prompt || "", backgroundColor)
 
         // Advance TRMNL playlist to trigger device refresh on next wake
         const advanceResult = await advanceTrmnlPlaylist()

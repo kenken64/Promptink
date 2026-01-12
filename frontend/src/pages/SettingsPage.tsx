@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Key, Wifi, ArrowLeft, Loader2, Check, Copy, ExternalLink, Eye, EyeOff } from "lucide-react"
+import { Settings, Key, Wifi, ArrowLeft, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
 
@@ -14,6 +14,9 @@ interface SettingsPageProps {
     deviceApiKeyPlaceholder: string
     macAddressLabel: string
     macAddressPlaceholder: string
+    backgroundColorLabel: string
+    backgroundColorBlack: string
+    backgroundColorWhite: string
     saveButton: string
     saving: string
     saveSuccess: string
@@ -28,11 +31,13 @@ interface SettingsPageProps {
 interface UserSettings {
   trmnl_device_api_key: string | null
   trmnl_mac_address: string | null
+  trmnl_background_color: "black" | "white"
 }
 
 export function SettingsPage({ userId, authHeaders, onBack, translations: t }: SettingsPageProps) {
   const [deviceApiKey, setDeviceApiKey] = useState("")
   const [macAddress, setMacAddress] = useState("")
+  const [backgroundColor, setBackgroundColor] = useState<"black" | "white">("black")
   const [showApiKey, setShowApiKey] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -52,6 +57,7 @@ export function SettingsPage({ userId, authHeaders, onBack, translations: t }: S
           const data: UserSettings = await response.json()
           setDeviceApiKey(data.trmnl_device_api_key || "")
           setMacAddress(data.trmnl_mac_address || "")
+          setBackgroundColor(data.trmnl_background_color || "black")
         }
       } catch (error) {
         console.error("Failed to fetch settings:", error)
@@ -77,6 +83,7 @@ export function SettingsPage({ userId, authHeaders, onBack, translations: t }: S
         body: JSON.stringify({
           trmnl_device_api_key: deviceApiKey || null,
           trmnl_mac_address: macAddress || null,
+          trmnl_background_color: backgroundColor,
         }),
       })
 
@@ -193,6 +200,48 @@ export function SettingsPage({ userId, authHeaders, onBack, translations: t }: S
                   placeholder={t.macAddressPlaceholder}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all font-mono"
                 />
+              </div>
+            </div>
+
+            {/* Background Color Toggle */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                {t.backgroundColorLabel}
+              </label>
+              <div className="flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-slate-500" />
+                <div className="flex-1 flex bg-slate-900/50 border border-slate-700 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setBackgroundColor("black")}
+                    className={cn(
+                      "flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all",
+                      backgroundColor === "black"
+                        ? "bg-slate-800 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-300"
+                    )}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 rounded-full bg-black border border-slate-600" />
+                      {t.backgroundColorBlack}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBackgroundColor("white")}
+                    className={cn(
+                      "flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all",
+                      backgroundColor === "white"
+                        ? "bg-slate-800 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-300"
+                    )}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 rounded-full bg-white border border-slate-600" />
+                      {t.backgroundColorWhite}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 

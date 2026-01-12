@@ -1,5 +1,5 @@
 {% if has_image %}
-<div class="view view--quadrant" style="display: flex; align-items: center; justify-content: center; background: #000;">
+<div class="view view--quadrant" style="display: flex; align-items: center; justify-content: center; background: {{ background_color | default: '#000' }};">
   <img src="{{ image_url }}" alt="PromptInk" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;" />
 </div>
 {% else %}

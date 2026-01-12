@@ -56,6 +56,7 @@ export interface User {
 export interface UserSettings {
   trmnl_device_api_key: string | null
   trmnl_mac_address: string | null
+  trmnl_background_color: "black" | "white"
 }
 
 // Synced image type
@@ -97,6 +98,9 @@ export function initDatabase() {
   try {
     db.run(`ALTER TABLE users ADD COLUMN trmnl_mac_address TEXT`)
   } catch {}
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN trmnl_background_color TEXT DEFAULT 'black'`)
+  } catch {}
 
   // Synced images table (per user)
   db.run(`
@@ -137,7 +141,7 @@ let _userQueries: {
   findById: Statement<User, [number]>
   create: Statement<User, [string, string, string | null]>
   updatePassword: Statement<void, [string, number]>
-  updateSettings: Statement<void, [string | null, string | null, number]>
+  updateSettings: Statement<void, [string | null, string | null, string, number]>
   getSettings: Statement<UserSettings, [number]>
 }
 
@@ -162,11 +166,11 @@ function initPreparedStatements() {
     updatePassword: db.prepare<void, [string, number]>(
       "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
-    updateSettings: db.prepare<void, [string | null, string | null, number]>(
-      "UPDATE users SET trmnl_device_api_key = ?, trmnl_mac_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    updateSettings: db.prepare<void, [string | null, string | null, string, number]>(
+      "UPDATE users SET trmnl_device_api_key = ?, trmnl_mac_address = ?, trmnl_background_color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     getSettings: db.prepare<UserSettings, [number]>(
-      "SELECT trmnl_device_api_key, trmnl_mac_address FROM users WHERE id = ?"
+      "SELECT trmnl_device_api_key, trmnl_mac_address, COALESCE(trmnl_background_color, 'black') as trmnl_background_color FROM users WHERE id = ?"
     ),
   }
 
