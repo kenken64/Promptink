@@ -4,7 +4,7 @@ This is a monorepo with three main components:
 
 - `backend/` - Bun API server
 - `frontend/` - React application
-- `peekachoo-trmnl/` - TRMNL plugin
+- `trmnl-plugin/` - TRMNL plugin
 
 ---
 
@@ -122,7 +122,7 @@ export function Button({ children, onClick }: ButtonProps) {
 
 ---
 
-## peekachoo-trmnl (TRMNL Plugin)
+## trmnl-plugin (TRMNL Plugin)
 
 This is a TRMNL e-ink display plugin using the trmnlp framework.
 
