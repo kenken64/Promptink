@@ -12,64 +12,31 @@ import {
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
-import { useSubscription, type SubscriptionStatus } from "../hooks"
+import { useSubscription, useLanguage, type SubscriptionStatus } from "../hooks"
 
 interface SubscriptionPageProps {
   authHeaders: { Authorization?: string }
   onBack: () => void
 }
 
-const statusConfig: Record<
-  SubscriptionStatus,
-  { icon: typeof CheckCircle; label: string; color: string; bgColor: string; description: string }
-> = {
-  none: {
-    icon: XCircle,
-    label: "No Subscription",
-    color: "text-slate-400",
-    bgColor: "bg-slate-400/10",
-    description: "Purchase a photo frame to activate your subscription.",
-  },
-  active: {
-    icon: CheckCircle,
-    label: "Active",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
-    description: "Your subscription is active. Enjoy creating AI-powered images!",
-  },
-  paused: {
-    icon: PauseCircle,
-    label: "Paused",
-    color: "text-yellow-400",
-    bgColor: "bg-yellow-400/10",
-    description: "Your subscription is paused. Resume to continue using the service.",
-  },
-  cancelled: {
-    icon: XCircle,
-    label: "Cancelled",
-    color: "text-red-400",
-    bgColor: "bg-red-400/10",
-    description: "Your subscription has been cancelled. Reactivate to continue.",
-  },
-  past_due: {
-    icon: AlertCircle,
-    label: "Past Due",
-    color: "text-orange-400",
-    bgColor: "bg-orange-400/10",
-    description: "Payment failed. Please update your payment method.",
-  },
+const statusIcons: Record<SubscriptionStatus, typeof CheckCircle> = {
+  none: XCircle,
+  active: CheckCircle,
+  paused: PauseCircle,
+  cancelled: XCircle,
+  past_due: AlertCircle,
 }
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return "N/A"
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+const statusColors: Record<SubscriptionStatus, { color: string; bgColor: string }> = {
+  none: { color: "text-slate-400", bgColor: "bg-slate-400/10" },
+  active: { color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
+  paused: { color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
+  cancelled: { color: "text-red-400", bgColor: "bg-red-400/10" },
+  past_due: { color: "text-orange-400", bgColor: "bg-orange-400/10" },
 }
 
 export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps) {
+  const { t, language } = useLanguage()
   const {
     subscription,
     isLoading,
@@ -84,6 +51,15 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return "N/A"
+    return new Date(dateString).toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
   const handleCancel = async () => {
     setIsCancelling(true)
     setMessage(null)
@@ -93,12 +69,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     if (result.success) {
       setMessage({
         type: "success",
-        text: "Subscription cancelled. You'll have access until the end of your billing period.",
+        text: t.subscription.cancelSuccess,
       })
     } else {
       setMessage({
         type: "error",
-        text: result.error || "Failed to cancel subscription",
+        text: result.error || t.subscription.cancelError,
       })
     }
 
@@ -118,7 +94,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     } else {
       setMessage({
         type: "error",
-        text: result.error || "Failed to reactivate subscription",
+        text: result.error || t.subscription.reactivateError,
       })
       setIsReactivating(false)
     }
@@ -132,8 +108,10 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     )
   }
 
-  const status = subscription ? statusConfig[subscription.status] : statusConfig.none
-  const StatusIcon = status.icon
+  const currentStatus = subscription?.status || "none"
+  const StatusIcon = statusIcons[currentStatus]
+  const colors = statusColors[currentStatus]
+  const statusText = t.subscription.status[currentStatus]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -155,9 +133,9 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <CreditCard className="h-6 w-6 text-teal-400" />
-              Subscription
+              {t.subscription.title}
             </h1>
-            <p className="text-slate-400 text-sm">Manage your PromptInk subscription</p>
+            <p className="text-slate-400 text-sm">{t.subscription.subtitle}</p>
           </div>
         </div>
 
@@ -178,12 +156,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
         {/* Subscription Card */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
           {/* Status Header */}
-          <div className={cn("p-6", status.bgColor)}>
+          <div className={cn("p-6", colors.bgColor)}>
             <div className="flex items-center gap-3">
-              <StatusIcon className={cn("h-8 w-8", status.color)} />
+              <StatusIcon className={cn("h-8 w-8", colors.color)} />
               <div>
-                <h2 className={cn("text-xl font-bold", status.color)}>{status.label}</h2>
-                <p className="text-slate-400 text-sm mt-1">{status.description}</p>
+                <h2 className={cn("text-xl font-bold", colors.color)}>{statusText.label}</h2>
+                <p className="text-slate-400 text-sm mt-1">{statusText.description}</p>
               </div>
             </div>
           </div>
@@ -193,12 +171,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
             {/* Plan info */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-slate-400 text-sm">Plan</p>
-                <p className="text-white font-medium">PromptInk Monthly</p>
+                <p className="text-slate-400 text-sm">{t.subscription.plan}</p>
+                <p className="text-white font-medium">{t.subscription.planName}</p>
               </div>
               <div className="text-right">
-                <p className="text-slate-400 text-sm">Price</p>
-                <p className="text-white font-bold">$5.99/month</p>
+                <p className="text-slate-400 text-sm">{t.subscription.price}</p>
+                <p className="text-white font-bold">{t.subscription.priceValue}</p>
               </div>
             </div>
 
@@ -207,7 +185,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
               <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-xl">
                 <Calendar className="h-5 w-5 text-slate-400" />
                 <div>
-                  <p className="text-slate-400 text-sm">Next billing date</p>
+                  <p className="text-slate-400 text-sm">{t.subscription.nextBillingDate}</p>
                   <p className="text-white font-medium">
                     {formatDate(subscription.currentPeriodEnd)}
                   </p>
@@ -218,7 +196,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
             {/* Order count */}
             {subscription && (
               <div className="text-slate-400 text-sm">
-                Total orders: {subscription.totalOrdersCount}
+                {t.subscription.totalOrders} {subscription.totalOrdersCount}
               </div>
             )}
 
@@ -229,8 +207,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                   {showCancelConfirm ? (
                     <div className="space-y-3">
                       <p className="text-slate-300 text-sm">
-                        Are you sure you want to cancel? You'll lose access at the end of your
-                        billing period.
+                        {t.subscription.cancelConfirm}
                       </p>
                       <div className="flex gap-3">
                         <Button
@@ -239,7 +216,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                           className="flex-1 border-slate-700"
                           disabled={isCancelling}
                         >
-                          Keep Subscription
+                          {t.subscription.keepSubscription}
                         </Button>
                         <Button
                           onClick={handleCancel}
@@ -250,7 +227,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                           {isCancelling ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           ) : null}
-                          Yes, Cancel
+                          {t.subscription.yesCancel}
                         </Button>
                       </div>
                     </div>
@@ -260,7 +237,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                       variant="outline"
                       className="w-full border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
                     >
-                      Cancel Subscription
+                      {t.subscription.cancelSubscription}
                     </Button>
                   )}
                 </>
@@ -281,12 +258,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                   {isReactivating ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Processing...
+                      {t.subscription.processing}
                     </>
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Reactivate Subscription
+                      {t.subscription.reactivate}
                     </>
                   )}
                 </Button>
@@ -294,7 +271,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
 
               {subscription?.status === "none" && (
                 <p className="text-center text-slate-400 text-sm">
-                  Purchase a TRMNL Photo Frame to activate your subscription.
+                  {t.subscription.purchaseToActivate}
                 </p>
               )}
             </div>
@@ -303,7 +280,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
 
         {/* Help text */}
         <p className="text-center text-slate-500 text-xs mt-6">
-          Need help? Contact support@promptink.com
+          {t.subscription.helpText}
         </p>
       </div>
     </div>

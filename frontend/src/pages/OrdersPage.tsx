@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
-import { useOrders, type Order } from "../hooks"
+import { useOrders, useLanguage, type Order } from "../hooks"
 
 interface OrdersPageProps {
   authHeaders: { Authorization?: string }
@@ -23,64 +23,47 @@ interface OrdersPageProps {
   onOrderMore: () => void
 }
 
-const statusConfig: Record<
-  Order["status"],
-  { icon: typeof Clock; label: string; color: string; bgColor: string }
-> = {
-  pending: {
-    icon: Clock,
-    label: "Pending",
-    color: "text-yellow-400",
-    bgColor: "bg-yellow-400/10",
-  },
-  paid: {
-    icon: CheckCircle,
-    label: "Paid",
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
-  },
-  processing: {
-    icon: Package,
-    label: "Processing",
-    color: "text-purple-400",
-    bgColor: "bg-purple-400/10",
-  },
-  shipped: {
-    icon: Truck,
-    label: "Shipped",
-    color: "text-teal-400",
-    bgColor: "bg-teal-400/10",
-  },
-  delivered: {
-    icon: CheckCircle,
-    label: "Delivered",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
-  },
-  cancelled: {
-    icon: XCircle,
-    label: "Cancelled",
-    color: "text-red-400",
-    bgColor: "bg-red-400/10",
-  },
+const statusIcons: Record<Order["status"], typeof Clock> = {
+  pending: Clock,
+  paid: CheckCircle,
+  processing: Package,
+  shipped: Truck,
+  delivered: CheckCircle,
+  cancelled: XCircle,
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
+const statusColors: Record<Order["status"], { color: string; bgColor: string }> = {
+  pending: { color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
+  paid: { color: "text-blue-400", bgColor: "bg-blue-400/10" },
+  processing: { color: "text-purple-400", bgColor: "bg-purple-400/10" },
+  shipped: { color: "text-teal-400", bgColor: "bg-teal-400/10" },
+  delivered: { color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
+  cancelled: { color: "text-red-400", bgColor: "bg-red-400/10" },
 }
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
-function OrderCard({ order }: { order: Order }) {
+interface OrderCardProps {
+  order: Order
+  t: ReturnType<typeof useLanguage>["t"]
+  language: ReturnType<typeof useLanguage>["language"]
+}
+
+function OrderCard({ order, t, language }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const status = statusConfig[order.status]
-  const StatusIcon = status.icon
+  const StatusIcon = statusIcons[order.status]
+  const colors = statusColors[order.status]
+  const statusLabel = t.orders.status[order.status]
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
@@ -92,32 +75,34 @@ function OrderCard({ order }: { order: Order }) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-white font-medium">Order #{order.orderNumber}</span>
+              <span className="text-white font-medium">
+                {language === "zh" ? `订单 #${order.orderNumber}` : `Order #${order.orderNumber}`}
+              </span>
               <span
                 className={cn(
                   "px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1",
-                  status.bgColor,
-                  status.color
+                  colors.bgColor,
+                  colors.color
                 )}
               >
                 <StatusIcon className="h-3 w-3" />
-                {status.label}
+                {statusLabel}
               </span>
               {order.isGift && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-pink-400/10 text-pink-400 flex items-center gap-1">
                   <Gift className="h-3 w-3" />
-                  Gift
+                  {language === "zh" ? "礼物" : "Gift"}
                 </span>
               )}
             </div>
             <p className="text-slate-400 text-sm">
-              Placed {formatDate(order.createdAt)}
+              {language === "zh" ? `下单于 ${formatDate(order.createdAt)}` : `Placed ${formatDate(order.createdAt)}`}
             </p>
           </div>
           <div className="text-right">
             <p className="text-white font-bold">{formatPrice(order.totalAmount)}</p>
             <p className="text-slate-500 text-sm">
-              {order.quantity} item{order.quantity > 1 ? "s" : ""}
+              {order.quantity} {order.quantity > 1 ? t.orders.items : t.orders.item}
             </p>
           </div>
         </div>
@@ -134,7 +119,7 @@ function OrderCard({ order }: { order: Order }) {
             <div className="flex-1">
               <p className="text-white">{order.quantity}x TRMNL Photo Frame</p>
               <p className="text-slate-500 text-sm">
-                {formatPrice(order.unitPrice)} each
+                {formatPrice(order.unitPrice)} {language === "zh" ? "每件" : "each"}
               </p>
             </div>
           </div>
@@ -143,7 +128,7 @@ function OrderCard({ order }: { order: Order }) {
           <div className="mb-4">
             <p className="text-slate-400 text-sm mb-1 flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              Shipping to
+              {t.orders.shippingTo}
             </p>
             <p className="text-slate-300 text-sm">{order.shipping.name}</p>
             <p className="text-slate-500 text-sm">
@@ -161,7 +146,7 @@ function OrderCard({ order }: { order: Order }) {
             <div className="mb-4 p-3 bg-slate-700/30 rounded-lg">
               <p className="text-slate-400 text-sm mb-1 flex items-center gap-1">
                 <Truck className="h-3 w-3" />
-                Tracking
+                {t.orders.tracking}
               </p>
               <p className="text-white text-sm font-mono">
                 {order.tracking.number}
@@ -176,7 +161,7 @@ function OrderCard({ order }: { order: Order }) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-teal-400 text-sm mt-2 hover:text-teal-300 transition-colors"
                 >
-                  Track Package
+                  {t.orders.trackPackage}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}
@@ -188,7 +173,7 @@ function OrderCard({ order }: { order: Order }) {
             <div className="p-3 bg-pink-400/5 border border-pink-400/10 rounded-lg">
               <p className="text-pink-400 text-sm mb-1 flex items-center gap-1">
                 <Gift className="h-3 w-3" />
-                Gift for {order.giftRecipientName}
+                {language === "zh" ? `礼物送给 ${order.giftRecipientName}` : `Gift for ${order.giftRecipientName}`}
               </p>
               {order.giftMessage && (
                 <p className="text-slate-400 text-sm italic">"{order.giftMessage}"</p>
@@ -198,9 +183,9 @@ function OrderCard({ order }: { order: Order }) {
 
           {/* Timestamps */}
           <div className="mt-4 pt-4 border-t border-slate-700/50 text-xs text-slate-500 space-y-1">
-            {order.paidAt && <p>Paid: {formatDate(order.paidAt)}</p>}
-            {order.shippedAt && <p>Shipped: {formatDate(order.shippedAt)}</p>}
-            {order.deliveredAt && <p>Delivered: {formatDate(order.deliveredAt)}</p>}
+            {order.paidAt && <p>{t.orders.paid} {formatDate(order.paidAt)}</p>}
+            {order.shippedAt && <p>{t.orders.shipped} {formatDate(order.shippedAt)}</p>}
+            {order.deliveredAt && <p>{t.orders.delivered} {formatDate(order.deliveredAt)}</p>}
           </div>
         </div>
       )}
@@ -210,6 +195,14 @@ function OrderCard({ order }: { order: Order }) {
 
 export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps) {
   const { orders, isLoading, error } = useOrders()
+  const { t, language } = useLanguage()
+
+  const getOrderCountText = (count: number): string => {
+    if (language === "zh") {
+      return `${count} 个订单`
+    }
+    return count === 1 ? `${count} order` : `${count} orders`
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -232,10 +225,10 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="h-6 w-6 text-teal-400" />
-                My Orders
+                {t.orders.title}
               </h1>
               <p className="text-slate-400 text-sm">
-                {orders.length} order{orders.length !== 1 ? "s" : ""}
+                {getOrderCountText(orders.length)}
               </p>
             </div>
           </div>
@@ -249,7 +242,7 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
             )}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Order More
+            {t.orders.orderMore}
           </Button>
         </div>
 
@@ -262,7 +255,7 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
           <div className="text-center py-20">
             <p className="text-red-400 mb-4">{error}</p>
             <Button onClick={onBack} variant="outline">
-              Go Back
+              {t.orders.goBack}
             </Button>
           </div>
         ) : orders.length === 0 ? (
@@ -270,9 +263,9 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
             <div className="h-16 w-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center mx-auto mb-4">
               <ShoppingBag className="h-8 w-8 text-slate-500" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">No orders yet</h2>
+            <h2 className="text-xl font-semibold text-white mb-2">{t.orders.noOrdersTitle}</h2>
             <p className="text-slate-400 mb-6">
-              Get your first TRMNL Photo Frame to start creating AI-powered images.
+              {t.orders.noOrdersDescription}
             </p>
             <Button
               onClick={onOrderMore}
@@ -284,13 +277,13 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
               )}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Order Now
+              {t.orders.orderNow}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard key={order.id} order={order} t={t} language={language} />
             ))}
           </div>
         )}
