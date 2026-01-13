@@ -16,7 +16,7 @@ import {
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
 import { useOrders, useSubscription, useLanguage, type CreateOrderInput } from "../hooks"
-import photoFrameImage from "../assets/1000091170.jpg"
+import photoFrameImage from "../assets/1000091170.png"
 
 interface PurchasePageProps {
   authHeaders: { Authorization?: string }
