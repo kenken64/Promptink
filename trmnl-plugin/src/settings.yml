@@ -9,4 +9,4 @@ polling_headers: ''
 polling_body: ''
 id: 221038
 name: PromptInk
-refresh_interval: 5
+refresh_interval: 15
