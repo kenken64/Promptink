@@ -5,6 +5,9 @@ import { imageRoutes } from "./images"
 import { syncRoutes } from "./sync"
 import { authRoutes } from "./auth"
 import { settingsRoutes } from "./settings"
+import { orderRoutes } from "./orders"
+import { subscriptionRoutes } from "./subscription"
+import { razorpayWebhookRoutes } from "./razorpay-webhook"
 import { db } from "../db"
 
 // Health check endpoint for Railway
@@ -40,4 +43,7 @@ export const routes = {
   ...syncRoutes,
   ...authRoutes,
   ...settingsRoutes,
+  ...orderRoutes,
+  ...subscriptionRoutes,
+  ...razorpayWebhookRoutes,
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Plus, LogOut, Settings } from "lucide-react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -10,11 +10,16 @@ import { AuthGuard } from "./components/AuthGuard"
 import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
 import { SettingsPage } from "./pages/SettingsPage"
+import { PurchasePage } from "./pages/PurchasePage"
+import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
+import { OrdersPage } from "./pages/OrdersPage"
+import { SubscriptionPage } from "./pages/SubscriptionPage"
 import { useImageGeneration } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
 import { useLanguage } from "./hooks/useLanguage"
 import { useTrmnlSync } from "./hooks/useTrmnlSync"
 import { useAuth } from "./hooks/useAuth"
+import { useSubscription } from "./hooks/useSubscription"
 
 interface Message {
   id: string
@@ -25,18 +30,32 @@ interface Message {
 }
 
 type AuthPage = "login" | "register"
-type AppPage = "chat" | "settings"
+type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription"
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [authPage, setAuthPage] = useState<AuthPage>("login")
   const [appPage, setAppPage] = useState<AppPage>("chat")
+  const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
+  const [isFirstOrder, setIsFirstOrder] = useState(false)
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
   const { syncToTrmnl } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader } = useAuth()
+  const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Check if user needs to be redirected to purchase page
+  useEffect(() => {
+    if (isAuthenticated && !subscriptionLoading && subscription) {
+      // If user hasn't purchased yet, redirect to purchase
+      if (needsToPurchase() && appPage === "chat") {
+        setAppPage("purchase")
+      }
+      // If user needs to reactivate, they can still view the chat but will see a banner
+    }
+  }, [isAuthenticated, subscriptionLoading, subscription, needsToPurchase, appPage])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -144,6 +163,12 @@ export default function App() {
     return await syncToTrmnl(imageUrl, prompt, getAuthHeader())
   }
 
+  const handleOrderSuccess = (orderId: number, isFirst: boolean) => {
+    setConfirmationOrderId(orderId)
+    setIsFirstOrder(isFirst)
+    setAppPage("order-confirmation")
+  }
+
   // Auth pages rendering
   const renderAuthPage = () => {
     if (authPage === "login") {
@@ -198,6 +223,26 @@ export default function App() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setAppPage("orders")}
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Orders"
+            title="My Orders"
+          >
+            <ShoppingBag className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setAppPage("subscription")}
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Subscription"
+            title="Subscription"
+          >
+            <CreditCard className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setAppPage("settings")}
             className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
             aria-label={t.settings.title}
@@ -217,6 +262,25 @@ export default function App() {
           </Button>
         </div>
       </header>
+
+      {/* Reactivation Banner */}
+      {needsToReactivate() && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <CreditCard className="h-4 w-4 text-yellow-500" />
+            <span className="text-yellow-200">
+              Your subscription has expired. Reactivate to continue generating images.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setAppPage("subscription")}
+            className="bg-yellow-500 hover:bg-yellow-400 text-black font-medium"
+          >
+            Reactivate
+          </Button>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
@@ -290,13 +354,78 @@ export default function App() {
     />
   )
 
+  // Purchase page rendering
+  const renderPurchasePage = () => (
+    <PurchasePage
+      authHeaders={getAuthHeader()}
+      onSuccess={handleOrderSuccess}
+      onBack={hasFullAccess() ? () => setAppPage("chat") : undefined}
+    />
+  )
+
+  // Order confirmation page rendering
+  const renderOrderConfirmationPage = () => {
+    if (!confirmationOrderId) {
+      setAppPage("chat")
+      return null
+    }
+    return (
+      <OrderConfirmationPage
+        orderId={confirmationOrderId}
+        authHeaders={getAuthHeader()}
+        onViewOrders={() => setAppPage("orders")}
+        onStartCreating={() => {
+          setConfirmationOrderId(null)
+          setIsFirstOrder(false)
+          setAppPage("chat")
+        }}
+        isFirstOrder={isFirstOrder}
+      />
+    )
+  }
+
+  // Orders page rendering
+  const renderOrdersPage = () => (
+    <OrdersPage
+      authHeaders={getAuthHeader()}
+      onBack={() => setAppPage("chat")}
+      onOrderMore={() => setAppPage("purchase")}
+    />
+  )
+
+  // Subscription page rendering
+  const renderSubscriptionPage = () => (
+    <SubscriptionPage
+      authHeaders={getAuthHeader()}
+      onBack={() => setAppPage("chat")}
+    />
+  )
+
+  const renderCurrentPage = () => {
+    switch (appPage) {
+      case "settings":
+        return renderSettingsPage()
+      case "purchase":
+        return renderPurchasePage()
+      case "order-confirmation":
+        return renderOrderConfirmationPage()
+      case "orders":
+        return renderOrdersPage()
+      case "subscription":
+        return renderSubscriptionPage()
+      case "chat":
+      default:
+        return renderChatApp()
+    }
+  }
+
   return (
     <AuthGuard
       isAuthenticated={isAuthenticated}
       isLoading={authLoading}
       fallback={renderAuthPage()}
     >
-      {appPage === "settings" ? renderSettingsPage() : renderChatApp()}
+      {renderCurrentPage()}
     </AuthGuard>
   )
 }
