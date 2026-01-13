@@ -16,6 +16,7 @@ import {
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
 import { useOrders, useSubscription, type CreateOrderInput } from "../hooks"
+import photoFrameImage from "../assets/1000091170.jpg"
 
 interface PurchasePageProps {
   authHeaders: { Authorization?: string }
@@ -254,8 +255,12 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="flex flex-col items-center mb-8">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
-              <Package className="h-8 w-8 text-white" />
+            <div className="w-full max-w-xs mb-4 rounded-xl overflow-hidden shadow-lg shadow-teal-500/25">
+              <img
+                src={photoFrameImage}
+                alt="AI-Powered E-Ink Photo Frame"
+                className="w-full h-auto object-cover"
+              />
             </div>
             <h1 className="text-2xl font-bold text-white">TRMNL Photo Frame</h1>
             <p className="text-slate-400 text-sm mt-1">AI-powered e-ink display for your space</p>
