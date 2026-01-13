@@ -21,6 +21,7 @@ interface PurchasePageProps {
   authHeaders: { Authorization?: string }
   onSuccess: (orderId: number, isFirstOrder: boolean) => void
   onBack?: () => void
+  onSkip?: () => void
 }
 
 declare global {
@@ -63,7 +64,7 @@ interface RazorpayResponse {
 
 const UNIT_PRICE = 120 // $120
 
-export function PurchasePage({ authHeaders, onSuccess, onBack }: PurchasePageProps) {
+export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
   const { subscription } = useSubscription()
 
@@ -492,6 +493,17 @@ export function PurchasePage({ authHeaders, onSuccess, onBack }: PurchasePagePro
                   </span>
                 )}
               </Button>
+
+              {/* Skip button */}
+              {onSkip && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className="w-full py-3 text-slate-400 hover:text-slate-300 text-sm transition-colors"
+                >
+                  Skip for now
+                </button>
+              )}
             </div>
           </form>
         </div>

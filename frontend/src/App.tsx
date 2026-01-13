@@ -38,6 +38,7 @@ export default function App() {
   const [appPage, setAppPage] = useState<AppPage>("chat")
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
   const [isFirstOrder, setIsFirstOrder] = useState(false)
+  const [hasSkippedPurchase, setHasSkippedPurchase] = useState(false)
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -49,13 +50,13 @@ export default function App() {
   // Check if user needs to be redirected to purchase page
   useEffect(() => {
     if (isAuthenticated && !subscriptionLoading && subscription) {
-      // If user hasn't purchased yet, redirect to purchase
-      if (needsToPurchase() && appPage === "chat") {
+      // If user hasn't purchased yet and hasn't skipped, redirect to purchase
+      if (needsToPurchase() && appPage === "chat" && !hasSkippedPurchase) {
         setAppPage("purchase")
       }
       // If user needs to reactivate, they can still view the chat but will see a banner
     }
-  }, [isAuthenticated, subscriptionLoading, subscription, needsToPurchase, appPage])
+  }, [isAuthenticated, subscriptionLoading, subscription, needsToPurchase, appPage, hasSkippedPurchase])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -360,6 +361,10 @@ export default function App() {
       authHeaders={getAuthHeader()}
       onSuccess={handleOrderSuccess}
       onBack={hasFullAccess() ? () => setAppPage("chat") : undefined}
+      onSkip={() => {
+        setHasSkippedPurchase(true)
+        setAppPage("chat")
+      }}
     />
   )
 
