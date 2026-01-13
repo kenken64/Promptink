@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
-import { useOrders, useSubscription, type CreateOrderInput } from "../hooks"
+import { useOrders, useSubscription, useLanguage, type CreateOrderInput } from "../hooks"
 import photoFrameImage from "../assets/1000091170.jpg"
 
 interface PurchasePageProps {
@@ -68,6 +68,7 @@ const UNIT_PRICE = 120 // $120
 export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
   const { subscription } = useSubscription()
+  const { t } = useLanguage()
 
   const [quantity, setQuantity] = useState(1)
   const [isGift, setIsGift] = useState(false)
@@ -131,34 +132,34 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
     try {
       // Validate form
       if (!shipping.name.trim()) {
-        throw new Error("Please enter your full name")
+        throw new Error(t.purchase.errors.fullName)
       }
       if (!shipping.phone.trim()) {
-        throw new Error("Please enter your phone number")
+        throw new Error(t.purchase.errors.phone)
       }
       if (!shipping.addressLine1.trim()) {
-        throw new Error("Please enter your address")
+        throw new Error(t.purchase.errors.address)
       }
       if (!shipping.city.trim()) {
-        throw new Error("Please enter your city")
+        throw new Error(t.purchase.errors.city)
       }
       if (!shipping.state.trim()) {
-        throw new Error("Please enter your state/province")
+        throw new Error(t.purchase.errors.state)
       }
       if (!shipping.postalCode.trim()) {
-        throw new Error("Please enter your postal code")
+        throw new Error(t.purchase.errors.postalCode)
       }
       if (!shipping.country.trim()) {
-        throw new Error("Please enter your country")
+        throw new Error(t.purchase.errors.country)
       }
       if (isGift && !gift.recipientName.trim()) {
-        throw new Error("Please enter the gift recipient's name")
+        throw new Error(t.purchase.errors.giftRecipient)
       }
 
       // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript()
       if (!scriptLoaded) {
-        throw new Error("Failed to load payment system. Please try again.")
+        throw new Error(t.purchase.errors.paymentLoad)
       }
 
       // Create order
@@ -187,7 +188,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
       const orderResult = await createOrder(orderInput)
 
       if (!orderResult.success || !orderResult.data) {
-        throw new Error(orderResult.error || "Failed to create order")
+        throw new Error(orderResult.error || t.purchase.errors.orderCreate)
       }
 
       const { order, razorpay } = orderResult.data
@@ -210,7 +211,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
           })
 
           if (!verifyResult.success) {
-            setError(verifyResult.error || "Payment verification failed")
+            setError(verifyResult.error || t.purchase.errors.paymentVerify)
             setIsLoading(false)
             return
           }
@@ -236,7 +237,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
       const razorpayInstance = new window.Razorpay(options)
       razorpayInstance.open()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : t.purchase.errors.general)
       setIsLoading(false)
     }
   }
@@ -258,22 +259,22 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
             <div className="w-full max-w-xs mb-4 rounded-xl overflow-hidden shadow-lg shadow-teal-500/25">
               <img
                 src={photoFrameImage}
-                alt="AI-Powered E-Ink Photo Frame"
+                alt={t.purchase.title}
                 className="w-full h-auto object-cover"
               />
             </div>
-            <h1 className="text-2xl font-bold text-white">TRMNL Photo Frame</h1>
-            <p className="text-slate-400 text-sm mt-1">AI-powered e-ink display for your space</p>
+            <h1 className="text-2xl font-bold text-white">{t.purchase.title}</h1>
+            <p className="text-slate-400 text-sm mt-1">{t.purchase.subtitle}</p>
           </div>
 
           {/* Price and Quantity */}
           <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-300 font-medium">Price per frame</span>
+              <span className="text-slate-300 font-medium">{t.purchase.pricePerFrame}</span>
               <span className="text-xl font-bold text-white">${UNIT_PRICE}.00</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-300 font-medium">Quantity</span>
+              <span className="text-slate-300 font-medium">{t.purchase.quantity}</span>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -321,7 +322,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
               </button>
               <label className="flex items-center gap-2 text-slate-300 cursor-pointer" onClick={() => setIsGift(!isGift)}>
                 <Gift className="h-4 w-4" />
-                This is a gift
+                {t.purchase.thisIsGift}
               </label>
             </div>
 
@@ -329,7 +330,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Shipping Address
+                {t.purchase.shippingAddress}
               </h3>
 
               {/* Full Name */}
@@ -339,7 +340,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   type="text"
                   value={shipping.name}
                   onChange={(e) => handleShippingChange("name", e.target.value)}
-                  placeholder="Full Name *"
+                  placeholder={t.purchase.fullName}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
@@ -351,7 +352,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   type="email"
                   value={shipping.email}
                   onChange={(e) => handleShippingChange("email", e.target.value)}
-                  placeholder="Email (optional)"
+                  placeholder={t.purchase.email}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
@@ -363,7 +364,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   type="tel"
                   value={shipping.phone}
                   onChange={(e) => handleShippingChange("phone", e.target.value)}
-                  placeholder="Phone Number *"
+                  placeholder={t.purchase.phone}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
@@ -373,7 +374,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                 type="text"
                 value={shipping.addressLine1}
                 onChange={(e) => handleShippingChange("addressLine1", e.target.value)}
-                placeholder="Address Line 1 *"
+                placeholder={t.purchase.addressLine1}
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
               />
 
@@ -382,7 +383,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                 type="text"
                 value={shipping.addressLine2}
                 onChange={(e) => handleShippingChange("addressLine2", e.target.value)}
-                placeholder="Address Line 2 (Apt, Suite, etc.)"
+                placeholder={t.purchase.addressLine2}
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
               />
 
@@ -392,14 +393,14 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   type="text"
                   value={shipping.city}
                   onChange={(e) => handleShippingChange("city", e.target.value)}
-                  placeholder="City *"
+                  placeholder={t.purchase.city}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <input
                   type="text"
                   value={shipping.state}
                   onChange={(e) => handleShippingChange("state", e.target.value)}
-                  placeholder="State *"
+                  placeholder={t.purchase.state}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
@@ -410,14 +411,14 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   type="text"
                   value={shipping.postalCode}
                   onChange={(e) => handleShippingChange("postalCode", e.target.value)}
-                  placeholder="Postal Code *"
+                  placeholder={t.purchase.postalCode}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <input
                   type="text"
                   value={shipping.country}
                   onChange={(e) => handleShippingChange("country", e.target.value)}
-                  placeholder="Country *"
+                  placeholder={t.purchase.country}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
@@ -428,21 +429,21 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
                   <Gift className="h-4 w-4" />
-                  Gift Details
+                  {t.purchase.giftDetails}
                 </h3>
 
                 <input
                   type="text"
                   value={gift.recipientName}
                   onChange={(e) => handleGiftChange("recipientName", e.target.value)}
-                  placeholder="Recipient Name *"
+                  placeholder={t.purchase.recipientName}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
 
                 <textarea
                   value={gift.message}
                   onChange={(e) => handleGiftChange("message", e.target.value)}
-                  placeholder="Gift Message (optional)"
+                  placeholder={t.purchase.giftMessage}
                   rows={3}
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all resize-none"
                 />
@@ -454,22 +455,22 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
               {/* Order Summary */}
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-slate-400">
-                  <span>Subtotal ({quantity} frame{quantity > 1 ? "s" : ""})</span>
+                  <span>{t.purchase.subtotal} ({quantity} {quantity > 1 ? t.purchase.frames : t.purchase.frame})</span>
                   <span>${totalAmount}.00</span>
                 </div>
                 {!hasExistingSubscription && (
                   <div className="flex justify-between text-slate-400">
-                    <span>Monthly subscription</span>
+                    <span>{t.purchase.monthlySubscription}</span>
                     <span>+ $5.99/mo</span>
                   </div>
                 )}
                 <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-slate-700">
-                  <span>Total today</span>
+                  <span>{t.purchase.totalToday}</span>
                   <span>${totalAmount}.00</span>
                 </div>
                 {!hasExistingSubscription && (
                   <p className="text-slate-500 text-xs">
-                    Subscription starts after your first purchase
+                    {t.purchase.subscriptionNote}
                   </p>
                 )}
               </div>
@@ -489,12 +490,12 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    Processing...
+                    {t.purchase.processing}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <CreditCard className="h-5 w-5" />
-                    Pay ${totalAmount}.00
+                    {t.purchase.pay} ${totalAmount}.00
                   </span>
                 )}
               </Button>
@@ -506,7 +507,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   onClick={onSkip}
                   className="w-full py-3 text-slate-400 hover:text-slate-300 text-sm transition-colors"
                 >
-                  Skip for now
+                  {t.purchase.skipForNow}
                 </button>
               )}
             </div>
@@ -515,7 +516,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
 
         {/* Footer */}
         <p className="text-center text-slate-500 text-xs mt-6">
-          Secure payment powered by Razorpay
+          {t.purchase.securePayment}
         </p>
       </div>
     </div>
