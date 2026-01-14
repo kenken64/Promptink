@@ -8,37 +8,21 @@ polling_url: https://promptink-production.up.railway.app/api/trmnl/webhook/1
 polling_headers: ''
 polling_body: ''
 id: 221038
-name: PromptInk
-refresh_interval: 5
-
-# Form fields for merge_variables
 custom_fields:
-  - name: image_url
-    label: Image URL
-    type: text
-    required: false
-    help: URL of the synced image
-
-  - name: has_image
-    label: Has Image
-    type: boolean
-    required: false
-    help: Whether an image has been synced
-
-  - name: prompt
-    label: Prompt
-    type: text
-    required: false
-    help: The prompt used to generate the image
-
-  - name: background_color
-    label: Background Color
-    type: text
-    required: false
-    help: Background color for the display (#000 or #fff)
-
-  - name: updated_at
-    label: Updated At
-    type: text
-    required: false
-    help: Timestamp of last update
+- keyname: image_url
+  name: Image URL
+  field_type: text
+- keyname: has_image
+  name: Has Image
+  field_type: text
+- keyname: prompt
+  name: Prompt
+  field_type: text
+- keyname: background_color
+  name: Background Color
+  field_type: text
+- keyname: updated_at
+  name: Updated At
+  field_type: text
+name: PromptInk
+refresh_interval: 15
