@@ -8,6 +8,7 @@ const result = await build({
   splitting: true,
   minify: true,
   sourcemap: "external",
+  publicPath: "/assets/",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },

@@ -56,15 +56,28 @@ if (isDev) {
         })
       }
 
-      // Serve JS assets from dist folder
+      // Serve static assets from dist folder
       if (url.pathname.startsWith("/assets/")) {
         const filePath = join(frontendDist, url.pathname.replace("/assets/", ""))
         const file = Bun.file(filePath)
         if (await file.exists()) {
+          // Determine content type based on file extension
+          let contentType = "application/octet-stream"
+          if (url.pathname.endsWith(".js")) {
+            contentType = "application/javascript"
+          } else if (url.pathname.endsWith(".png")) {
+            contentType = "image/png"
+          } else if (url.pathname.endsWith(".jpg") || url.pathname.endsWith(".jpeg")) {
+            contentType = "image/jpeg"
+          } else if (url.pathname.endsWith(".svg")) {
+            contentType = "image/svg+xml"
+          } else if (url.pathname.endsWith(".gif")) {
+            contentType = "image/gif"
+          } else if (url.pathname.endsWith(".webp")) {
+            contentType = "image/webp"
+          }
           return new Response(file, {
-            headers: {
-              "Content-Type": url.pathname.endsWith(".js") ? "application/javascript" : "text/plain"
-            },
+            headers: { "Content-Type": contentType },
           })
         }
       }
