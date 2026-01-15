@@ -64,8 +64,10 @@ interface RazorpayResponse {
 }
 
 const UNIT_PRICE = 120 // $120
-const SUBSCRIPTION_FEE = 5.99 // $5.99/month
+const SUBSCRIPTION_FEE = 5.99 // $5.99/month base
 const GST_RATE = 0.09 // Singapore GST 9%
+const SUBSCRIPTION_GST = SUBSCRIPTION_FEE * GST_RATE
+const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST
 
 export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
@@ -98,10 +100,9 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
 
   const hasExistingSubscription = subscription?.status === "active"
   const subtotal = quantity * UNIT_PRICE
-  const subscriptionAmount = hasExistingSubscription ? 0 : SUBSCRIPTION_FEE
-  const amountBeforeGst = subtotal + subscriptionAmount
-  const gstAmount = amountBeforeGst * GST_RATE
-  const totalAmount = amountBeforeGst + gstAmount
+  const frameGst = subtotal * GST_RATE
+  const subscriptionTotal = hasExistingSubscription ? 0 : SUBSCRIPTION_WITH_GST
+  const totalAmount = subtotal + frameGst + subscriptionTotal
 
   const handleQuantityChange = (delta: number) => {
     setQuantity((prev) => Math.max(1, Math.min(10, prev + delta)))
@@ -464,16 +465,16 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
                   <span>{t.purchase.subtotal} ({quantity} {quantity > 1 ? t.purchase.frames : t.purchase.frame})</span>
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
-                {!hasExistingSubscription && (
-                  <div className="flex justify-between text-slate-400">
-                    <span>{t.purchase.monthlySubscription}</span>
-                    <span>${SUBSCRIPTION_FEE.toFixed(2)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-slate-400">
                   <span>{t.purchase.gst}</span>
-                  <span>${gstAmount.toFixed(2)}</span>
+                  <span>${frameGst.toFixed(2)}</span>
                 </div>
+                {!hasExistingSubscription && (
+                  <div className="flex justify-between text-slate-400">
+                    <span>{t.purchase.monthlySubscription} ({t.purchase.inclGst})</span>
+                    <span>${SUBSCRIPTION_WITH_GST.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-slate-700">
                   <span>{t.purchase.totalToday}</span>
                   <span>${totalAmount.toFixed(2)}</span>
