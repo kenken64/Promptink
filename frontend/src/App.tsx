@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image } from "lucide-react"
 import { Button } from "./components/ui/button"
-import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
 import { ChatInput } from "./components/ChatInput"
 import { ThemeToggle } from "./components/ThemeToggle"
@@ -46,7 +45,7 @@ export default function App() {
   const { syncToTrmnl } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLElement>(null)
 
   // Check if user needs to be redirected to purchase page
   useEffect(() => {
@@ -193,7 +192,7 @@ export default function App() {
 
   // Main chat app
   const renderChatApp = () => (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="safe-area-top sticky top-0 z-50 flex items-center justify-between px-2 sm:px-4 py-2 sm:py-3 border-b bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -295,9 +294,9 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main ref={scrollRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center px-3 sm:px-4 py-4">
+          <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center px-3 sm:px-4 py-4">
             <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 sm:mb-6 shadow-lg">
               <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
@@ -318,34 +317,32 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <ScrollArea ref={scrollRef} className="h-full">
-            <div className="pb-32">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  type={message.type}
-                  content={message.content}
-                  imageUrl={message.imageUrl}
-                  isLoading={message.isLoading}
-                  userLabel={t.you}
-                  assistantLabel={t.assistant}
-                  generatingText={t.generatingImage}
-                  openFullSizeText={t.openFullSize}
-                  syncText={t.syncToTrmnl}
-                  syncingText={t.syncing}
-                  syncSuccessText={t.syncSuccess}
-                  shareText={t.share}
-                  sharingText={t.sharing}
-                  shareSuccessText={t.shareSuccess}
-                  copyLinkText={t.copyLink}
-                  copiedText={t.copied}
-                  closeText={t.close}
-                  authHeaders={getAuthHeader()}
-                  onSync={handleSyncWithAuth}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="pb-32">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                type={message.type}
+                content={message.content}
+                imageUrl={message.imageUrl}
+                isLoading={message.isLoading}
+                userLabel={t.you}
+                assistantLabel={t.assistant}
+                generatingText={t.generatingImage}
+                openFullSizeText={t.openFullSize}
+                syncText={t.syncToTrmnl}
+                syncingText={t.syncing}
+                syncSuccessText={t.syncSuccess}
+                shareText={t.share}
+                sharingText={t.sharing}
+                shareSuccessText={t.shareSuccess}
+                copyLinkText={t.copyLink}
+                copiedText={t.copied}
+                closeText={t.close}
+                authHeaders={getAuthHeader()}
+                onSync={handleSyncWithAuth}
+              />
+            ))}
+          </div>
         )}
       </main>
 
