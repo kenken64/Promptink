@@ -350,7 +350,7 @@ export default function App() {
       </main>
 
       {/* Input Area */}
-      <div className="safe-area-bottom sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4 sm:pt-6">
+      <div className="safe-area-bottom sticky bottom-0 z-10 bg-gradient-to-t from-background via-background to-transparent pt-4 sm:pt-6 pb-2">
         <ChatInput
           onSend={handleSend}
           disabled={isLoading}
