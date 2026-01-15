@@ -8,6 +8,8 @@ import { settingsRoutes } from "./settings"
 import { orderRoutes } from "./orders"
 import { subscriptionRoutes } from "./subscription"
 import { razorpayWebhookRoutes } from "./razorpay-webhook"
+import { shareRoutes } from "./share"
+import { galleryRoutes } from "./gallery"
 import { db } from "../db"
 
 // Health check endpoint for Railway
@@ -46,4 +48,6 @@ export const routes = {
   ...orderRoutes,
   ...subscriptionRoutes,
   ...razorpayWebhookRoutes,
+  ...shareRoutes,
+  ...galleryRoutes,
 }

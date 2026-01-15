@@ -116,6 +116,23 @@ export interface SyncedImage {
   synced_at: string
 }
 
+// Generated image type (gallery/history)
+export interface GeneratedImage {
+  id: number
+  user_id: number
+  image_url: string
+  original_prompt: string
+  revised_prompt: string | null
+  model: string
+  size: string
+  style: string | null
+  is_edit: number
+  parent_image_id: number | null
+  is_favorite: number
+  is_deleted: number
+  created_at: string
+}
+
 // Initialize database tables
 export function initDatabase() {
   log("INFO", "Initializing database...", { dbPath: DB_PATH })
@@ -240,6 +257,33 @@ export function initDatabase() {
   // Create index on user_id for faster lookups
   db.run(`CREATE INDEX IF NOT EXISTS idx_synced_images_user_id ON synced_images(user_id)`)
 
+  // Generated images table (gallery/history)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS generated_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      image_url TEXT NOT NULL,
+      original_prompt TEXT NOT NULL,
+      revised_prompt TEXT,
+      model TEXT DEFAULT 'dall-e-3',
+      size TEXT DEFAULT '1024x1024',
+      style TEXT,
+      is_edit INTEGER DEFAULT 0,
+      parent_image_id INTEGER,
+      is_favorite INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_image_id) REFERENCES generated_images(id)
+    )
+  `)
+
+  // Create indexes for generated_images
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_user_id ON generated_images(user_id)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_is_favorite ON generated_images(is_favorite)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_is_deleted ON generated_images(is_deleted)`)
+
   // Sessions/refresh tokens table (optional, for token invalidation)
   db.run(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -289,6 +333,19 @@ let _syncedImageQueries: {
   findAllByUserId: Statement<SyncedImage, [number]>
   create: Statement<SyncedImage, [number, string, string | null]>
   deleteByUserId: Statement<void, [number]>
+}
+
+let _generatedImageQueries: {
+  findById: Statement<GeneratedImage, [number]>
+  findByIdAndUserId: Statement<GeneratedImage, [number, number]>
+  findAllByUserId: Statement<GeneratedImage, [number, number, number]>
+  findFavoritesByUserId: Statement<GeneratedImage, [number, number, number]>
+  countByUserId: Statement<{ count: number }, [number]>
+  countFavoritesByUserId: Statement<{ count: number }, [number]>
+  create: Statement<GeneratedImage, [number, string, string, string | null, string, string, string | null, number, number | null]>
+  updateFavorite: Statement<void, [number, number, number]>
+  softDelete: Statement<void, [number, number]>
+  search: Statement<GeneratedImage, [number, string, string, number, number]>
 }
 
 let _orderQueries: {
@@ -364,6 +421,39 @@ function initPreparedStatements() {
     ),
   }
 
+  _generatedImageQueries = {
+    findById: db.prepare<GeneratedImage, [number]>(
+      "SELECT * FROM generated_images WHERE id = ? AND is_deleted = 0"
+    ),
+    findByIdAndUserId: db.prepare<GeneratedImage, [number, number]>(
+      "SELECT * FROM generated_images WHERE id = ? AND user_id = ? AND is_deleted = 0"
+    ),
+    findAllByUserId: db.prepare<GeneratedImage, [number, number, number]>(
+      "SELECT * FROM generated_images WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ),
+    findFavoritesByUserId: db.prepare<GeneratedImage, [number, number, number]>(
+      "SELECT * FROM generated_images WHERE user_id = ? AND is_favorite = 1 AND is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ),
+    countByUserId: db.prepare<{ count: number }, [number]>(
+      "SELECT COUNT(*) as count FROM generated_images WHERE user_id = ? AND is_deleted = 0"
+    ),
+    countFavoritesByUserId: db.prepare<{ count: number }, [number]>(
+      "SELECT COUNT(*) as count FROM generated_images WHERE user_id = ? AND is_favorite = 1 AND is_deleted = 0"
+    ),
+    create: db.prepare<GeneratedImage, [number, string, string, string | null, string, string, string | null, number, number | null]>(
+      "INSERT INTO generated_images (user_id, image_url, original_prompt, revised_prompt, model, size, style, is_edit, parent_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    ),
+    updateFavorite: db.prepare<void, [number, number, number]>(
+      "UPDATE generated_images SET is_favorite = ? WHERE id = ? AND user_id = ?"
+    ),
+    softDelete: db.prepare<void, [number, number]>(
+      "UPDATE generated_images SET is_deleted = 1 WHERE id = ? AND user_id = ?"
+    ),
+    search: db.prepare<GeneratedImage, [number, string, string, number, number]>(
+      "SELECT * FROM generated_images WHERE user_id = ? AND is_deleted = 0 AND (original_prompt LIKE ? OR revised_prompt LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ),
+  }
+
   _orderQueries = {
     findById: db.prepare<Order, [number]>(
       "SELECT * FROM orders WHERE id = ?"
@@ -431,6 +521,19 @@ export const syncedImageQueries = {
   get findAllByUserId() { return _syncedImageQueries.findAllByUserId },
   get create() { return _syncedImageQueries.create },
   get deleteByUserId() { return _syncedImageQueries.deleteByUserId },
+}
+
+export const generatedImageQueries = {
+  get findById() { return _generatedImageQueries.findById },
+  get findByIdAndUserId() { return _generatedImageQueries.findByIdAndUserId },
+  get findAllByUserId() { return _generatedImageQueries.findAllByUserId },
+  get findFavoritesByUserId() { return _generatedImageQueries.findFavoritesByUserId },
+  get countByUserId() { return _generatedImageQueries.countByUserId },
+  get countFavoritesByUserId() { return _generatedImageQueries.countFavoritesByUserId },
+  get create() { return _generatedImageQueries.create },
+  get updateFavorite() { return _generatedImageQueries.updateFavorite },
+  get softDelete() { return _generatedImageQueries.softDelete },
+  get search() { return _generatedImageQueries.search },
 }
 
 export const orderQueries = {

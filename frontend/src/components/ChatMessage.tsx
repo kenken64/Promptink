@@ -3,6 +3,7 @@ import { useState } from "react"
 import { cn } from "../lib/utils"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
+import { ShareButton } from "./ShareButton"
 
 interface ChatMessageProps {
   type: "user" | "assistant"
@@ -16,6 +17,13 @@ interface ChatMessageProps {
   syncText: string
   syncingText: string
   syncSuccessText: string
+  shareText: string
+  sharingText: string
+  shareSuccessText: string
+  copyLinkText: string
+  copiedText: string
+  closeText: string
+  authHeaders?: { Authorization?: string }
   onSync?: (imageUrl: string, prompt?: string) => Promise<void>
 }
 
@@ -31,6 +39,13 @@ export function ChatMessage({
   syncText,
   syncingText,
   syncSuccessText,
+  shareText,
+  sharingText,
+  shareSuccessText,
+  copyLinkText,
+  copiedText,
+  closeText,
+  authHeaders,
   onSync,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
@@ -144,6 +159,19 @@ export function ChatMessage({
                         {isSyncing ? "..." : syncSuccess ? "Done" : "Sync"}
                       </span>
                     </Button>
+                  )}
+                  {authHeaders && (
+                    <ShareButton
+                      imageUrl={imageUrl}
+                      prompt={content}
+                      authHeaders={authHeaders}
+                      shareText={shareText}
+                      sharingText={sharingText}
+                      shareSuccessText={shareSuccessText}
+                      copyLinkText={copyLinkText}
+                      copiedText={copiedText}
+                      closeText={closeText}
+                    />
                   )}
                 </div>
               </div>

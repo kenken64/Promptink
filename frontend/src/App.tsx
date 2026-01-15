@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard } from "lucide-react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -14,6 +14,7 @@ import { PurchasePage } from "./pages/PurchasePage"
 import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
 import { OrdersPage } from "./pages/OrdersPage"
 import { SubscriptionPage } from "./pages/SubscriptionPage"
+import { GalleryPage } from "./pages/GalleryPage"
 import { useImageGeneration } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
 import { useLanguage } from "./hooks/useLanguage"
@@ -30,7 +31,7 @@ interface Message {
 }
 
 type AuthPage = "login" | "register"
-type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription"
+type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery"
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -224,6 +225,16 @@ export default function App() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setAppPage("gallery")}
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Gallery"
+            title={t.gallery.title}
+          >
+            <Image className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setAppPage("orders")}
             className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Orders"
@@ -323,6 +334,13 @@ export default function App() {
                   syncText={t.syncToTrmnl}
                   syncingText={t.syncing}
                   syncSuccessText={t.syncSuccess}
+                  shareText={t.share}
+                  sharingText={t.sharing}
+                  shareSuccessText={t.shareSuccess}
+                  copyLinkText={t.copyLink}
+                  copiedText={t.copied}
+                  closeText={t.close}
+                  authHeaders={getAuthHeader()}
                   onSync={handleSyncWithAuth}
                 />
               ))}
@@ -406,6 +424,11 @@ export default function App() {
     />
   )
 
+  // Gallery page rendering
+  const renderGalleryPage = () => (
+    <GalleryPage />
+  )
+
   const renderCurrentPage = () => {
     switch (appPage) {
       case "settings":
@@ -418,6 +441,8 @@ export default function App() {
         return renderOrdersPage()
       case "subscription":
         return renderSubscriptionPage()
+      case "gallery":
+        return renderGalleryPage()
       case "chat":
       default:
         return renderChatApp()

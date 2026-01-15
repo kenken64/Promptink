@@ -250,15 +250,16 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-lg relative">
+      <div className="min-h-screen flex items-center justify-center py-4 sm:py-8 px-4">
+        <div className="w-full max-w-lg relative">
         {/* Card */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
           {/* Header */}
@@ -529,6 +530,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
         <p className="text-center text-slate-500 text-xs mt-6">
           {t.purchase.securePayment}
         </p>
+      </div>
       </div>
     </div>
   )
