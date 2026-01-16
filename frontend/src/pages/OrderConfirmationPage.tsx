@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
-import { useOrders, type Order } from "../hooks"
+import { type Order } from "../hooks"
 
 interface OrderConfirmationPageProps {
   orderId: number
@@ -28,24 +28,35 @@ export function OrderConfirmationPage({
   onStartCreating,
   isFirstOrder = false,
 }: OrderConfirmationPageProps) {
-  const { getOrder } = useOrders()
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchOrder = async () => {
-      const result = await getOrder(orderId)
-      if (result.success && result.order) {
-        setOrder(result.order)
-      } else {
-        setError(result.error || "Failed to load order")
+      try {
+        // Use authHeaders prop directly to ensure token is passed
+        const response = await fetch(`/api/orders/${orderId}`, {
+          headers: {
+            ...authHeaders,
+          },
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          setOrder(data.order)
+        } else {
+          setError(data.error || "Failed to load order")
+        }
+      } catch (err) {
+        setError("Failed to load order")
       }
       setIsLoading(false)
     }
 
     fetchOrder()
-  }, [orderId, getOrder])
+  }, [orderId, authHeaders])
 
   if (isLoading) {
     return (
