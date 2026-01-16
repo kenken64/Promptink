@@ -207,22 +207,28 @@ export const subscriptionRoutes = {
   // Create subscription directly (for users who already own a TRMNL device)
   "/api/subscription/create": {
     POST: withAuth(async (req, user) => {
+      console.log("[SUB-CREATE] Starting direct subscription creation for user:", user.id)
       try {
         // Check if Razorpay is configured
         if (!isConfigured()) {
+          console.log("[SUB-CREATE] ERROR: Razorpay not configured")
           return Response.json(
             { error: "Payment system not configured" },
             { status: 503 }
           )
         }
+        console.log("[SUB-CREATE] Razorpay is configured")
 
         // Check current subscription status
         const subResult = getSubscriptionStatus(user.id)
         if ("error" in subResult) {
+          console.log("[SUB-CREATE] ERROR: Failed to get subscription status:", subResult.error)
           return Response.json({ error: subResult.error }, { status: 500 })
         }
+        console.log("[SUB-CREATE] Current subscription status:", subResult.subscription.status)
 
         if (subResult.subscription.status === "active") {
+          console.log("[SUB-CREATE] ERROR: User already has active subscription")
           return Response.json(
             { error: "You already have an active subscription" },
             { status: 400 }
@@ -231,8 +237,10 @@ export const subscriptionRoutes = {
 
         // Get or create Razorpay customer
         let customerId = getRazorpayCustomerId(user.id)
+        console.log("[SUB-CREATE] Existing Razorpay customer ID:", customerId)
 
         if (!customerId) {
+          console.log("[SUB-CREATE] Creating new Razorpay customer for:", user.email)
           const customerResult = await createCustomer(
             user.name || user.email,
             user.email,
@@ -241,6 +249,7 @@ export const subscriptionRoutes = {
           )
 
           if ("error" in customerResult) {
+            console.log("[SUB-CREATE] ERROR: Failed to create customer:", customerResult.error)
             return Response.json(
               { error: "Failed to create payment customer" },
               { status: 500 }
@@ -248,16 +257,19 @@ export const subscriptionRoutes = {
           }
 
           customerId = customerResult.customer.id
+          console.log("[SUB-CREATE] Created new customer:", customerId)
           updateRazorpayCustomerId(user.id, customerId)
         }
 
         // Create new subscription
+        console.log("[SUB-CREATE] Creating subscription for customer:", customerId)
         const subscriptionResult = await createSubscription(customerId, undefined, undefined, {
           user_id: String(user.id),
           direct_subscription: "true",
         })
 
         if ("error" in subscriptionResult) {
+          console.log("[SUB-CREATE] ERROR: Failed to create subscription:", subscriptionResult.error)
           return Response.json(
             { error: "Failed to create subscription" },
             { status: 500 }
@@ -265,6 +277,7 @@ export const subscriptionRoutes = {
         }
 
         const sub = subscriptionResult.subscription
+        console.log("[SUB-CREATE] Subscription created:", sub.id, "shortUrl:", sub.short_url)
 
         log("INFO", "Direct subscription created", {
           userId: user.id,
@@ -284,6 +297,7 @@ export const subscriptionRoutes = {
           },
         })
       } catch (error) {
+        console.log("[SUB-CREATE] EXCEPTION:", error)
         log("ERROR", "Failed to create direct subscription", error)
         return Response.json(
           { error: "Failed to create subscription" },
