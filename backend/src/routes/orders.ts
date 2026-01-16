@@ -136,11 +136,6 @@ export const orderRoutes = {
         // Update our order with Razorpay order ID
         updateOrderRazorpayId(order.id, razorpayResult.order.id)
 
-        // Get subscription status to include in response
-        const subStatus = getSubscriptionStatus(user.id)
-        const hasExistingSubscription =
-          "subscription" in subStatus && subStatus.subscription.status === "active"
-
         return Response.json({
           success: true,
           order: {
