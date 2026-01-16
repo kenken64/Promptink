@@ -168,8 +168,8 @@ export function OrderConfirmationPage({
                 <div>
                   <p className="text-emerald-400 font-medium">Subscription Activated!</p>
                   <p className="text-emerald-400/80 text-sm mt-1">
-                    Your $5.99/month subscription is now active. Start creating AI-powered
-                    images for your TRMNL display!
+                    Your $6.53/month (incl. GST) subscription is now active. Start creating
+                    AI-powered images for your TRMNL display!
                   </p>
                 </div>
               </div>
