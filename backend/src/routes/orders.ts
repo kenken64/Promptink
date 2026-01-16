@@ -73,10 +73,16 @@ export const orderRoutes = {
           )
         }
 
+        // Check if user has existing active subscription
+        const subStatus = getSubscriptionStatus(user.id)
+        const hasExistingSubscription =
+          "subscription" in subStatus && subStatus.subscription.status === "active"
+
         // Create the order in our database
         const orderInput: CreateOrderInput = {
           userId: user.id,
           quantity,
+          hasExistingSubscription,
           shipping: {
             name: shipping.name,
             email: shipping.email,

@@ -3,12 +3,17 @@ import { log } from "../utils"
 
 // Constants
 const UNIT_PRICE = 12000 // $120.00 in cents
+const GST_RATE = 0.09 // Singapore GST 9%
+const SUBSCRIPTION_FEE = 599 // $5.99 in cents
+const SUBSCRIPTION_GST = Math.round(SUBSCRIPTION_FEE * GST_RATE) // GST on subscription
+const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST // $6.53 in cents
 const CURRENCY = "USD"
 
 // Input types
 export interface CreateOrderInput {
   userId: number
   quantity: number
+  hasExistingSubscription?: boolean
   shipping: {
     name: string
     email?: string
@@ -156,8 +161,11 @@ export function createOrder(
       attempts++
     }
 
-    // Calculate total
-    const totalAmount = input.quantity * UNIT_PRICE
+    // Calculate total with GST
+    const frameSubtotal = input.quantity * UNIT_PRICE
+    const frameGst = Math.round(frameSubtotal * GST_RATE)
+    const subscriptionTotal = input.hasExistingSubscription ? 0 : SUBSCRIPTION_WITH_GST
+    const totalAmount = frameSubtotal + frameGst + subscriptionTotal
 
     // Create order
     const order = orderQueries.create.get(
