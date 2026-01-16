@@ -14,6 +14,12 @@ if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
   console.log("[RAZORPAY] Razorpay credentials configured")
 }
 
+if (!RAZORPAY_PLAN_ID) {
+  console.warn("[RAZORPAY] WARNING: RAZORPAY_PLAN_ID not configured - subscriptions will fail")
+} else {
+  console.log("[RAZORPAY] Plan ID configured:", RAZORPAY_PLAN_ID)
+}
+
 // Base URL for Razorpay API
 const RAZORPAY_API_URL = "https://api.razorpay.com/v1"
 
@@ -381,6 +387,11 @@ export function getKeyId(): string {
 // Check if Razorpay is configured
 export function isConfigured(): boolean {
   return Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET)
+}
+
+// Check if subscriptions are configured (need plan ID)
+export function isSubscriptionConfigured(): boolean {
+  return Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET && RAZORPAY_PLAN_ID)
 }
 
 // Get plan ID

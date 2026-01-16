@@ -16,7 +16,9 @@ import {
   createSubscription,
   createCustomer,
   getKeyId,
+  getPlanId,
   isConfigured,
+  isSubscriptionConfigured,
 } from "../services/razorpay-service"
 import { hasCompletedOrder } from "../services/order-service"
 import { userQueries } from "../db"
@@ -114,10 +116,10 @@ export const subscriptionRoutes = {
   "/api/subscription/reactivate": {
     POST: withAuth(async (req, user) => {
       try {
-        // Check if Razorpay is configured
-        if (!isConfigured()) {
+        // Check if Razorpay subscriptions are configured
+        if (!isSubscriptionConfigured()) {
           return Response.json(
-            { error: "Payment system not configured" },
+            { error: "Subscription system not configured. Please contact support." },
             { status: 503 }
           )
         }
@@ -209,15 +211,15 @@ export const subscriptionRoutes = {
     POST: withAuth(async (req, user) => {
       console.log("[SUB-CREATE] Starting direct subscription creation for user:", user.id)
       try {
-        // Check if Razorpay is configured
-        if (!isConfigured()) {
-          console.log("[SUB-CREATE] ERROR: Razorpay not configured")
+        // Check if Razorpay subscriptions are configured (need plan ID)
+        if (!isSubscriptionConfigured()) {
+          console.log("[SUB-CREATE] ERROR: Razorpay subscription not configured, planId:", getPlanId())
           return Response.json(
-            { error: "Payment system not configured" },
+            { error: "Subscription system not configured. Please contact support." },
             { status: 503 }
           )
         }
-        console.log("[SUB-CREATE] Razorpay is configured")
+        console.log("[SUB-CREATE] Razorpay is configured, planId:", getPlanId())
 
         // Check current subscription status
         const subResult = getSubscriptionStatus(user.id)
