@@ -13,9 +13,10 @@ on:
       test_type:
         description: 'Test type to run'
         required: true
-        default: 'smoke'
+        default: 'all'
         type: choice
         options:
+          - all
           - smoke
           - load
           - stress
@@ -37,7 +38,7 @@ jobs:
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'smoke'
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'smoke' || github.event.inputs.test_type == 'all'
 
     steps:
       - name: Checkout code
@@ -73,7 +74,7 @@ jobs:
   load-test:
     name: Load Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'load')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.test_type == 'load' || github.event.inputs.test_type == 'all'))
 
     steps:
       - name: Checkout code
@@ -108,7 +109,7 @@ jobs:
   stress-test:
     name: Stress Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'stress'
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.test_type == 'stress' || github.event.inputs.test_type == 'all')
 
     steps:
       - name: Checkout code
@@ -143,7 +144,7 @@ jobs:
   authenticated-test:
     name: Authenticated API Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'authenticated'
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.test_type == 'authenticated' || github.event.inputs.test_type == 'all')
 
     steps:
       - name: Checkout code
