@@ -227,7 +227,7 @@ export async function createSubscription(
     const subscription = await razorpayRequest<RazorpaySubscription>("/subscriptions", "POST", {
       plan_id: planId || RAZORPAY_PLAN_ID,
       customer_id: customerId,
-      total_count: totalCount || 0, // 0 = unlimited
+      total_count: totalCount || 120, // 120 = 10 years of monthly billing
       notes: notes || {},
     })
 
