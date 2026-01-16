@@ -17,6 +17,7 @@ import {
   createCustomer,
   getKeyId,
   getPlanId,
+  getSubscription,
   isConfigured,
   isSubscriptionConfigured,
 } from "../services/razorpay-service"
@@ -351,21 +352,48 @@ export const subscriptionRoutes = {
           )
         }
 
-        // Activate the subscription in our database
-        const periodEnd = new Date()
-        periodEnd.setMonth(periodEnd.getMonth() + 1)
+        // Fetch the subscription from Razorpay to get actual period end
+        let periodEnd: string | undefined
+        const subResult = await getSubscription(razorpay_subscription_id)
 
-        activateSubscription(user.id, razorpay_subscription_id, periodEnd.toISOString())
+        if ("subscription" in subResult) {
+          const sub = subResult.subscription
+          console.log("[SUB-VERIFY] Razorpay subscription data:", {
+            status: sub.status,
+            current_start: sub.current_start,
+            current_end: sub.current_end,
+          })
+
+          // Convert Unix timestamp to ISO string
+          if (sub.current_end) {
+            periodEnd = new Date(sub.current_end * 1000).toISOString()
+          }
+        } else {
+          console.log("[SUB-VERIFY] Could not fetch subscription, using default period")
+          // Fallback to 1 month from now
+          const fallbackEnd = new Date()
+          fallbackEnd.setMonth(fallbackEnd.getMonth() + 1)
+          periodEnd = fallbackEnd.toISOString()
+        }
+
+        // Activate the subscription in our database
+        activateSubscription(user.id, razorpay_subscription_id, periodEnd)
 
         log("INFO", "Subscription verified and activated", {
           userId: user.id,
           subscriptionId: razorpay_subscription_id,
           paymentId: razorpay_payment_id,
+          periodEnd,
         })
 
         return Response.json({
           success: true,
           message: "Subscription activated successfully",
+          subscription: {
+            id: razorpay_subscription_id,
+            status: "active",
+            currentPeriodEnd: periodEnd,
+          },
         })
       } catch (error) {
         console.log("[SUB-VERIFY] EXCEPTION:", error)
