@@ -1,0 +1,270 @@
+name: Performance Tests
+
+on:
+  # Run on push to main
+  push:
+    branches: [main]
+  # Run on PRs
+  pull_request:
+    branches: [main]
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+          - authenticated
+      target_url:
+        description: 'Target URL for testing'
+        required: false
+        default: 'https://promptink-production.up.railway.app'
+  # Schedule - run daily at 6 AM UTC
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  K6_VERSION: '0.49.0'
+  DEFAULT_TARGET_URL: 'https://promptink-production.up.railway.app'
+
+jobs:
+  # Smoke test - quick validation
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'smoke'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+
+      - name: Create results directory
+        run: mkdir -p k6/results
+
+      - name: Run smoke test
+        run: |
+          k6 run \
+            --out json=k6/results/smoke-test.json \
+            --summary-export=k6/results/smoke-summary.json \
+            -e BASE_URL=${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }} \
+            --duration 30s \
+            --vus 1 \
+            k6/scripts/load-test.js
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: k6/results/
+          retention-days: 30
+
+  # Load test - normal expected traffic
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'load')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+
+      - name: Create results directory
+        run: mkdir -p k6/results
+
+      - name: Run load test
+        run: |
+          k6 run \
+            --out json=k6/results/load-test.json \
+            --summary-export=k6/results/load-summary.json \
+            -e BASE_URL=${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }} \
+            k6/scripts/load-test.js
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: k6/results/
+          retention-days: 30
+
+  # Stress test - beyond normal capacity
+  stress-test:
+    name: Stress Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'stress'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+
+      - name: Create results directory
+        run: mkdir -p k6/results
+
+      - name: Run stress test
+        run: |
+          k6 run \
+            --out json=k6/results/stress-test.json \
+            --summary-export=k6/results/stress-summary.json \
+            -e BASE_URL=${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }} \
+            k6/scripts/load-test.js
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-test-results
+          path: k6/results/
+          retention-days: 30
+
+  # Authenticated endpoints test
+  authenticated-test:
+    name: Authenticated API Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'authenticated'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+
+      - name: Create results directory
+        run: mkdir -p k6/results
+
+      - name: Run authenticated tests
+        run: |
+          k6 run \
+            --out json=k6/results/auth-test.json \
+            --summary-export=k6/results/auth-summary.json \
+            -e BASE_URL=${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }} \
+            -e TEST_USER_EMAIL=${{ secrets.TEST_USER_EMAIL }} \
+            -e TEST_USER_PASSWORD=${{ secrets.TEST_USER_PASSWORD }} \
+            k6/scripts/authenticated-tests.js
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: authenticated-test-results
+          path: k6/results/
+          retention-days: 30
+
+  # Send results to Grafana Cloud (if configured)
+  report-to-grafana:
+    name: Report to Grafana Cloud
+    runs-on: ubuntu-latest
+    needs: [smoke-test]
+    if: always() && secrets.K6_CLOUD_TOKEN != ''
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: k6/results/
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+
+      - name: Upload results to Grafana Cloud
+        run: |
+          if [ -f "k6/results/smoke-test-results/smoke-summary.json" ]; then
+            echo "Uploading smoke test results to Grafana Cloud..."
+            k6 cloud --token=${{ secrets.K6_CLOUD_TOKEN }} k6/scripts/load-test.js --duration 10s --vus 1 || true
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+  # Generate and publish report
+  publish-report:
+    name: Publish Performance Report
+    runs-on: ubuntu-latest
+    needs: [smoke-test]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate summary report
+        run: |
+          echo "# Performance Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "artifacts/smoke-test-results/smoke-summary.json" ]; then
+            echo "## Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat artifacts/smoke-test-results/smoke-summary.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🚀 Performance Test Results\n\n';
+            comment += '| Metric | Value |\n';
+            comment += '|--------|-------|\n';
+
+            try {
+              const summary = JSON.parse(fs.readFileSync('artifacts/smoke-test-results/smoke-summary.json', 'utf8'));
+              const metrics = summary.metrics || {};
+
+              comment += `| Total Requests | ${metrics.http_reqs?.values?.count || 'N/A'} |\n`;
+              comment += `| Avg Response Time | ${(metrics.http_req_duration?.values?.avg || 0).toFixed(2)}ms |\n`;
+              comment += `| P95 Response Time | ${(metrics.http_req_duration?.values?.['p(95)'] || 0).toFixed(2)}ms |\n`;
+              comment += `| Error Rate | ${((metrics.http_req_failed?.values?.rate || 0) * 100).toFixed(2)}% |\n`;
+            } catch (e) {
+              comment += '| Status | Results not available |\n';
+            }
+
+            comment += '\n\n[View detailed results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
