@@ -1,8 +1,31 @@
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useState } from "react"
 import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { ShareButton } from "./ShareButton"
+
+// Fallback placeholder component for modal
+function ModalImagePlaceholder() {
+  return (
+    <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center bg-muted text-muted-foreground rounded-lg">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1}
+        stroke="currentColor"
+        className="w-16 h-16 mb-3 opacity-50"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+        />
+      </svg>
+      <span className="text-sm">Image unavailable</span>
+    </div>
+  )
+}
 
 interface ImageDetailModalProps {
   image: GalleryImage | null
@@ -26,6 +49,12 @@ export function ImageDetailModal({
   hasNext = false,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
+  const [imageError, setImageError] = useState(false)
+
+  // Reset image error when image changes
+  useEffect(() => {
+    setImageError(false)
+  }, [image?.id])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -190,11 +219,16 @@ export function ImageDetailModal({
 
         {/* Image section */}
         <div className="flex-1 flex items-center justify-center bg-black/20 p-4 min-h-[300px]">
-          <img
-            src={image.imageUrl}
-            alt={image.originalPrompt}
-            className="max-w-full max-h-[70vh] object-contain rounded-lg"
-          />
+          {imageError ? (
+            <ModalImagePlaceholder />
+          ) : (
+            <img
+              src={image.imageUrl}
+              alt={image.originalPrompt}
+              className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              onError={() => setImageError(true)}
+            />
+          )}
         </div>
 
         {/* Info section */}

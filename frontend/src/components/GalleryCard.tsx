@@ -4,6 +4,29 @@ import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 
+// Fallback placeholder component
+function ImagePlaceholder() {
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-muted-foreground">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1}
+        stroke="currentColor"
+        className="w-12 h-12 mb-2 opacity-50"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+        />
+      </svg>
+      <span className="text-xs">Image unavailable</span>
+    </div>
+  )
+}
+
 interface GalleryCardProps {
   image: GalleryImage
   onSelect: (image: GalleryImage) => void
@@ -21,6 +44,7 @@ export function GalleryCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isFavoriting, setIsFavoriting] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -69,12 +93,17 @@ export function GalleryCard({
     >
       {/* Image */}
       <div className="aspect-square overflow-hidden bg-muted">
-        <img
-          src={image.imageUrl}
-          alt={image.originalPrompt}
-          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-          loading="lazy"
-        />
+        {imageError ? (
+          <ImagePlaceholder />
+        ) : (
+          <img
+            src={image.imageUrl}
+            alt={image.originalPrompt}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        )}
       </div>
 
       {/* Favorite badge */}
