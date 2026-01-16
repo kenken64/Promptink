@@ -111,6 +111,13 @@ export const orderRoutes = {
 
         const order = orderResult.order
 
+        log("INFO", "Order created, creating Razorpay order", {
+          orderId: order.id,
+          totalAmount: order.totalAmount,
+          currency: order.currency,
+          hasExistingSubscription,
+        })
+
         // Create Razorpay order
         const razorpayResult = await createRazorpayOrder(
           order.totalAmount,
@@ -164,7 +171,20 @@ export const orderRoutes = {
 
         const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = body
 
+        log("INFO", "Payment verification request", {
+          orderId,
+          razorpay_order_id,
+          razorpay_payment_id,
+          hasSignature: !!razorpay_signature,
+        })
+
         if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+          log("ERROR", "Missing payment verification fields", {
+            hasOrderId: !!orderId,
+            hasRazorpayOrderId: !!razorpay_order_id,
+            hasPaymentId: !!razorpay_payment_id,
+            hasSignature: !!razorpay_signature,
+          })
           return Response.json(
             { error: "Missing required payment verification fields" },
             { status: 400 }
@@ -178,8 +198,10 @@ export const orderRoutes = {
           razorpay_signature
         )
 
+        log("INFO", "Signature verification result", { orderId, razorpay_order_id, isValid })
+
         if (!isValid) {
-          log("WARN", "Invalid payment signature", { orderId, razorpay_order_id })
+          log("WARN", "Invalid payment signature", { orderId, razorpay_order_id, razorpay_payment_id })
           return Response.json({ error: "Invalid payment signature" }, { status: 400 })
         }
 
