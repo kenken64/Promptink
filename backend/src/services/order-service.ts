@@ -312,7 +312,7 @@ export function markOrderPaid(
       return { error: "Order already processed" }
     }
 
-    orderQueries.updatePayment.run(razorpayPaymentId, "paid", orderId)
+    orderQueries.updatePayment.run(razorpayPaymentId, orderId)
 
     // Fetch updated order
     const updatedOrder = orderQueries.findById.get(orderId)

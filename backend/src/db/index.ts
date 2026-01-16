@@ -358,7 +358,7 @@ let _orderQueries: {
   countPaidByUserId: Statement<{ count: number }, [number]>
   create: Statement<Order, [number, string, number, number, number, string, string, string | null, string, string, string | null, string, string, string, string, number, string | null, string | null]>
   updateRazorpayOrderId: Statement<void, [string, number]>
-  updatePayment: Statement<void, [string, string, number]>
+  updatePayment: Statement<void, [string, number]>
   updateStatus: Statement<void, [string, number]>
   updateTracking: Statement<void, [string, string, string | null, number]>
 }
@@ -487,7 +487,7 @@ function initPreparedStatements() {
     updateRazorpayOrderId: db.prepare<void, [string, number]>(
       "UPDATE orders SET razorpay_order_id = ? WHERE id = ?"
     ),
-    updatePayment: db.prepare<void, [string, string, number]>(
+    updatePayment: db.prepare<void, [string, number]>(
       "UPDATE orders SET razorpay_payment_id = ?, status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     updateStatus: db.prepare<void, [string, number]>(
