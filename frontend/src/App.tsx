@@ -181,6 +181,7 @@ export default function App() {
   }
 
   const handleOrderSuccess = (orderId: number, isFirst: boolean) => {
+    console.log("[App] handleOrderSuccess called:", { orderId, isFirst })
     setConfirmationOrderId(orderId)
     setIsFirstOrder(isFirst)
     setAppPage("order-confirmation")
@@ -465,7 +466,9 @@ export default function App() {
 
   // Order confirmation page rendering
   const renderOrderConfirmationPage = () => {
+    console.log("[App] renderOrderConfirmationPage:", { confirmationOrderId, isFirstOrder })
     if (!confirmationOrderId) {
+      console.log("[App] No confirmationOrderId, redirecting to chat")
       setAppPage("chat")
       return null
     }
