@@ -194,11 +194,20 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
 
       const orderResult = await createOrder(orderInput)
 
+      console.log("[Payment] Order creation result:", orderResult)
+
       if (!orderResult.success || !orderResult.data) {
         throw new Error(orderResult.error || t.purchase.errors.orderCreate)
       }
 
       const { order, razorpay } = orderResult.data
+
+      console.log("[Payment] Opening Razorpay checkout:", {
+        orderId: order.id,
+        razorpayOrderId: razorpay.orderId,
+        amount: razorpay.amount,
+        currency: razorpay.currency,
+      })
 
       // Open Razorpay checkout
       const options: RazorpayOptions = {
@@ -209,22 +218,38 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
         description: `TRMNL Photo Frame x${quantity}`,
         order_id: razorpay.orderId,
         handler: async (response: RazorpayResponse) => {
-          // Verify payment
-          const verifyResult = await verifyPayment({
-            orderId: order.id,
+          console.log("[Payment] Razorpay response received:", {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
+            hasSignature: !!response.razorpay_signature,
           })
 
-          if (!verifyResult.success) {
-            setError(verifyResult.error || t.purchase.errors.paymentVerify)
-            setIsLoading(false)
-            return
-          }
+          // Verify payment
+          try {
+            const verifyResult = await verifyPayment({
+              orderId: order.id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            })
 
-          // Success - redirect to confirmation
-          onSuccess(order.id, verifyResult.data?.isFirstOrder ?? false)
+            console.log("[Payment] Verification result:", verifyResult)
+
+            if (!verifyResult.success) {
+              console.error("[Payment] Verification failed:", verifyResult.error)
+              setError(verifyResult.error || t.purchase.errors.paymentVerify)
+              setIsLoading(false)
+              return
+            }
+
+            // Success - redirect to confirmation
+            console.log("[Payment] Verification successful, redirecting...")
+            onSuccess(order.id, verifyResult.data?.isFirstOrder ?? false)
+          } catch (verifyError) {
+            console.error("[Payment] Verification exception:", verifyError)
+            setError(t.purchase.errors.paymentVerify)
+            setIsLoading(false)
+          }
         },
         prefill: {
           name: shipping.name,
