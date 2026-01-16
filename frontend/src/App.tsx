@@ -426,7 +426,7 @@ export default function App() {
 
   // Gallery page rendering
   const renderGalleryPage = () => (
-    <GalleryPage />
+    <GalleryPage onBack={() => setAppPage("chat")} />
   )
 
   const renderCurrentPage = () => {

@@ -6,7 +6,11 @@ import { ImageDetailModal } from "../components/ImageDetailModal"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 
-export function GalleryPage() {
+interface GalleryPageProps {
+  onBack: () => void
+}
+
+export function GalleryPage({ onBack }: GalleryPageProps) {
   const { t } = useLanguage()
   const {
     images,
@@ -108,7 +112,7 @@ export function GalleryPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.history.back()}
+                onClick={onBack}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
