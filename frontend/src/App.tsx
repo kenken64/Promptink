@@ -295,7 +295,7 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-x-hidden overflow-y-auto scroll-touch">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center px-3 sm:px-4 py-4">
             <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 sm:mb-6 shadow-lg">

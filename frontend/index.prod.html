@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="theme-color" content="#1a1b1e" />
@@ -75,7 +75,14 @@
       .typing-cursor::after { content: '▋'; animation: blink 1s infinite; margin-left: 2px; }
 
       html, body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-      body { overscroll-behavior-y: contain; }
+      html { height: 100%; }
+      body { min-height: 100%; min-height: 100dvh; overscroll-behavior-y: contain; }
+
+      /* Enable touch scrolling on iOS */
+      .scroll-touch { -webkit-overflow-scrolling: touch; overflow-y: auto; }
+
+      /* Fix h-screen on mobile - use dvh where supported */
+      .h-screen { height: 100vh; height: 100dvh; }
 
       @supports (padding: max(0px)) {
         .safe-area-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
