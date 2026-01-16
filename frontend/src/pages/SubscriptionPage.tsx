@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   CreditCard,
   CheckCircle,
@@ -12,11 +12,48 @@ import {
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { cn } from "../lib/utils"
-import { useSubscription, useLanguage, type SubscriptionStatus } from "../hooks"
+import { useSubscription, useLanguage, useAuth, type SubscriptionStatus } from "../hooks"
 
 interface SubscriptionPageProps {
   authHeaders: { Authorization?: string }
   onBack: () => void
+}
+
+// Razorpay types for subscription
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpaySubscriptionOptions) => RazorpayInstance
+  }
+}
+
+interface RazorpaySubscriptionOptions {
+  key: string
+  subscription_id: string
+  name: string
+  description: string
+  handler: (response: RazorpaySubscriptionResponse) => void
+  prefill?: {
+    name?: string
+    email?: string
+    contact?: string
+  }
+  theme?: {
+    color?: string
+  }
+  modal?: {
+    ondismiss?: () => void
+  }
+}
+
+interface RazorpayInstance {
+  open: () => void
+  close: () => void
+}
+
+interface RazorpaySubscriptionResponse {
+  razorpay_payment_id: string
+  razorpay_subscription_id: string
+  razorpay_signature: string
 }
 
 const statusIcons: Record<SubscriptionStatus, typeof CheckCircle> = {
@@ -37,6 +74,7 @@ const statusColors: Record<SubscriptionStatus, { color: string; bgColor: string 
 
 export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps) {
   const { t, language } = useLanguage()
+  const { user } = useAuth()
   const {
     subscription,
     isLoading,
@@ -52,6 +90,26 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false)
+
+  // Load Razorpay script
+  useEffect(() => {
+    if (window.Razorpay) {
+      setRazorpayLoaded(true)
+      return
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    script.async = true
+    script.onload = () => setRazorpayLoaded(true)
+    script.onerror = () => console.error("Failed to load Razorpay")
+    document.body.appendChild(script)
+
+    return () => {
+      // Don't remove the script on cleanup
+    }
+  }, [])
 
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return "N/A"
@@ -84,6 +142,89 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     setShowCancelConfirm(false)
   }
 
+  const openRazorpayCheckout = (
+    subscriptionId: string,
+    keyId: string,
+    onSuccess: (response: RazorpaySubscriptionResponse) => void
+  ) => {
+    if (!razorpayLoaded || !window.Razorpay) {
+      setMessage({
+        type: "error",
+        text: "Payment system not loaded. Please refresh and try again.",
+      })
+      return
+    }
+
+    const options: RazorpaySubscriptionOptions = {
+      key: keyId,
+      subscription_id: subscriptionId,
+      name: "PromptInk",
+      description: "Monthly Subscription - $6.53/month (incl. GST)",
+      handler: onSuccess,
+      prefill: {
+        name: user?.name || "",
+        email: user?.email || "",
+      },
+      theme: {
+        color: "#14b8a6", // teal-500
+      },
+      modal: {
+        ondismiss: () => {
+          setIsSubscribing(false)
+          setIsReactivating(false)
+        },
+      },
+    }
+
+    const razorpay = new window.Razorpay(options)
+    razorpay.open()
+  }
+
+  const handleSubscriptionPaymentSuccess = async (response: RazorpaySubscriptionResponse) => {
+    console.log("[SUB] Payment success:", response)
+
+    try {
+      // Verify the subscription payment
+      const verifyResponse = await fetch("/api/subscription/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_subscription_id: response.razorpay_subscription_id,
+          razorpay_signature: response.razorpay_signature,
+        }),
+      })
+
+      const data = await verifyResponse.json()
+
+      if (verifyResponse.ok && data.success) {
+        setMessage({
+          type: "success",
+          text: t.subscription.subscribeSuccess || "Subscription activated successfully!",
+        })
+        // Refresh subscription status
+        fetchStatus()
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || "Failed to verify subscription payment",
+        })
+      }
+    } catch (err) {
+      console.error("[SUB] Verification error:", err)
+      setMessage({
+        type: "error",
+        text: "Failed to verify subscription payment",
+      })
+    }
+
+    setIsSubscribing(false)
+    setIsReactivating(false)
+  }
+
   const handleReactivate = async () => {
     setIsReactivating(true)
     setMessage(null)
@@ -91,8 +232,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     const result = await reactivateSubscription()
 
     if (result.success && result.data) {
-      // Redirect to Razorpay subscription page
-      window.location.href = result.data.subscription.shortUrl
+      // Open Razorpay checkout modal
+      openRazorpayCheckout(
+        result.data.razorpay.subscriptionId,
+        result.data.razorpay.keyId,
+        handleSubscriptionPaymentSuccess
+      )
     } else {
       setMessage({
         type: "error",
@@ -109,8 +254,12 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     const result = await createDirectSubscription()
 
     if (result.success && result.data) {
-      // Redirect to Razorpay subscription page
-      window.location.href = result.data.subscription.shortUrl
+      // Open Razorpay checkout modal
+      openRazorpayCheckout(
+        result.data.razorpay.subscriptionId,
+        result.data.razorpay.keyId,
+        handleSubscriptionPaymentSuccess
+      )
     } else {
       setMessage({
         type: "error",
@@ -296,7 +445,7 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
                   </p>
                   <Button
                     onClick={handleSubscribe}
-                    disabled={isSubscribing}
+                    disabled={isSubscribing || !razorpayLoaded}
                     className={cn(
                       "w-full py-3 rounded-xl font-semibold text-white transition-all duration-300",
                       "bg-gradient-to-r from-teal-500 to-emerald-500",

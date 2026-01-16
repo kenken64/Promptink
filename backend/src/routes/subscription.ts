@@ -309,6 +309,75 @@ export const subscriptionRoutes = {
     }),
   },
 
+  // Verify subscription payment
+  "/api/subscription/verify": {
+    POST: withAuth(async (req, user) => {
+      console.log("[SUB-VERIFY] Starting subscription verification for user:", user.id)
+      try {
+        const text = await req.text()
+        const body = text ? JSON.parse(text) : {}
+
+        const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature } = body
+
+        console.log("[SUB-VERIFY] Verification data:", {
+          hasPaymentId: !!razorpay_payment_id,
+          hasSubscriptionId: !!razorpay_subscription_id,
+          hasSignature: !!razorpay_signature,
+        })
+
+        if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
+          return Response.json(
+            { error: "Missing required verification fields" },
+            { status: 400 }
+          )
+        }
+
+        // Verify signature: subscription_id|payment_id
+        const crypto = await import("crypto")
+        const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || ""
+        const body_str = `${razorpay_payment_id}|${razorpay_subscription_id}`
+        const expectedSignature = crypto
+          .createHmac("sha256", RAZORPAY_KEY_SECRET)
+          .update(body_str)
+          .digest("hex")
+
+        const isValid = expectedSignature === razorpay_signature
+        console.log("[SUB-VERIFY] Signature verification:", { isValid })
+
+        if (!isValid) {
+          return Response.json(
+            { error: "Invalid payment signature" },
+            { status: 400 }
+          )
+        }
+
+        // Activate the subscription in our database
+        const periodEnd = new Date()
+        periodEnd.setMonth(periodEnd.getMonth() + 1)
+
+        activateSubscription(user.id, razorpay_subscription_id, periodEnd.toISOString())
+
+        log("INFO", "Subscription verified and activated", {
+          userId: user.id,
+          subscriptionId: razorpay_subscription_id,
+          paymentId: razorpay_payment_id,
+        })
+
+        return Response.json({
+          success: true,
+          message: "Subscription activated successfully",
+        })
+      } catch (error) {
+        console.log("[SUB-VERIFY] EXCEPTION:", error)
+        log("ERROR", "Subscription verification failed", error)
+        return Response.json(
+          { error: "Subscription verification failed" },
+          { status: 500 }
+        )
+      }
+    }),
+  },
+
   // Check access status (for routing decisions)
   "/api/subscription/access": {
     GET: withAuth(async (req, user) => {
