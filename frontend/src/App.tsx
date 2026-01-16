@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image } from "lucide-react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -40,6 +40,7 @@ export default function App() {
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
   const [isFirstOrder, setIsFirstOrder] = useState(false)
   const [hasSkippedPurchase, setHasSkippedPurchase] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -64,6 +65,20 @@ export default function App() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileMenuOpen) {
+        const target = e.target as HTMLElement
+        if (!target.closest('.mobile-menu-container')) {
+          setMobileMenuOpen(false)
+        }
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [mobileMenuOpen])
 
   const handleSend = async (prompt: string, imageFile?: File) => {
     const userMessageId = Date.now().toString()
@@ -214,7 +229,7 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-0.5 sm:gap-1">
-          {/* User info */}
+          {/* User info - desktop only */}
           {user && (
             <span className="text-xs text-muted-foreground mr-2 hidden sm:inline truncate max-w-[120px]">
               {user.name || user.email}
@@ -222,56 +237,115 @@ export default function App() {
           )}
           <LanguageToggle language={language} onToggle={toggleLanguage} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setAppPage("gallery")}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Gallery"
-            title={t.gallery.title}
-          >
-            <Image className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setAppPage("orders")}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Orders"
-            title="My Orders"
-          >
-            <ShoppingBag className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setAppPage("subscription")}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Subscription"
-            title="Subscription"
-          >
-            <CreditCard className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setAppPage("settings")}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label={t.settings.title}
-            title={t.settings.title}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={logout}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label={t.logout}
-            title={t.logout}
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+
+          {/* Desktop nav icons */}
+          <div className="hidden sm:flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAppPage("gallery")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Gallery"
+              title={t.gallery.title}
+            >
+              <Image className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAppPage("orders")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Orders"
+              title="My Orders"
+            >
+              <ShoppingBag className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAppPage("subscription")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Subscription"
+              title="Subscription"
+            >
+              <CreditCard className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAppPage("settings")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={t.settings.title}
+              title={t.settings.title}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={t.logout}
+              title={t.logout}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="relative sm:hidden mobile-menu-container">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+
+            {/* Mobile dropdown menu */}
+            {mobileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                <button
+                  onClick={() => { setAppPage("gallery"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <Image className="h-4 w-4" />
+                  {t.gallery.title}
+                </button>
+                <button
+                  onClick={() => { setAppPage("orders"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  {t.orders.title}
+                </button>
+                <button
+                  onClick={() => { setAppPage("subscription"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  {t.subscription.title}
+                </button>
+                <button
+                  onClick={() => { setAppPage("settings"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  {t.settings.title}
+                </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  onClick={() => { logout(); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors text-red-500"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t.logout}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
