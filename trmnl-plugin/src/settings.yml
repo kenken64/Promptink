@@ -9,20 +9,8 @@ polling_headers: ''
 polling_body: ''
 id: 221038
 custom_fields:
-- keyname: image_url
-  name: Image URL
-  field_type: text
-- keyname: has_image
-  name: Has Image
-  field_type: text
-- keyname: prompt
-  name: Prompt
-  field_type: text
-- keyname: background_color
-  name: Background Color
-  field_type: text
-- keyname: updated_at
-  name: Updated At
-  field_type: text
+- keyname: copyable_webhook_url
+  field_type: copyable_webhook_url
+  name: Copyable Webhook
 name: PromptInk
-refresh_interval: 15
+refresh_interval: 5
