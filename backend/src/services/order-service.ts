@@ -302,27 +302,38 @@ export function markOrderPaid(
   orderId: number,
   razorpayPaymentId: string
 ): { order: OrderResponse } | { error: string } {
+  console.log(`[ORDER] markOrderPaid called - orderId: ${orderId}, paymentId: ${razorpayPaymentId}`)
+
   try {
     const order = orderQueries.findById.get(orderId)
+    console.log(`[ORDER] Found order:`, order ? `id=${order.id}, status=${order.status}` : 'NOT FOUND')
+
     if (!order) {
+      console.log(`[ORDER] ERROR: Order not found`)
       return { error: "Order not found" }
     }
 
     if (order.status !== "pending") {
+      console.log(`[ORDER] ERROR: Order already processed, status=${order.status}`)
       return { error: "Order already processed" }
     }
 
+    console.log(`[ORDER] Updating payment status...`)
     orderQueries.updatePayment.run(razorpayPaymentId, orderId)
+    console.log(`[ORDER] Payment status updated successfully`)
 
     // Fetch updated order
     const updatedOrder = orderQueries.findById.get(orderId)
     if (!updatedOrder) {
+      console.log(`[ORDER] ERROR: Failed to fetch updated order`)
       return { error: "Failed to fetch updated order" }
     }
 
+    console.log(`[ORDER] Order marked as paid successfully - newStatus: ${updatedOrder.status}`)
     log("INFO", "Order marked as paid", { orderId, razorpayPaymentId })
     return { order: transformOrder(updatedOrder) }
   } catch (error) {
+    console.log(`[ORDER] EXCEPTION in markOrderPaid:`, error)
     log("ERROR", "Failed to mark order as paid", error)
     return { error: "Failed to update order" }
   }

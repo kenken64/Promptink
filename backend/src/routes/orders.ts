@@ -166,6 +166,7 @@ export const orderRoutes = {
 
         const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = body
 
+        console.log(`[VERIFY] Payment verification request - orderId: ${orderId}, razorpay_order_id: ${razorpay_order_id}`)
         log("INFO", "Payment verification request", {
           orderId,
           razorpay_order_id,
@@ -193,9 +194,11 @@ export const orderRoutes = {
           razorpay_signature
         )
 
+        console.log(`[VERIFY] Signature verification result - isValid: ${isValid}`)
         log("INFO", "Signature verification result", { orderId, razorpay_order_id, isValid })
 
         if (!isValid) {
+          console.log(`[VERIFY] ERROR: Invalid payment signature`)
           log("WARN", "Invalid payment signature", { orderId, razorpay_order_id, razorpay_payment_id })
           return Response.json({ error: "Invalid payment signature" }, { status: 400 })
         }
