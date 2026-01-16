@@ -114,6 +114,7 @@ export const syncRoutes = {
   // Sync image - downloads and stores physical copy for TRMNL (authenticated)
   "/api/sync/trmnl": {
     POST: withAuth(async (req, user) => {
+      const startTime = performance.now()
       try {
         const text = await req.text()
         const { imageUrl, prompt } = text ? JSON.parse(text) : {}
@@ -125,6 +126,7 @@ export const syncRoutes = {
         log("INFO", "Syncing image for TRMNL", { userId: user.id, imageUrl: imageUrl.substring(0, 100) + "...", prompt })
 
         // Download and save image to file system
+        const downloadStart = performance.now()
         let filePath: string
         try {
           filePath = await downloadAndSaveImage(imageUrl, user.id)
@@ -132,12 +134,17 @@ export const syncRoutes = {
           log("ERROR", "Failed to download image", downloadError)
           return Response.json({ error: `Failed to download image: ${String(downloadError)}` }, { status: 500 })
         }
+        const downloadTime = performance.now() - downloadStart
+        log("INFO", `Image download completed`, { downloadTimeMs: Math.round(downloadTime) })
 
         // Get permanent URL for this user's image
         const permanentImageUrl = getUserImageUrl(user.id)
 
         // Store reference in database
+        const dbStart = performance.now()
         const syncedImage = syncedImageQueries.create.get(user.id, permanentImageUrl, prompt || null)
+        const dbTime = performance.now() - dbStart
+        log("INFO", `Database insert completed`, { dbTimeMs: Math.round(dbTime) })
 
         if (!syncedImage) {
           return Response.json({ error: "Failed to store image reference" }, { status: 500 })
@@ -148,11 +155,24 @@ export const syncRoutes = {
 
         log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl, backgroundColor })
 
-        // Trigger TRMNL plugin update with permanent URL and background color
-        const updateResult = await triggerTrmnlUpdate(permanentImageUrl, prompt || "", backgroundColor)
+        // Run TRMNL API calls in parallel for faster response
+        const trmnlStart = performance.now()
+        const [updateResult, advanceResult] = await Promise.all([
+          // Trigger TRMNL plugin update with permanent URL and background color
+          triggerTrmnlUpdate(permanentImageUrl, prompt || "", backgroundColor),
+          // Advance TRMNL playlist to trigger device refresh on next wake
+          advanceTrmnlPlaylist(),
+        ])
+        const trmnlTime = performance.now() - trmnlStart
+        log("INFO", `TRMNL API calls completed`, { trmnlTimeMs: Math.round(trmnlTime) })
 
-        // Advance TRMNL playlist to trigger device refresh on next wake
-        const advanceResult = await advanceTrmnlPlaylist()
+        const totalTime = performance.now() - startTime
+        log("INFO", `Sync completed`, {
+          totalTimeMs: Math.round(totalTime),
+          downloadTimeMs: Math.round(downloadTime),
+          dbTimeMs: Math.round(dbTime),
+          trmnlTimeMs: Math.round(trmnlTime)
+        })
 
         return Response.json({
           success: true,
@@ -163,6 +183,11 @@ export const syncRoutes = {
           imageUrl: permanentImageUrl,
           trmnlUpdate: updateResult,
           playlistAdvanced: advanceResult.success,
+          timing: {
+            totalMs: Math.round(totalTime),
+            downloadMs: Math.round(downloadTime),
+            trmnlMs: Math.round(trmnlTime),
+          },
         })
       } catch (error) {
         log("ERROR", "Failed to sync image", error)
