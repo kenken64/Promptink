@@ -43,11 +43,13 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     error,
     cancelSubscription,
     reactivateSubscription,
+    createDirectSubscription,
     fetchStatus,
   } = useSubscription()
 
   const [isCancelling, setIsCancelling] = useState(false)
   const [isReactivating, setIsReactivating] = useState(false)
+  const [isSubscribing, setIsSubscribing] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -97,6 +99,24 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
         text: result.error || t.subscription.reactivateError,
       })
       setIsReactivating(false)
+    }
+  }
+
+  const handleSubscribe = async () => {
+    setIsSubscribing(true)
+    setMessage(null)
+
+    const result = await createDirectSubscription()
+
+    if (result.success && result.data) {
+      // Redirect to Razorpay subscription page
+      window.location.href = result.data.subscription.shortUrl
+    } else {
+      setMessage({
+        type: "error",
+        text: result.error || t.subscription.subscribeError,
+      })
+      setIsSubscribing(false)
     }
   }
 
@@ -270,9 +290,33 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
               )}
 
               {subscription?.status === "none" && (
-                <p className="text-center text-slate-400 text-sm">
-                  {t.subscription.purchaseToActivate}
-                </p>
+                <div className="space-y-3">
+                  <p className="text-center text-slate-400 text-sm">
+                    {t.subscription.alreadyOwnDevice}
+                  </p>
+                  <Button
+                    onClick={handleSubscribe}
+                    disabled={isSubscribing}
+                    className={cn(
+                      "w-full py-3 rounded-xl font-semibold text-white transition-all duration-300",
+                      "bg-gradient-to-r from-teal-500 to-emerald-500",
+                      "hover:from-teal-400 hover:to-emerald-400",
+                      "shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40"
+                    )}
+                  >
+                    {isSubscribing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        {t.subscription.processing}
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {t.subscription.subscribeNow}
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </div>

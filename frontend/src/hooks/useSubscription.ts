@@ -161,6 +161,35 @@ export function useSubscription() {
     }
   }, [getAuthHeader])
 
+  // Create subscription directly (for users who already own a TRMNL device)
+  const createDirectSubscription = useCallback(async (): Promise<{
+    success: boolean
+    data?: {
+      subscription: { id: string; shortUrl: string }
+      razorpay: { subscriptionId: string; keyId: string }
+    }
+    error?: string
+  }> => {
+    try {
+      const response = await fetch("/api/subscription/create", {
+        method: "POST",
+        headers: {
+          ...getAuthHeader(),
+        },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        return { success: false, error: data.error || "Failed to create subscription" }
+      }
+
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: "Failed to create subscription" }
+    }
+  }, [getAuthHeader])
+
   // Helper to check if user has full access
   const hasFullAccess = useCallback((): boolean => {
     if (!state.subscription) return false
@@ -202,6 +231,7 @@ export function useSubscription() {
     fetchAccessStatus,
     cancelSubscription,
     reactivateSubscription,
+    createDirectSubscription,
     hasFullAccess,
     needsToPurchase,
     needsToReactivate,

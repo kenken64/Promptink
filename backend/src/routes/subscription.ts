@@ -204,6 +204,95 @@ export const subscriptionRoutes = {
     }),
   },
 
+  // Create subscription directly (for users who already own a TRMNL device)
+  "/api/subscription/create": {
+    POST: withAuth(async (req, user) => {
+      try {
+        // Check if Razorpay is configured
+        if (!isConfigured()) {
+          return Response.json(
+            { error: "Payment system not configured" },
+            { status: 503 }
+          )
+        }
+
+        // Check current subscription status
+        const subResult = getSubscriptionStatus(user.id)
+        if ("error" in subResult) {
+          return Response.json({ error: subResult.error }, { status: 500 })
+        }
+
+        if (subResult.subscription.status === "active") {
+          return Response.json(
+            { error: "You already have an active subscription" },
+            { status: 400 }
+          )
+        }
+
+        // Get or create Razorpay customer
+        let customerId = getRazorpayCustomerId(user.id)
+
+        if (!customerId) {
+          const customerResult = await createCustomer(
+            user.name || user.email,
+            user.email,
+            undefined,
+            { user_id: String(user.id) }
+          )
+
+          if ("error" in customerResult) {
+            return Response.json(
+              { error: "Failed to create payment customer" },
+              { status: 500 }
+            )
+          }
+
+          customerId = customerResult.customer.id
+          updateRazorpayCustomerId(user.id, customerId)
+        }
+
+        // Create new subscription
+        const subscriptionResult = await createSubscription(customerId, undefined, undefined, {
+          user_id: String(user.id),
+          direct_subscription: "true",
+        })
+
+        if ("error" in subscriptionResult) {
+          return Response.json(
+            { error: "Failed to create subscription" },
+            { status: 500 }
+          )
+        }
+
+        const sub = subscriptionResult.subscription
+
+        log("INFO", "Direct subscription created", {
+          userId: user.id,
+          subscriptionId: sub.id,
+        })
+
+        // Return subscription details for frontend to complete payment
+        return Response.json({
+          success: true,
+          subscription: {
+            id: sub.id,
+            shortUrl: sub.short_url,
+          },
+          razorpay: {
+            subscriptionId: sub.id,
+            keyId: getKeyId(),
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to create direct subscription", error)
+        return Response.json(
+          { error: "Failed to create subscription" },
+          { status: 500 }
+        )
+      }
+    }),
+  },
+
   // Check access status (for routing decisions)
   "/api/subscription/access": {
     GET: withAuth(async (req, user) => {
