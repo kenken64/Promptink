@@ -254,12 +254,26 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
     const result = await createDirectSubscription()
 
     if (result.success && result.data) {
-      // Open Razorpay checkout modal
-      openRazorpayCheckout(
-        result.data.razorpay.subscriptionId,
-        result.data.razorpay.keyId,
-        handleSubscriptionPaymentSuccess
-      )
+      // Try to open Razorpay checkout modal, fall back to auth URL if it fails
+      try {
+        openRazorpayCheckout(
+          result.data.razorpay.subscriptionId,
+          result.data.razorpay.keyId,
+          handleSubscriptionPaymentSuccess
+        )
+      } catch (err) {
+        console.error("[SUB] Checkout modal failed, falling back to auth URL:", err)
+        // Fall back to the short URL / auth link
+        if (result.data.subscription.shortUrl) {
+          window.location.href = result.data.subscription.shortUrl
+        } else {
+          setMessage({
+            type: "error",
+            text: "Payment system error. Please try again.",
+          })
+          setIsSubscribing(false)
+        }
+      }
     } else {
       setMessage({
         type: "error",
