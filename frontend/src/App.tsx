@@ -297,7 +297,10 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setMobileMenuOpen(!mobileMenuOpen)
+              }}
               className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Menu"
             >
