@@ -7,7 +7,7 @@ PromptInk is a full-stack application that generates AI images using OpenAI's DA
 **Components:**
 1. **Backend** - Bun API server with SQLite database
 2. **Frontend** - React-based chat interface with voice input support
-3. **peekachoo-trmnl** - TRMNL plugin for displaying synced images on e-ink devices
+3. **trmnl-plugin** - TRMNL plugin for displaying synced images on e-ink devices
 4. **E-commerce** - Device purchases and subscriptions via Razorpay
 
 ---
@@ -141,7 +141,7 @@ PromptInk/
 │   ├── index.html
 │   └── package.json
 │
-├── peekachoo-trmnl/           # TRMNL plugin
+├── trmnl-plugin/           # TRMNL plugin
 │   ├── src/
 │   │   ├── full.liquid        # Full screen layout
 │   │   ├── half_horizontal.liquid
@@ -997,7 +997,7 @@ docker run -p 3000:3000 \
 ### TRMNL Plugin Deployment
 
 ```bash
-cd peekachoo-trmnl
+cd trmnl-plugin
 trmnlp login          # First time only
 trmnlp push           # Upload to TRMNL server
 ```
