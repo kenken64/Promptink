@@ -42,7 +42,7 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
@@ -52,19 +52,19 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
 
       <div className="w-full max-w-md relative">
         {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+        <div className="bg-card backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">{t.title}</h1>
-            <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.title}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{t.subtitle}</p>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300">
               {error}
             </div>
           )}
@@ -73,11 +73,11 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email field */}
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="email" className="block text-sm font-medium text-foreground">
                 {t.emailLabel}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   id="email"
                   type="email"
@@ -85,18 +85,18 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t.emailPlaceholder}
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
             </div>
 
             {/* Password field */}
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">
                 {t.passwordLabel}
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -104,12 +104,12 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t.passwordPlaceholder}
                   required
-                  className="w-full pl-10 pr-12 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-12 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -142,16 +142,16 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
           {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700" />
+              <div className="w-full border-t border-border" />
             </div>
           </div>
 
           {/* Switch to register */}
-          <p className="text-center text-slate-400 text-sm">
+          <p className="text-center text-muted-foreground text-sm">
             {t.noAccount}{" "}
             <button
               onClick={onSwitchToRegister}
-              className="text-teal-400 hover:text-teal-300 font-medium transition-colors"
+              className="text-teal-500 hover:text-teal-400 font-medium transition-colors"
             >
               {t.signUp}
             </button>
@@ -159,7 +159,7 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
         </div>
 
         {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-muted-foreground text-xs mt-6">
           Powered by DALL-E 3 & TRMNL
         </p>
       </div>

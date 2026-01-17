@@ -287,8 +287,8 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -299,7 +299,7 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
   const statusText = t.subscription.status[currentStatus]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Standardized Header */}
       <PageHeader
         title={t.subscription.title}
@@ -309,13 +309,13 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
 
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       <div className="relative max-w-lg mx-auto p-4">
         {/* Subtitle */}
-        <p className="text-slate-400 text-sm mb-6">{t.subscription.subtitle}</p>
+        <p className="text-muted-foreground text-sm mb-6">{t.subscription.subtitle}</p>
 
         {/* Message */}
         {message && (
@@ -332,14 +332,14 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
         )}
 
         {/* Subscription Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
+        <div className="bg-card backdrop-blur-xl border border-border rounded-2xl overflow-hidden">
           {/* Status Header */}
           <div className={cn("p-6", colors.bgColor)}>
             <div className="flex items-center gap-3">
               <StatusIcon className={cn("h-8 w-8", colors.color)} />
               <div>
                 <h2 className={cn("text-xl font-bold", colors.color)}>{statusText.label}</h2>
-                <p className="text-slate-400 text-sm mt-1">{statusText.description}</p>
+                <p className="text-muted-foreground text-sm mt-1">{statusText.description}</p>
               </div>
             </div>
           </div>
@@ -349,22 +349,22 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
             {/* Plan info */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-slate-400 text-sm">{t.subscription.plan}</p>
-                <p className="text-white font-medium">{t.subscription.planName}</p>
+                <p className="text-muted-foreground text-sm">{t.subscription.plan}</p>
+                <p className="text-foreground font-medium">{t.subscription.planName}</p>
               </div>
               <div className="text-right">
-                <p className="text-slate-400 text-sm">{t.subscription.price}</p>
-                <p className="text-white font-bold">{t.subscription.priceValue}</p>
+                <p className="text-muted-foreground text-sm">{t.subscription.price}</p>
+                <p className="text-foreground font-bold">{t.subscription.priceValue}</p>
               </div>
             </div>
 
             {/* Next billing date */}
             {subscription?.status === "active" && subscription.currentPeriodEnd && (
-              <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-xl">
-                <Calendar className="h-5 w-5 text-slate-400" />
+              <div className="flex items-center gap-3 p-4 bg-muted rounded-xl">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-slate-400 text-sm">{t.subscription.nextBillingDate}</p>
-                  <p className="text-white font-medium">
+                  <p className="text-muted-foreground text-sm">{t.subscription.nextBillingDate}</p>
+                  <p className="text-foreground font-medium">
                     {formatDate(subscription.currentPeriodEnd)}
                   </p>
                 </div>
@@ -373,25 +373,25 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
 
             {/* Order count */}
             {subscription && (
-              <div className="text-slate-400 text-sm">
+              <div className="text-muted-foreground text-sm">
                 {t.subscription.totalOrders} {subscription.totalOrdersCount}
               </div>
             )}
 
             {/* Actions */}
-            <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-border">
               {subscription?.status === "active" && (
                 <>
                   {showCancelConfirm ? (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-sm">
+                      <p className="text-foreground text-sm">
                         {t.subscription.cancelConfirm}
                       </p>
                       <div className="flex gap-3">
                         <Button
                           onClick={() => setShowCancelConfirm(false)}
                           variant="outline"
-                          className="flex-1 border-slate-700"
+                          className="flex-1 border-border"
                           disabled={isCancelling}
                         >
                           {t.subscription.keepSubscription}
@@ -413,7 +413,7 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
                     <Button
                       onClick={() => setShowCancelConfirm(true)}
                       variant="outline"
-                      className="w-full border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
+                      className="w-full border-border text-foreground hover:text-foreground hover:bg-muted"
                     >
                       {t.subscription.cancelSubscription}
                     </Button>
@@ -449,7 +449,7 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
 
               {subscription?.status === "none" && (
                 <div className="space-y-3">
-                  <p className="text-center text-slate-400 text-sm">
+                  <p className="text-center text-muted-foreground text-sm">
                     {t.subscription.alreadyOwnDevice}
                   </p>
                   <Button
@@ -481,7 +481,7 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
         </div>
 
         {/* Help text */}
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-muted-foreground text-xs mt-6">
           {t.subscription.helpText}
         </p>
       </div>

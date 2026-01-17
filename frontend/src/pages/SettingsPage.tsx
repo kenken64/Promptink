@@ -111,14 +111,14 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Standardized Header */}
       <PageHeader
         title={t.title}
@@ -129,20 +129,20 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
       <div className="flex items-center justify-center p-4">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl" />
         </div>
 
         <div className="w-full max-w-md relative">
           {/* Card */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+          <div className="bg-card backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
             {/* Header */}
             <div className="flex flex-col items-center mb-8">
               <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
                 <Settings className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white">{t.subtitle}</h2>
+              <h2 className="text-xl font-bold text-foreground">{t.subtitle}</h2>
             </div>
 
             {/* Message */}
@@ -163,23 +163,23 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Device API Key */}
             <div className="space-y-2">
-              <label htmlFor="deviceApiKey" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="deviceApiKey" className="block text-sm font-medium text-foreground">
                 {t.deviceApiKeyLabel}
               </label>
               <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   id="deviceApiKey"
                   type={showApiKey ? "text" : "password"}
                   value={deviceApiKey}
                   onChange={(e) => setDeviceApiKey(e.target.value)}
                   placeholder={t.deviceApiKeyPlaceholder}
-                  className="w-full pl-10 pr-12 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-12 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -188,42 +188,42 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
 
             {/* MAC Address */}
             <div className="space-y-2">
-              <label htmlFor="macAddress" className="block text-sm font-medium text-slate-300">
+              <label htmlFor="macAddress" className="block text-sm font-medium text-foreground">
                 {t.macAddressLabel}
               </label>
               <div className="relative">
-                <Wifi className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Wifi className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   id="macAddress"
                   type="text"
                   value={macAddress}
                   onChange={(e) => setMacAddress(e.target.value)}
                   placeholder={t.macAddressPlaceholder}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all font-mono"
+                  className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all font-mono"
                 />
               </div>
             </div>
 
             {/* Background Color Toggle */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-300">
+              <label className="block text-sm font-medium text-foreground">
                 {t.backgroundColorLabel}
               </label>
               <div className="flex items-center gap-2">
-                <Monitor className="h-5 w-5 text-slate-500" />
-                <div className="flex-1 flex bg-slate-900/50 border border-slate-700 rounded-xl p-1">
+                <Monitor className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1 flex bg-muted border border-border rounded-xl p-1">
                   <button
                     type="button"
                     onClick={() => setBackgroundColor("black")}
                     className={cn(
                       "flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all",
                       backgroundColor === "black"
-                        ? "bg-slate-800 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-300"
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 rounded-full bg-black border border-slate-600" />
+                      <span className="w-4 h-4 rounded-full bg-black border border-border" />
                       {t.backgroundColorBlack}
                     </span>
                   </button>
@@ -233,12 +233,12 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
                     className={cn(
                       "flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all",
                       backgroundColor === "white"
-                        ? "bg-slate-800 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-300"
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 rounded-full bg-white border border-slate-600" />
+                      <span className="w-4 h-4 rounded-full bg-white border border-border" />
                       {t.backgroundColorWhite}
                     </span>
                   </button>
@@ -272,17 +272,17 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
           {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700" />
+              <div className="w-full border-t border-border" />
             </div>
           </div>
 
           {/* Webhook URL */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-slate-300">
+            <label className="block text-sm font-medium text-foreground">
               {t.webhookUrl}
             </label>
             <div className="flex items-center gap-2">
-              <div className="flex-1 px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-slate-300 text-sm font-mono truncate">
+              <div className="flex-1 px-4 py-3 bg-muted border border-border rounded-xl text-foreground text-sm font-mono truncate">
                 {webhookUrl}
               </div>
               <button
@@ -291,14 +291,14 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
                 className={cn(
                   "p-3 rounded-xl border transition-all",
                   copied
-                    ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
-                    : "bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"
+                    ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-500 dark:text-emerald-400"
+                    : "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
                 )}
               >
                 {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
               </button>
             </div>
-            <p className="text-slate-500 text-xs flex items-center gap-1">
+            <p className="text-muted-foreground text-xs flex items-center gap-1">
               <ExternalLink className="h-3 w-3" />
               {t.webhookUrlNote}
             </p>
@@ -306,7 +306,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
           </div>
 
           {/* Footer */}
-          <p className="text-center text-slate-500 text-xs mt-6">
+          <p className="text-center text-muted-foreground text-xs mt-6">
             Powered by DALL-E 3 & TRMNL
           </p>
         </div>

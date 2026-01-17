@@ -68,16 +68,16 @@ function OrderCard({ order, t, language }: OrderCardProps) {
   }
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 text-left hover:bg-slate-700/30 transition-colors"
+        className="w-full p-4 text-left hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-white font-medium">
+              <span className="text-foreground font-medium">
                 {language === "zh" ? `订单 #${order.orderNumber}` : `Order #${order.orderNumber}`}
               </span>
               <span
@@ -97,13 +97,13 @@ function OrderCard({ order, t, language }: OrderCardProps) {
                 </span>
               )}
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               {language === "zh" ? `下单于 ${formatDate(order.createdAt)}` : `Placed ${formatDate(order.createdAt)}`}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-white font-bold">{formatPrice(order.totalAmount)}</p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-foreground font-bold">{formatPrice(order.totalAmount)}</p>
+            <p className="text-muted-foreground text-sm">
               {order.quantity} {order.quantity > 1 ? t.orders.items : t.orders.item}
             </p>
           </div>
@@ -112,15 +112,15 @@ function OrderCard({ order, t, language }: OrderCardProps) {
 
       {/* Expanded details */}
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-slate-700/50 pt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="px-4 pb-4 border-t border-border pt-4 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Items */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-slate-700/50 flex items-center justify-center">
-              <Package className="h-6 w-6 text-teal-400" />
+            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+              <Package className="h-6 w-6 text-teal-500" />
             </div>
             <div className="flex-1">
-              <p className="text-white">{order.quantity}x TRMNL Photo Frame</p>
-              <p className="text-slate-500 text-sm">
+              <p className="text-foreground">{order.quantity}x TRMNL Photo Frame</p>
+              <p className="text-muted-foreground text-sm">
                 {formatPrice(order.unitPrice)} {language === "zh" ? "每件" : "each"}
               </p>
             </div>
@@ -128,32 +128,32 @@ function OrderCard({ order, t, language }: OrderCardProps) {
 
           {/* Shipping address */}
           <div className="mb-4">
-            <p className="text-slate-400 text-sm mb-1 flex items-center gap-1">
+            <p className="text-muted-foreground text-sm mb-1 flex items-center gap-1">
               <MapPin className="h-3 w-3" />
               {t.orders.shippingTo}
             </p>
-            <p className="text-slate-300 text-sm">{order.shipping.name}</p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-foreground text-sm">{order.shipping.name}</p>
+            <p className="text-muted-foreground text-sm">
               {order.shipping.addressLine1}
               {order.shipping.addressLine2 && `, ${order.shipping.addressLine2}`}
             </p>
-            <p className="text-slate-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               {order.shipping.city}, {order.shipping.state} {order.shipping.postalCode}
             </p>
-            <p className="text-slate-500 text-sm">{order.shipping.country}</p>
+            <p className="text-muted-foreground text-sm">{order.shipping.country}</p>
           </div>
 
           {/* Tracking info */}
           {order.tracking && order.tracking.number && (
-            <div className="mb-4 p-3 bg-slate-700/30 rounded-lg">
-              <p className="text-slate-400 text-sm mb-1 flex items-center gap-1">
+            <div className="mb-4 p-3 bg-muted rounded-lg">
+              <p className="text-muted-foreground text-sm mb-1 flex items-center gap-1">
                 <Truck className="h-3 w-3" />
                 {t.orders.tracking}
               </p>
-              <p className="text-white text-sm font-mono">
+              <p className="text-foreground text-sm font-mono">
                 {order.tracking.number}
                 {order.tracking.carrier && (
-                  <span className="text-slate-400 ml-2">({order.tracking.carrier})</span>
+                  <span className="text-muted-foreground ml-2">({order.tracking.carrier})</span>
                 )}
               </p>
               {order.tracking.url && (
@@ -161,7 +161,7 @@ function OrderCard({ order, t, language }: OrderCardProps) {
                   href={order.tracking.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-teal-400 text-sm mt-2 hover:text-teal-300 transition-colors"
+                  className="inline-flex items-center gap-1 text-teal-500 text-sm mt-2 hover:text-teal-400 transition-colors"
                 >
                   {t.orders.trackPackage}
                   <ExternalLink className="h-3 w-3" />
@@ -172,19 +172,19 @@ function OrderCard({ order, t, language }: OrderCardProps) {
 
           {/* Gift details */}
           {order.isGift && (
-            <div className="p-3 bg-pink-400/5 border border-pink-400/10 rounded-lg">
-              <p className="text-pink-400 text-sm mb-1 flex items-center gap-1">
+            <div className="p-3 bg-pink-500/5 border border-pink-500/10 rounded-lg">
+              <p className="text-pink-500 dark:text-pink-400 text-sm mb-1 flex items-center gap-1">
                 <Gift className="h-3 w-3" />
                 {language === "zh" ? `礼物送给 ${order.giftRecipientName}` : `Gift for ${order.giftRecipientName}`}
               </p>
               {order.giftMessage && (
-                <p className="text-slate-400 text-sm italic">"{order.giftMessage}"</p>
+                <p className="text-muted-foreground text-sm italic">"{order.giftMessage}"</p>
               )}
             </div>
           )}
 
           {/* Timestamps */}
-          <div className="mt-4 pt-4 border-t border-slate-700/50 text-xs text-slate-500 space-y-1">
+          <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground space-y-1">
             {order.paidAt && <p>{t.orders.paid} {formatDate(order.paidAt)}</p>}
             {order.shippedAt && <p>{t.orders.shipped} {formatDate(order.shippedAt)}</p>}
             {order.deliveredAt && <p>{t.orders.delivered} {formatDate(order.deliveredAt)}</p>}
@@ -223,7 +223,7 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageP
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Standardized Header */}
       <PageHeader
         title={t.orders?.title || "Orders"}
@@ -234,14 +234,14 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageP
 
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       <div className="relative max-w-2xl mx-auto p-4">
         {/* Stats & Mobile order button */}
         <div className="flex items-center justify-between mb-6">
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             {getOrderCountText(orders.length)}
           </p>
           <Button
@@ -271,11 +271,11 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageP
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-20">
-            <div className="h-16 w-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag className="h-8 w-8 text-slate-500" />
+            <div className="h-16 w-16 rounded-2xl bg-muted border border-border flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">{t.orders?.noOrdersTitle}</h2>
-            <p className="text-slate-400 mb-6">
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t.orders?.noOrdersTitle}</h2>
+            <p className="text-muted-foreground mb-6">
               {t.orders?.noOrdersDescription}
             </p>
             <Button
