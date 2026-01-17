@@ -749,6 +749,11 @@ App
 │       │           │   └── ShareButton
 │       │           └── Copy Button
 │       │
+│       ├── Size Selector
+│       │   ├── Square (1024x1024)
+│       │   ├── Landscape (1792x1024)
+│       │   └── Portrait (1024x1792)
+│       │
 │       └── ChatInput
 │           ├── Textarea
 │           ├── Attach Button
@@ -1119,10 +1124,12 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 - [x] Image gallery/history
 - [x] K6 performance testing
 - [x] CI/CD with GitHub Actions
+- [x] AI-generated prompt suggestions
+- [x] Multiple image sizes selection
+- [x] Image export with format conversion (PNG/JPG/WebP)
 
 ## Future Enhancements
 
-- [ ] Multiple image sizes selection
 - [ ] Image style presets
 - [ ] Scheduled image generation
-- [ ] Export to other formats
+- [ ] Batch image generation
