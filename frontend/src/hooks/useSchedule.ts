@@ -53,7 +53,7 @@ export function useSchedule(): UseScheduleReturn {
   const [limit, setLimit] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader } = useAuth()
+  const { getAuthHeader, logout } = useAuth()
 
   const fetchJobs = useCallback(async () => {
     setIsLoading(true)
@@ -62,6 +62,11 @@ export function useSchedule(): UseScheduleReturn {
       const response = await fetch("/api/schedule", {
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch scheduled jobs")
@@ -76,7 +81,7 @@ export function useSchedule(): UseScheduleReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const createJob = useCallback(async (input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
@@ -89,6 +94,11 @@ export function useSchedule(): UseScheduleReturn {
         },
         body: JSON.stringify(input),
       })
+
+      if (response.status === 401) {
+        logout()
+        return null
+      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -103,7 +113,7 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const updateJob = useCallback(async (id: number, input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
@@ -117,6 +127,11 @@ export function useSchedule(): UseScheduleReturn {
         body: JSON.stringify(input),
       })
 
+      if (response.status === 401) {
+        logout()
+        return null
+      }
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || "Failed to update scheduled job")
@@ -129,7 +144,7 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const deleteJob = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
@@ -138,6 +153,11 @@ export function useSchedule(): UseScheduleReturn {
         method: "DELETE",
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return false
+      }
 
       if (!response.ok) {
         throw new Error("Failed to delete scheduled job")
@@ -150,7 +170,7 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const toggleJob = useCallback(async (id: number): Promise<ScheduledJob | null> => {
     setError(null)
@@ -159,6 +179,11 @@ export function useSchedule(): UseScheduleReturn {
         method: "POST",
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return null
+      }
 
       if (!response.ok) {
         throw new Error("Failed to toggle scheduled job")
@@ -171,7 +196,7 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   // Fetch jobs on mount
   useEffect(() => {

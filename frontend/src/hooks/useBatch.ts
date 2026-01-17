@@ -68,7 +68,7 @@ export function useBatch(): UseBatchReturn {
   const [currentBatch, setCurrentBatch] = useState<BatchJobWithItems | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader } = useAuth()
+  const { getAuthHeader, logout } = useAuth()
   const pollIntervalRef = useRef<NodeJS.Timer | null>(null)
 
   const fetchBatches = useCallback(async () => {
@@ -78,6 +78,11 @@ export function useBatch(): UseBatchReturn {
       const response = await fetch("/api/batch", {
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch jobs")
@@ -90,7 +95,7 @@ export function useBatch(): UseBatchReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const fetchBatch = useCallback(async (id: number): Promise<BatchJobWithItems | null> => {
     setError(null)
@@ -98,6 +103,11 @@ export function useBatch(): UseBatchReturn {
       const response = await fetch(`/api/batch/${id}`, {
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return null
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch job")
@@ -110,7 +120,7 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const createBatch = useCallback(async (input: CreateBatchJobInput): Promise<BatchJob | null> => {
     setError(null)
@@ -124,6 +134,11 @@ export function useBatch(): UseBatchReturn {
         body: JSON.stringify(input),
       })
 
+      if (response.status === 401) {
+        logout()
+        return null
+      }
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || "Failed to create batch job")
@@ -136,7 +151,7 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const cancelBatch = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
@@ -149,6 +164,11 @@ export function useBatch(): UseBatchReturn {
         },
         body: JSON.stringify({ action: "cancel" }),
       })
+
+      if (response.status === 401) {
+        logout()
+        return false
+      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -163,7 +183,7 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const deleteBatch = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
@@ -172,6 +192,11 @@ export function useBatch(): UseBatchReturn {
         method: "DELETE",
         headers: getAuthHeader(),
       })
+
+      if (response.status === 401) {
+        logout()
+        return false
+      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -184,7 +209,7 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader])
+  }, [getAuthHeader, logout])
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -202,6 +227,12 @@ export function useBatch(): UseBatchReturn {
         const response = await fetch(`/api/batch/${id}/status`, {
           headers: getAuthHeader(),
         })
+
+        if (response.status === 401) {
+          logout()
+          stopPolling()
+          return
+        }
 
         if (!response.ok) {
           stopPolling()
@@ -238,7 +269,7 @@ export function useBatch(): UseBatchReturn {
     // Poll immediately and then every 3 seconds
     poll()
     pollIntervalRef.current = setInterval(poll, 3000)
-  }, [getAuthHeader, stopPolling, fetchBatch])
+  }, [getAuthHeader, logout, stopPolling, fetchBatch])
 
   // Cleanup on unmount
   useEffect(() => {
