@@ -12,9 +12,10 @@ type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscript
 
 interface GalleryPageProps {
   onNavigate: (page: AppPage) => void
+  onLogout?: () => void
 }
 
-export function GalleryPage({ onNavigate }: GalleryPageProps) {
+export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const { t } = useLanguage()
   const {
     images,
@@ -94,6 +95,7 @@ export function GalleryPage({ onNavigate }: GalleryPageProps) {
         onNavigate={onNavigate}
         currentPage="gallery"
         rightContent={refreshButton}
+        onLogout={onLogout}
       />
 
       {/* Sub-header with stats, filters & search */}

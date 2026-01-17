@@ -23,6 +23,7 @@ type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscript
 
 interface SchedulePageProps {
   onNavigate: (page: AppPage) => void
+  onLogout?: () => void
 }
 
 const STYLE_PRESETS = [
@@ -338,7 +339,7 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
   )
 }
 
-export function SchedulePage({ onNavigate }: SchedulePageProps) {
+export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { t } = useLanguage()
   const { jobs, total, limit, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
   const [showForm, setShowForm] = useState(false)
@@ -389,6 +390,7 @@ export function SchedulePage({ onNavigate }: SchedulePageProps) {
         title={t.schedule?.title || "Schedule"}
         onNavigate={onNavigate}
         currentPage="schedule"
+        onLogout={onLogout}
       />
 
       <div className="container max-w-2xl mx-auto p-4 pb-24">

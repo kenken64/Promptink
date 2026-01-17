@@ -10,6 +10,7 @@ interface SettingsPageProps {
   userId: number
   authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
+  onLogout: () => void
   translations: {
     title: string
     subtitle: string
@@ -37,7 +38,7 @@ interface UserSettings {
   trmnl_background_color: "black" | "white"
 }
 
-export function SettingsPage({ userId, authHeaders, onNavigate, translations: t }: SettingsPageProps) {
+export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, translations: t }: SettingsPageProps) {
   const [deviceApiKey, setDeviceApiKey] = useState("")
   const [macAddress, setMacAddress] = useState("")
   const [backgroundColor, setBackgroundColor] = useState<"black" | "white">("black")
@@ -124,6 +125,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, translations: t 
         title={t.title}
         onNavigate={onNavigate}
         currentPage="settings"
+        onLogout={onLogout}
       />
 
       <div className="flex items-center justify-center p-4">

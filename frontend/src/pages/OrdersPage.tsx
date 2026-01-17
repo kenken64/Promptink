@@ -23,6 +23,7 @@ interface OrdersPageProps {
   authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
   onOrderMore: () => void
+  onLogout: () => void
 }
 
 const statusIcons: Record<Order["status"], typeof Clock> = {
@@ -195,7 +196,7 @@ function OrderCard({ order, t, language }: OrderCardProps) {
   )
 }
 
-export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageProps) {
+export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: OrdersPageProps) {
   const { orders, isLoading, error } = useOrders()
   const { t, language } = useLanguage()
 
@@ -230,6 +231,7 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageP
         onNavigate={onNavigate}
         currentPage="orders"
         rightContent={orderMoreButton}
+        onLogout={onLogout}
       />
 
       {/* Animated background elements */}

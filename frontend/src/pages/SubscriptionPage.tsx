@@ -19,6 +19,7 @@ type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscript
 interface SubscriptionPageProps {
   authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
+  onLogout: () => void
 }
 
 // Razorpay types for subscription
@@ -74,7 +75,7 @@ const statusColors: Record<SubscriptionStatus, { color: string; bgColor: string 
   past_due: { color: "text-orange-400", bgColor: "bg-orange-400/10" },
 }
 
-export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPageProps) {
+export function SubscriptionPage({ authHeaders, onNavigate, onLogout }: SubscriptionPageProps) {
   const { t, language } = useLanguage()
   const { user } = useAuth()
   const {
@@ -305,6 +306,7 @@ export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPagePr
         title={t.subscription.title}
         onNavigate={onNavigate}
         currentPage="subscription"
+        onLogout={onLogout}
       />
 
       {/* Animated background elements */}

@@ -13,12 +13,16 @@ export interface PageHeaderProps {
   onNavigate: (page: "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings") => void
   currentPage?: string
   rightContent?: ReactNode
+  onLogout?: () => void
 }
 
-export function PageHeader({ title, onNavigate, currentPage, rightContent }: PageHeaderProps) {
+export function PageHeader({ title, onNavigate, currentPage, rightContent, onLogout }: PageHeaderProps) {
   const { language, toggleLanguage, t } = useLanguage()
   const { theme, toggleTheme } = useTheme()
-  const { user, logout } = useAuth()
+  const { user, logout: hookLogout } = useAuth()
+  
+  // Use provided onLogout or fall back to hook logout
+  const logout = onLogout || hookLogout
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Close mobile menu when clicking outside

@@ -24,6 +24,7 @@ type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscript
 
 interface BatchPageProps {
   onNavigate: (page: AppPage) => void
+  onLogout?: () => void
 }
 
 const STYLE_PRESETS = [
@@ -429,7 +430,7 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
   )
 }
 
-export default function BatchPage({ onNavigate }: BatchPageProps) {
+export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   const { t } = useLanguage()
   const {
     batches,
@@ -518,6 +519,7 @@ export default function BatchPage({ onNavigate }: BatchPageProps) {
         onNavigate={onNavigate}
         currentPage="batch"
         rightContent={newBatchButton}
+        onLogout={onLogout}
       />
 
       <div className="container mx-auto p-4 max-w-2xl">

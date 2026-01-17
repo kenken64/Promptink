@@ -575,6 +575,7 @@ export default function App() {
       userId={user?.id || 0}
       authHeaders={getAuthHeader()}
       onNavigate={(page) => setAppPage(page)}
+      onLogout={logout}
       translations={t.settings}
     />
   )
@@ -589,6 +590,7 @@ export default function App() {
         setHasSkippedPurchase(true)
         setAppPage("chat")
       }}
+      onLogout={logout}
     />
   )
 
@@ -621,6 +623,7 @@ export default function App() {
       authHeaders={getAuthHeader()}
       onNavigate={(page) => setAppPage(page)}
       onOrderMore={() => setAppPage("purchase")}
+      onLogout={logout}
     />
   )
 
@@ -629,22 +632,23 @@ export default function App() {
     <SubscriptionPage
       authHeaders={getAuthHeader()}
       onNavigate={(page) => setAppPage(page)}
+      onLogout={logout}
     />
   )
 
   // Gallery page rendering
   const renderGalleryPage = () => (
-    <GalleryPage onNavigate={(page) => setAppPage(page)} />
+    <GalleryPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
   )
 
   // Schedule page rendering
   const renderSchedulePage = () => (
-    <SchedulePage onNavigate={(page) => setAppPage(page)} />
+    <SchedulePage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
   )
 
   // Batch page rendering
   const renderBatchPage = () => (
-    <BatchPage onNavigate={(page) => setAppPage(page)} />
+    <BatchPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
   )
 
   const renderCurrentPage = () => {

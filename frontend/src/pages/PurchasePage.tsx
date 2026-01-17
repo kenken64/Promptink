@@ -24,6 +24,7 @@ interface PurchasePageProps {
   onSuccess: (orderId: number, isFirstOrder: boolean) => void
   onNavigate?: (page: AppPage) => void
   onSkip?: () => void
+  onLogout?: () => void
 }
 
 declare global {
@@ -70,7 +71,7 @@ const GST_RATE = 0.09 // Singapore GST 9%
 const SUBSCRIPTION_GST = SUBSCRIPTION_FEE * GST_RATE
 const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST
 
-export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip }: PurchasePageProps) {
+export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLogout }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
   const { subscription } = useSubscription()
   const { t } = useLanguage()
@@ -283,6 +284,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip }: Pur
           title={t.purchase?.title || "Purchase"}
           onNavigate={onNavigate}
           currentPage="orders"
+          onLogout={onLogout}
         />
       )}
 
