@@ -473,6 +473,13 @@ export function ImageDetailModal({
               <ShareButton
                 imageUrl={image.imageUrl}
                 prompt={image.originalPrompt}
+                authHeaders={token ? { Authorization: `Bearer ${token}` } : {}}
+                shareText={t.share}
+                sharingText={t.sharing}
+                shareSuccessText={t.shareSuccess}
+                copyLinkText={t.copyLink}
+                copiedText={t.copied}
+                closeText={t.close}
                 className="flex-1"
               />
               <Button

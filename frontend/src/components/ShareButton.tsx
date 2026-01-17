@@ -13,6 +13,7 @@ interface ShareButtonProps {
   copyLinkText: string
   copiedText: string
   closeText: string
+  className?: string
 }
 
 interface SocialLinks {
@@ -42,6 +43,7 @@ export function ShareButton({
   copyLinkText,
   copiedText,
   closeText,
+  className,
 }: ShareButtonProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [shareData, setShareData] = useState<ShareResponse | null>(null)
@@ -111,13 +113,13 @@ export function ShareButton({
   ] : []
 
   return (
-    <div className="relative">
+    <div className={cn("relative", className)}>
       <Button
         variant="secondary"
         size="sm"
         onClick={handleShare}
         disabled={isSharing}
-        className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation"
+        className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation w-full"
       >
         {isSharing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
