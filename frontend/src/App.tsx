@@ -453,9 +453,9 @@ export default function App() {
           <span className="text-xs text-muted-foreground mr-2">{t.imageSize}:</span>
           <button
             onClick={() => setSelectedSize("1024x1024")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
               selectedSize === "1024x1024"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
                 : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
             }`}
             title={t.sizeSquare}
@@ -467,9 +467,9 @@ export default function App() {
           </button>
           <button
             onClick={() => setSelectedSize("1792x1024")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
               selectedSize === "1792x1024"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
                 : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
             }`}
             title={t.sizeLandscape}
@@ -481,9 +481,9 @@ export default function App() {
           </button>
           <button
             onClick={() => setSelectedSize("1024x1792")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
               selectedSize === "1024x1792"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
                 : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
             }`}
             title={t.sizePortrait}
