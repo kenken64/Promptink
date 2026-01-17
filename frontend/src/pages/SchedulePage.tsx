@@ -382,20 +382,6 @@ export function SchedulePage({ onNavigate }: SchedulePageProps) {
 
   const canCreateMore = total < limit
 
-  // New schedule button for header
-  const newScheduleButton = !showForm && !editingJob ? (
-    <Button
-      size="sm"
-      onClick={() => setShowForm(true)}
-      disabled={!canCreateMore}
-      title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
-      className="hidden sm:flex"
-    >
-      <Plus className="h-4 w-4 mr-2" />
-      {t.schedule?.newSchedule || "New"}
-    </Button>
-  ) : null
-
   return (
     <div className="min-h-screen bg-background">
       {/* Standardized Header */}
@@ -403,7 +389,6 @@ export function SchedulePage({ onNavigate }: SchedulePageProps) {
         title={t.schedule?.title || "Schedule"}
         onNavigate={onNavigate}
         currentPage="schedule"
-        rightContent={newScheduleButton}
       />
 
       <div className="container max-w-2xl mx-auto p-4 pb-24">
@@ -411,16 +396,15 @@ export function SchedulePage({ onNavigate }: SchedulePageProps) {
           <p className="text-sm text-muted-foreground">
             {t.schedule?.description || "Automatically generate images on a schedule"}
           </p>
-          {/* Mobile new button */}
+          {/* New Schedule button */}
           {!showForm && !editingJob && (
             <Button
               onClick={() => setShowForm(true)}
               disabled={!canCreateMore}
               title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
-              className="sm:hidden"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {t.schedule?.newSchedule || "New"}
+              {t.schedule?.newSchedule || "New Schedule"}
             </Button>
           )}
         </div>
