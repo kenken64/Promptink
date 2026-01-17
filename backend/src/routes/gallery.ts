@@ -248,4 +248,52 @@ export const galleryRoutes = {
       }
     }),
   },
+
+  // Debug endpoint to diagnose gallery issues (protected)
+  "/api/gallery/debug": {
+    GET: withAuth(async (req, user) => {
+      try {
+        const { existsSync } = await import("fs")
+        const { db } = await import("../db")
+        
+        // Get ALL images from database (including deleted)
+        const allImages = db.prepare(
+          "SELECT id, user_id, image_url, original_prompt, is_deleted, is_favorite, created_at FROM generated_images WHERE user_id = ? ORDER BY id"
+        ).all(user.id) as { id: number; user_id: number; image_url: string; original_prompt: string; is_deleted: number; is_favorite: number; created_at: string }[]
+
+        const results = allImages.map(img => {
+          const filePath = getGalleryImagePath(img.user_id, img.id)
+          const fileExists = existsSync(filePath)
+          return {
+            id: img.id,
+            prompt: img.original_prompt?.substring(0, 40) + "...",
+            isDeleted: Boolean(img.is_deleted),
+            isFavorite: Boolean(img.is_favorite),
+            fileExists,
+            filePath,
+            imageUrl: img.image_url?.substring(0, 60) + "...",
+            createdAt: img.created_at,
+          }
+        })
+
+        const summary = {
+          totalRecords: allImages.length,
+          deletedRecords: allImages.filter(i => i.is_deleted).length,
+          activeRecords: allImages.filter(i => !i.is_deleted).length,
+          filesExist: results.filter(r => r.fileExists).length,
+          filesMissing: results.filter(r => !r.fileExists).length,
+          orphaned: results.filter(r => !r.fileExists && !r.isDeleted).length,
+        }
+
+        return Response.json({
+          userId: user.id,
+          summary,
+          images: results,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to debug gallery", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
+  },
 }
