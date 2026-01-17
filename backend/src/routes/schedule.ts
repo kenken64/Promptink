@@ -1,0 +1,268 @@
+import { log } from "../utils"
+import { withAuth } from "../middleware/auth"
+import { scheduledJobQueries, type ScheduledJob } from "../db"
+import { calculateNextRunTime, validateScheduleInput } from "../services/scheduler-service"
+
+// Maximum scheduled jobs per user
+const MAX_JOBS_PER_USER = 10
+
+// Request body interface for schedule creation/update
+interface ScheduleRequestBody {
+  prompt?: string
+  size?: string
+  stylePreset?: string
+  scheduleType?: string
+  scheduleTime?: string
+  scheduleDays?: number[]
+  scheduledAt?: string
+  timezone?: string
+  isEnabled?: boolean
+  autoSyncTrmnl?: boolean
+}
+
+export const scheduleRoutes = {
+  // List all scheduled jobs for user
+  "/api/schedule": {
+    GET: withAuth(async (req, user) => {
+      try {
+        const jobs = scheduledJobQueries.findAllByUserId.all(user.id)
+        const count = scheduledJobQueries.countByUserId.get(user.id)?.count || 0
+
+        // Parse schedule_days from JSON string to array
+        const formattedJobs = jobs.map(job => ({
+          ...job,
+          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
+        }))
+
+        return Response.json({
+          jobs: formattedJobs,
+          total: count,
+          limit: MAX_JOBS_PER_USER,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to list scheduled jobs", error)
+        return Response.json({ error: "Failed to list scheduled jobs" }, { status: 500 })
+      }
+    }),
+
+    // Create a new scheduled job
+    POST: withAuth(async (req, user) => {
+      try {
+        const body = await req.json() as ScheduleRequestBody
+
+        // Check if user has reached the limit
+        const count = scheduledJobQueries.countByUserId.get(user.id)?.count || 0
+        if (count >= MAX_JOBS_PER_USER) {
+          return Response.json(
+            { error: `Maximum of ${MAX_JOBS_PER_USER} scheduled jobs allowed` },
+            { status: 400 }
+          )
+        }
+
+        // Validate input
+        const validationError = validateScheduleInput(body)
+        if (validationError) {
+          return Response.json({ error: validationError }, { status: 400 })
+        }
+
+        // Calculate next run time
+        const scheduleType = body.scheduleType || "daily"
+        const nextRunAt = calculateNextRunTime(
+          scheduleType,
+          body.scheduleTime || "00:00",
+          body.scheduleDays ? JSON.stringify(body.scheduleDays) : null,
+          body.scheduledAt || null,
+          body.timezone || "UTC"
+        )
+
+        // Create the job
+        const job = scheduledJobQueries.create.get(
+          user.id,
+          (body.prompt || "").trim(),
+          body.size || "1024x1024",
+          body.stylePreset || null,
+          scheduleType,
+          body.scheduleTime || "00:00",
+          body.scheduleDays ? JSON.stringify(body.scheduleDays) : null,
+          body.scheduledAt || null,
+          body.timezone || "UTC",
+          body.isEnabled !== false ? 1 : 0,
+          body.autoSyncTrmnl ? 1 : 0,
+          nextRunAt
+        )
+
+        if (!job) {
+          return Response.json({ error: "Failed to create scheduled job" }, { status: 500 })
+        }
+
+        log("INFO", "Scheduled job created", { jobId: job.id, userId: user.id })
+
+        return Response.json({
+          ...job,
+          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
+        }, { status: 201 })
+      } catch (error) {
+        log("ERROR", "Failed to create scheduled job", error)
+        return Response.json({ error: "Failed to create scheduled job" }, { status: 500 })
+      }
+    }),
+  },
+
+  // Get, update, or delete a specific scheduled job
+  "/api/schedule/:id": {
+    GET: withAuth(async (req, user) => {
+      try {
+        const url = new URL(req.url)
+        const id = parseInt(url.pathname.split("/").pop() || "0", 10)
+
+        const job = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+        if (!job) {
+          return Response.json({ error: "Scheduled job not found" }, { status: 404 })
+        }
+
+        return Response.json({
+          ...job,
+          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to get scheduled job", error)
+        return Response.json({ error: "Failed to get scheduled job" }, { status: 500 })
+      }
+    }),
+
+    PUT: withAuth(async (req, user) => {
+      try {
+        const url = new URL(req.url)
+        const id = parseInt(url.pathname.split("/").pop() || "0", 10)
+        const body = await req.json() as ScheduleRequestBody
+
+        // Check if job exists
+        const existing = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+        if (!existing) {
+          return Response.json({ error: "Scheduled job not found" }, { status: 404 })
+        }
+
+        // Validate input
+        const validationError = validateScheduleInput(body)
+        if (validationError) {
+          return Response.json({ error: validationError }, { status: 400 })
+        }
+
+        // Calculate next run time
+        const scheduleType = body.scheduleType || existing.schedule_type
+        const nextRunAt = calculateNextRunTime(
+          scheduleType,
+          body.scheduleTime || "00:00",
+          body.scheduleDays ? JSON.stringify(body.scheduleDays) : null,
+          body.scheduledAt || null,
+          body.timezone || "UTC"
+        )
+
+        // Update the job
+        scheduledJobQueries.update.run(
+          body.prompt?.trim() || existing.prompt,
+          body.size || "1024x1024",
+          body.stylePreset || null,
+          scheduleType,
+          body.scheduleTime || "00:00",
+          body.scheduleDays ? JSON.stringify(body.scheduleDays) : null,
+          body.scheduledAt || null,
+          body.timezone || "UTC",
+          body.isEnabled !== false ? 1 : 0,
+          body.autoSyncTrmnl ? 1 : 0,
+          nextRunAt,
+          id,
+          user.id
+        )
+
+        // Fetch updated job
+        const updated = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+
+        log("INFO", "Scheduled job updated", { jobId: id, userId: user.id })
+
+        return Response.json({
+          ...updated,
+          schedule_days: updated?.schedule_days ? JSON.parse(updated.schedule_days) : null,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to update scheduled job", error)
+        return Response.json({ error: "Failed to update scheduled job" }, { status: 500 })
+      }
+    }),
+
+    DELETE: withAuth(async (req, user) => {
+      try {
+        const url = new URL(req.url)
+        const id = parseInt(url.pathname.split("/").pop() || "0", 10)
+
+        // Check if job exists
+        const existing = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+        if (!existing) {
+          return Response.json({ error: "Scheduled job not found" }, { status: 404 })
+        }
+
+        // Delete the job
+        scheduledJobQueries.delete.run(id, user.id)
+
+        log("INFO", "Scheduled job deleted", { jobId: id, userId: user.id })
+
+        return Response.json({ success: true })
+      } catch (error) {
+        log("ERROR", "Failed to delete scheduled job", error)
+        return Response.json({ error: "Failed to delete scheduled job" }, { status: 500 })
+      }
+    }),
+  },
+
+  // Toggle job enabled status
+  "/api/schedule/:id/toggle": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const url = new URL(req.url)
+        const pathParts = url.pathname.split("/")
+        const id = parseInt(pathParts[pathParts.length - 2] || "0", 10)
+
+        // Check if job exists
+        const existing = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+        if (!existing) {
+          return Response.json({ error: "Scheduled job not found" }, { status: 404 })
+        }
+
+        // Toggle enabled status
+        const newEnabled = existing.is_enabled ? 0 : 1
+        scheduledJobQueries.updateEnabled.run(newEnabled, id, user.id)
+
+        // If re-enabling, recalculate next run time
+        if (newEnabled === 1) {
+          const nextRunAt = calculateNextRunTime(
+            existing.schedule_type,
+            existing.schedule_time,
+            existing.schedule_days,
+            existing.scheduled_at,
+            existing.timezone
+          )
+          if (nextRunAt) {
+            scheduledJobQueries.updateLastRun.run(
+              existing.last_run_at || new Date().toISOString(),
+              nextRunAt,
+              id
+            )
+          }
+        }
+
+        log("INFO", "Scheduled job toggled", { jobId: id, userId: user.id, enabled: newEnabled })
+
+        // Fetch updated job
+        const updated = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
+
+        return Response.json({
+          ...updated,
+          schedule_days: updated?.schedule_days ? JSON.parse(updated.schedule_days) : null,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to toggle scheduled job", error)
+        return Response.json({ error: "Failed to toggle scheduled job" }, { status: 500 })
+      }
+    }),
+  },
+}

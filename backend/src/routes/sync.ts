@@ -110,6 +110,38 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string, backgroundCo
   }
 }
 
+// Exported helper for programmatic sync (used by scheduler)
+export async function syncToTrmnl(
+  imageUrl: string,
+  prompt: string,
+  userId: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Download and save the image
+    await downloadAndSaveImage(imageUrl, userId)
+
+    // Get the permanent URL
+    const permanentUrl = getUserImageUrl(userId)
+
+    // Save to database
+    syncedImageQueries.create.run(userId, permanentUrl, prompt || null)
+
+    // Get user's background color preference
+    const backgroundColor = getUserBackgroundColor(userId)
+
+    // Trigger TRMNL update
+    const trmnlResult = await triggerTrmnlUpdate(permanentUrl, prompt || "", backgroundColor)
+
+    // Advance the playlist
+    await advanceTrmnlPlaylist()
+
+    return { success: true }
+  } catch (error) {
+    log("ERROR", "syncToTrmnl failed", { userId, error: String(error) })
+    return { success: false, error: String(error) }
+  }
+}
+
 export const syncRoutes = {
   // Sync image - downloads and stores physical copy for TRMNL (authenticated)
   "/api/sync/trmnl": {

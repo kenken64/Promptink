@@ -2,6 +2,8 @@ import { config } from "./config"
 import { log } from "./utils"
 import { routes } from "./routes"
 import { initDatabase } from "./db"
+import { startScheduler } from "./services/scheduler-service"
+import { startBatchProcessor } from "./services/batch-service"
 import { join } from "path"
 import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync } from "fs"
 
@@ -73,6 +75,12 @@ verifyVolumePersistence()
 
 // Initialize database
 initDatabase()
+
+// Start the scheduler service
+startScheduler()
+
+// Start the batch processor service
+startBatchProcessor()
 
 const isDev = process.env.NODE_ENV !== "production"
 log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isDev}`)

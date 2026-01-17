@@ -86,6 +86,8 @@ PromptInk/
 │   │   │   ├── suggestions.ts # AI-generated prompt suggestions
 │   │   │   ├── orders.ts      # Order management
 │   │   │   ├── subscription.ts    # Subscription management
+│   │   │   ├── schedule.ts        # Scheduled jobs CRUD
+│   │   │   ├── batch.ts           # Batch image generation
 │   │   │   └── razorpay-webhook.ts # Payment webhooks
 │   │   ├── services/          # Business logic
 │   │   │   ├── index.ts
@@ -95,7 +97,9 @@ PromptInk/
 │   │   │   ├── image-store.ts
 │   │   │   ├── order-service.ts
 │   │   │   ├── subscription-service.ts
-│   │   │   └── razorpay-service.ts
+│   │   │   ├── razorpay-service.ts
+│   │   │   ├── scheduler-service.ts # Background job scheduler
+│   │   │   └── batch-service.ts     # Batch image generation
 │   │   ├── utils/             # Utility functions
 │   │   │   ├── index.ts
 │   │   │   └── logger.ts
@@ -372,6 +376,97 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 - `frontend/src/hooks/useImageGeneration.ts` - Style parameter in API call
 - `frontend/src/hooks/useLanguage.ts` - Translations for EN/ZH
 
+### 10. Scheduled Image Generation
+
+**Problem**: Users want to automate image generation at specific times without manually triggering each request.
+
+**Solution**: Background scheduler service that executes scheduled jobs with support for once, daily, and weekly schedules.
+
+**Implementation**:
+- **Database**: `scheduled_jobs` table stores job configurations with schedule type, time, days, and next run time
+- **Scheduler Service**: Background interval (60s) checks for due jobs and executes them
+- **Schedule Types**:
+  - `once` - Single execution at a specific datetime
+  - `daily` - Runs every day at a specified time (HH:MM)
+  - `weekly` - Runs on specific days of the week at a specified time
+- **Features**:
+  - Timezone support for accurate scheduling across regions
+  - Auto-sync to TRMNL option for generated images
+  - Style presets support for consistent styling
+  - Toggle enable/disable without deleting jobs
+  - Maximum 10 jobs per user to prevent abuse
+- **Next Run Calculation**: When a job completes, the next run time is calculated based on schedule type
+
+**Flow**:
+```
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   Scheduler     │───►│  Check Due Jobs  │───►│ Execute Job       │
+│ (60s interval)  │    │  (next_run <= now)│    │ - Generate image  │
+└─────────────────┘    └──────────────────┘    │ - Save to gallery │
+                                               │ - Sync to TRMNL?  │
+                                               │ - Update next_run │
+                                               └───────────────────┘
+```
+
+**Code locations**:
+- `backend/src/db/index.ts` - `scheduled_jobs` table and queries
+- `backend/src/services/scheduler-service.ts` - Background scheduler logic
+- `backend/src/routes/schedule.ts` - CRUD API endpoints
+- `frontend/src/pages/SchedulePage.tsx` - Schedule management UI
+- `frontend/src/hooks/useSchedule.ts` - Frontend API hook
+
+---
+
+### 11. Batch Image Generation
+
+**Problem**: Users want to generate multiple images from different prompts in a single session without manually triggering each one.
+
+**Solution**: Batch job system with queue-based processing that generates images sequentially to respect OpenAI rate limits.
+
+**Implementation**:
+- **Database**: 
+  - `batch_jobs` table stores batch job metadata (user, status, progress counts, settings)
+  - `batch_job_items` table stores individual prompts and their results
+- **Batch Processor**: Background interval (5s) picks up pending batches and processes one item at a time
+- **Features**:
+  - Multiple prompts per batch (max 10 to control costs/time)
+  - Progress tracking with real-time polling
+  - Auto-sync each generated image to TRMNL option
+  - Style presets apply to all images in batch
+  - Size selection (square, landscape, portrait)
+  - Cancel in-progress batches
+  - View individual item results with image thumbnails
+- **Status Tracking**:
+  - Batch: pending → processing → completed/failed/cancelled
+  - Items: pending → processing → completed/failed
+
+**Flow**:
+```
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   Create Batch  │───►│  Queue Items     │───►│  Batch Processor  │
+│  (POST /batch)  │    │  (N prompts)     │    │  (5s interval)    │
+└─────────────────┘    └──────────────────┘    └─────────┬─────────┘
+                                                         │
+                       ┌─────────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  For each pending item:                                         │
+│  1. Apply style preset to prompt                                │
+│  2. Generate image via DALL-E 3                                 │
+│  3. Save to gallery                                             │
+│  4. Auto-sync to TRMNL (if enabled)                             │
+│  5. Update item status + batch progress                         │
+│  6. Mark batch complete when all items done                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Code locations**:
+- `backend/src/db/index.ts` - `batch_jobs` and `batch_job_items` tables and queries
+- `backend/src/services/batch-service.ts` - Batch processor and job management
+- `backend/src/routes/batch.ts` - CRUD API endpoints with status polling
+- `frontend/src/pages/BatchPage.tsx` - Batch creation and monitoring UI
+- `frontend/src/hooks/useBatch.ts` - Frontend API hook with polling support
+
 ---
 
 ## Database Schema
@@ -482,6 +577,59 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 | token_hash | TEXT     | Hashed refresh token                     |
 | expires_at | DATETIME | Token expiration timestamp               |
 | created_at | DATETIME | Session creation timestamp               |
+
+### scheduled_jobs table
+
+| Column          | Type     | Description                              |
+|-----------------|----------|------------------------------------------|
+| id              | INTEGER  | Primary key                              |
+| user_id         | INTEGER  | Foreign key to users table               |
+| prompt          | TEXT     | Image generation prompt                  |
+| size            | TEXT     | Image size (1024x1024, etc.)             |
+| style_preset    | TEXT     | Style preset (photorealistic, anime, etc.)|
+| schedule_type   | TEXT     | once/daily/weekly                        |
+| schedule_time   | TEXT     | Time in HH:MM format (for daily/weekly)  |
+| schedule_days   | TEXT     | JSON array of day indices 0-6 (for weekly)|
+| scheduled_at    | DATETIME | Specific datetime (for once)             |
+| timezone        | TEXT     | User's timezone (e.g., Asia/Kolkata)     |
+| is_enabled      | INTEGER  | 1 if job is active, 0 if paused          |
+| auto_sync_trmnl | INTEGER  | 1 to auto-sync generated images to TRMNL |
+| last_run_at     | DATETIME | Timestamp of last execution              |
+| next_run_at     | DATETIME | Calculated next run timestamp            |
+| run_count       | INTEGER  | Total number of successful runs          |
+| created_at      | DATETIME | Job creation timestamp                   |
+| updated_at      | DATETIME | Last modification timestamp              |
+
+### batch_jobs table
+
+| Column          | Type     | Description                              |
+|-----------------|----------|------------------------------------------|
+| id              | INTEGER  | Primary key                              |
+| user_id         | INTEGER  | Foreign key to users table               |
+| name            | TEXT     | Optional batch name/description          |
+| status          | TEXT     | pending/processing/completed/failed/cancelled |
+| total_count     | INTEGER  | Total number of prompts in batch         |
+| completed_count | INTEGER  | Number of successfully generated images  |
+| failed_count    | INTEGER  | Number of failed generations             |
+| size            | TEXT     | Image size for all items (1024x1024, etc.)|
+| style_preset    | TEXT     | Style preset for all items               |
+| auto_sync_trmnl | INTEGER  | 1 to auto-sync each image to TRMNL       |
+| created_at      | DATETIME | Batch creation timestamp                 |
+| started_at      | DATETIME | When processing started                  |
+| completed_at    | DATETIME | When batch finished (success or fail)    |
+
+### batch_job_items table
+
+| Column          | Type     | Description                              |
+|-----------------|----------|------------------------------------------|
+| id              | INTEGER  | Primary key                              |
+| batch_id        | INTEGER  | Foreign key to batch_jobs table          |
+| prompt          | TEXT     | Image generation prompt                  |
+| status          | TEXT     | pending/processing/completed/failed      |
+| image_id        | INTEGER  | Foreign key to generated_images (if success)|
+| error_message   | TEXT     | Error message if generation failed       |
+| created_at      | DATETIME | Item creation timestamp                  |
+| completed_at    | DATETIME | When item finished processing            |
 
 ---
 
@@ -711,6 +859,17 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 | POST | `/api/subscription/cancel` | Yes | Cancel subscription |
 | POST | `/api/subscription/pause` | Yes | Pause subscription |
 | POST | `/api/subscription/resume` | Yes | Resume paused subscription |
+
+### Schedule
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/schedule` | Yes | List user's scheduled jobs |
+| POST | `/api/schedule` | Yes | Create new scheduled job |
+| GET | `/api/schedule/:id` | Yes | Get scheduled job details |
+| PUT | `/api/schedule/:id` | Yes | Update scheduled job |
+| DELETE | `/api/schedule/:id` | Yes | Delete scheduled job |
+| POST | `/api/schedule/:id/toggle` | Yes | Toggle job enabled/disabled |
 
 ### Webhooks
 
@@ -1174,8 +1333,9 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 - [x] Multiple image sizes selection
 - [x] Image export with format conversion (PNG/JPG/WebP)
 - [x] Image style presets
+- [x] Scheduled image generation
+- [x] Batch image generation
 
 ## Future Enhancements
 
-- [ ] Scheduled image generation
-- [ ] Batch image generation
+- [ ] Image templates

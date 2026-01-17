@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw } from "lucide-react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw, Calendar, Layers } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -15,6 +15,8 @@ import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
 import { OrdersPage } from "./pages/OrdersPage"
 import { SubscriptionPage } from "./pages/SubscriptionPage"
 import { GalleryPage } from "./pages/GalleryPage"
+import { SchedulePage } from "./pages/SchedulePage"
+import BatchPage from "./pages/BatchPage"
 import { useImageGeneration, type ImageStylePreset } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
 import { useLanguage } from "./hooks/useLanguage"
@@ -32,7 +34,7 @@ interface Message {
 }
 
 type AuthPage = "login" | "register"
-type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery"
+type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery" | "schedule" | "batch"
 type ImageSize = "1024x1024" | "1792x1024" | "1024x1792"
 
 export default function App() {
@@ -260,6 +262,26 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setAppPage("schedule")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Schedule"
+              title={t.schedule?.title || "Schedule"}
+            >
+              <Calendar className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAppPage("batch")}
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Batch"
+              title={t.batch?.title || "Batch"}
+            >
+              <Layers className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setAppPage("orders")}
               className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Orders"
@@ -323,6 +345,20 @@ export default function App() {
                 >
                   <Image className="h-4 w-4" />
                   {t.gallery.title}
+                </button>
+                <button
+                  onClick={() => { setAppPage("schedule"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <Calendar className="h-4 w-4" />
+                  {t.schedule?.title || "Schedule"}
+                </button>
+                <button
+                  onClick={() => { setAppPage("batch"); setMobileMenuOpen(false) }}
+                  className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors"
+                >
+                  <Layers className="h-4 w-4" />
+                  {t.batch?.title || "Batch"}
                 </button>
                 <button
                   onClick={() => { setAppPage("orders"); setMobileMenuOpen(false) }}
@@ -601,6 +637,16 @@ export default function App() {
     <GalleryPage onBack={() => setAppPage("chat")} />
   )
 
+  // Schedule page rendering
+  const renderSchedulePage = () => (
+    <SchedulePage />
+  )
+
+  // Batch page rendering
+  const renderBatchPage = () => (
+    <BatchPage />
+  )
+
   const renderCurrentPage = () => {
     switch (appPage) {
       case "settings":
@@ -615,6 +661,10 @@ export default function App() {
         return renderSubscriptionPage()
       case "gallery":
         return renderGalleryPage()
+      case "schedule":
+        return renderSchedulePage()
+      case "batch":
+        return renderBatchPage()
       case "chat":
       default:
         return renderChatApp()

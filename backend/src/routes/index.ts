@@ -11,6 +11,8 @@ import { razorpayWebhookRoutes } from "./razorpay-webhook"
 import { shareRoutes } from "./share"
 import { galleryRoutes } from "./gallery"
 import { suggestionsRoutes } from "./suggestions"
+import { scheduleRoutes } from "./schedule"
+import { batchRoutes } from "./batch"
 import { db } from "../db"
 import { config } from "../config"
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
@@ -134,4 +136,6 @@ export const routes = {
   ...shareRoutes,
   ...galleryRoutes,
   ...suggestionsRoutes,
+  ...scheduleRoutes,
+  ...batchRoutes,
 }
