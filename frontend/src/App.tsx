@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X } from "lucide-react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -21,6 +21,7 @@ import { useLanguage } from "./hooks/useLanguage"
 import { useTrmnlSync } from "./hooks/useTrmnlSync"
 import { useAuth } from "./hooks/useAuth"
 import { useSubscription } from "./hooks/useSubscription"
+import { useSuggestions } from "./hooks/useSuggestions"
 
 interface Message {
   id: string
@@ -47,6 +48,7 @@ export default function App() {
   const { syncToTrmnl } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
+  const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Check if user needs to be redirected to purchase page
@@ -383,16 +385,31 @@ export default function App() {
             <p className="text-muted-foreground text-center text-sm sm:text-base max-w-md mb-6 sm:mb-8 px-2">
               {t.welcomeSubtitle}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-w-2xl w-full overflow-y-auto max-h-[40vh] sm:max-h-none px-1">
-              {t.suggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => handleSend(suggestion)}
-                  className="p-3 sm:p-4 text-left text-xs sm:text-sm rounded-xl border bg-secondary/30 hover:bg-secondary/60 active:bg-secondary/80 transition-colors touch-manipulation"
-                >
-                  {suggestion}
-                </button>
-              ))}
+            <div className="relative max-w-2xl w-full">
+              <button
+                onClick={refreshSuggestions}
+                disabled={suggestionsLoading}
+                className="absolute -top-8 right-1 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors disabled:opacity-50"
+                title={t.refreshSuggestions}
+              >
+                <RefreshCw className={`h-4 w-4 ${suggestionsLoading ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 overflow-y-auto max-h-[40vh] sm:max-h-none px-1">
+                {(suggestions.length > 0 ? suggestions : t.suggestions).map((suggestion, index) => (
+                  <button
+                    key={`${suggestion}-${index}`}
+                    onClick={() => handleSend(suggestion)}
+                    disabled={suggestionsLoading}
+                    className="p-3 sm:p-4 text-left text-xs sm:text-sm rounded-xl border bg-secondary/30 hover:bg-secondary/60 active:bg-secondary/80 transition-colors touch-manipulation disabled:opacity-50"
+                  >
+                    {suggestionsLoading ? (
+                      <span className="inline-block w-full h-4 bg-muted animate-pulse rounded" />
+                    ) : (
+                      suggestion
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
