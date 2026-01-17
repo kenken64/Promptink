@@ -14,6 +14,7 @@ import { db } from "../db"
 import { config } from "../config"
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
+import { withAuth } from "../middleware/auth"
 
 // Helper to recursively list files in a directory
 function listFilesRecursive(dir: string, baseDir: string = dir): { path: string; size: number; isDir: boolean }[] {
@@ -49,10 +50,20 @@ function listFilesRecursive(dir: string, baseDir: string = dir): { path: string;
   return results
 }
 
-// Health check endpoint for Railway
+// Health check endpoint for Railway (basic - no auth required for Railway health checks)
 const healthRoutes = {
   "/api/health": {
     GET: () => {
+      return Response.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+      })
+    },
+  },
+
+  // Detailed health/debug endpoint (protected - requires authentication)
+  "/api/health/details": {
+    GET: withAuth(async (req, user) => {
       // Get user count for debugging
       let userCount = 0
       try {
@@ -91,6 +102,7 @@ const healthRoutes = {
         dbPath: process.env.DB_PATH || "./data/promptink.db",
         jwtConfigured: !!process.env.JWT_SECRET,
         userCount,
+        requestedBy: { id: user.id, email: user.email },
         volume: {
           status: volumeStatus,
           info: volumeInfo,
@@ -102,7 +114,7 @@ const healthRoutes = {
           totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + " MB",
         },
       })
-    },
+    }),
   },
 }
 
