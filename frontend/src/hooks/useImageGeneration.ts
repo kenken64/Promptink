@@ -20,6 +20,7 @@ interface GenerateImageOptions {
   prompt: string
   language?: Language
   authHeaders?: AuthHeaders
+  size?: "1024x1024" | "1792x1024" | "1024x1792"
 }
 
 interface UseImageGenerationReturn {
@@ -32,7 +33,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const generateImage = async ({ prompt, language, authHeaders }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
+  const generateImage = async ({ prompt, language, authHeaders, size = "1024x1024" }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
     setIsLoading(true)
     setError(null)
 
@@ -47,7 +48,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
           prompt,
           language,
           model: "dall-e-3",
-          size: "1024x1024",
+          size,
           quality: "standard",
         }),
       })

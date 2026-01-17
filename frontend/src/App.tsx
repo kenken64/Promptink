@@ -33,6 +33,7 @@ interface Message {
 
 type AuthPage = "login" | "register"
 type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery"
+type ImageSize = "1024x1024" | "1792x1024" | "1024x1792"
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -42,6 +43,7 @@ export default function App() {
   const [isFirstOrder, setIsFirstOrder] = useState(false)
   const [hasSkippedPurchase, setHasSkippedPurchase] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [selectedSize, setSelectedSize] = useState<ImageSize>("1024x1024")
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -117,7 +119,7 @@ export default function App() {
         const formData = new FormData()
         formData.append("image", imageFile)
         formData.append("prompt", prompt)
-        formData.append("size", "1024x1024")
+        formData.append("size", selectedSize)
 
         const response = await fetch("/api/images/edit", {
           method: "POST",
@@ -133,7 +135,7 @@ export default function App() {
         result = await response.json()
       } else {
         // Use regular image generation
-        result = await generateImage({ prompt, language, authHeaders: getAuthHeader() })
+        result = await generateImage({ prompt, language, authHeaders: getAuthHeader(), size: selectedSize })
       }
 
       const imageUrl = result.data[0]?.url
@@ -446,6 +448,52 @@ export default function App() {
 
       {/* Input Area */}
       <div className="safe-area-bottom sticky bottom-0 z-10 bg-gradient-to-t from-background via-background to-transparent pt-4 sm:pt-6 pb-2">
+        {/* Size Selector */}
+        <div className="flex items-center justify-center gap-1 mb-2 px-4">
+          <span className="text-xs text-muted-foreground mr-2">{t.imageSize}:</span>
+          <button
+            onClick={() => setSelectedSize("1024x1024")}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+              selectedSize === "1024x1024"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+            }`}
+            title={t.sizeSquare}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="2" y="2" width="12" height="12" rx="1" />
+            </svg>
+            <span className="hidden sm:inline">{t.sizeSquare}</span>
+          </button>
+          <button
+            onClick={() => setSelectedSize("1792x1024")}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+              selectedSize === "1792x1024"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+            }`}
+            title={t.sizeLandscape}
+          >
+            <svg className="w-4 h-3" viewBox="0 0 16 10" fill="currentColor">
+              <rect x="1" y="1" width="14" height="8" rx="1" />
+            </svg>
+            <span className="hidden sm:inline">{t.sizeLandscape}</span>
+          </button>
+          <button
+            onClick={() => setSelectedSize("1024x1792")}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+              selectedSize === "1024x1792"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+            }`}
+            title={t.sizePortrait}
+          >
+            <svg className="w-2.5 h-4" viewBox="0 0 10 16" fill="currentColor">
+              <rect x="1" y="1" width="8" height="14" rx="1" />
+            </svg>
+            <span className="hidden sm:inline">{t.sizePortrait}</span>
+          </button>
+        </div>
         <ChatInput
           onSend={handleSend}
           disabled={isLoading}
