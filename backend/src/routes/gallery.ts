@@ -4,6 +4,11 @@ import { generatedImageQueries, type GeneratedImage } from "../db"
 import { config } from "../config"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
+import sharp from "sharp"
+
+// Supported export formats
+type ExportFormat = "png" | "jpg" | "webp"
+const SUPPORTED_FORMATS: ExportFormat[] = ["png", "jpg", "webp"]
 
 // Ensure gallery images directory exists
 const GALLERY_DIR = join(config.storage.imagesDir, "gallery")
@@ -229,6 +234,108 @@ export const galleryRoutes = {
         return new Response("Internal server error", { status: 500 })
       }
     },
+  },
+
+  // Export/download gallery image with format conversion
+  "/api/gallery/export/:id": {
+    GET: withAuth(async (req, user) => {
+      try {
+        const imageId = parseInt((req as any).params?.id, 10)
+        const url = new URL(req.url)
+        const format = (url.searchParams.get("format") || "png") as ExportFormat
+        const quality = Math.min(100, Math.max(1, parseInt(url.searchParams.get("quality") || "85", 10)))
+        const width = url.searchParams.get("width") ? parseInt(url.searchParams.get("width")!, 10) : null
+        const height = url.searchParams.get("height") ? parseInt(url.searchParams.get("height")!, 10) : null
+
+        if (isNaN(imageId)) {
+          return Response.json({ error: "Invalid image ID" }, { status: 400 })
+        }
+
+        if (!SUPPORTED_FORMATS.includes(format)) {
+          return Response.json({ 
+            error: `Unsupported format. Supported: ${SUPPORTED_FORMATS.join(", ")}` 
+          }, { status: 400 })
+        }
+
+        // Get image and verify ownership
+        const image = generatedImageQueries.findByIdAndUserId.get(imageId, user.id)
+
+        if (!image) {
+          return Response.json({ error: "Image not found" }, { status: 404 })
+        }
+
+        const filePath = getGalleryImagePath(user.id, imageId)
+        const file = Bun.file(filePath)
+
+        if (!(await file.exists())) {
+          return Response.json({ error: "Image file not found" }, { status: 404 })
+        }
+
+        // Read the original image
+        const inputBuffer = Buffer.from(await file.arrayBuffer())
+        
+        // Process with Sharp
+        let pipeline = sharp(inputBuffer)
+
+        // Resize if dimensions specified
+        if (width || height) {
+          pipeline = pipeline.resize(width || undefined, height || undefined, {
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+        }
+
+        // Convert to requested format
+        let outputBuffer: Buffer
+        let contentType: string
+        let extension: string
+
+        switch (format) {
+          case "jpg":
+            outputBuffer = await pipeline.jpeg({ quality }).toBuffer()
+            contentType = "image/jpeg"
+            extension = "jpg"
+            break
+          case "webp":
+            outputBuffer = await pipeline.webp({ quality }).toBuffer()
+            contentType = "image/webp"
+            extension = "webp"
+            break
+          default: // png
+            outputBuffer = await pipeline.png().toBuffer()
+            contentType = "image/png"
+            extension = "png"
+        }
+
+        // Generate filename from prompt
+        const promptSlug = image.original_prompt
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .substring(0, 30)
+          .replace(/-+$/, "")
+        const filename = `promptink-${imageId}-${promptSlug}.${extension}`
+
+        log("INFO", "Image exported", { 
+          imageId, 
+          userId: user.id, 
+          format, 
+          quality,
+          originalSize: inputBuffer.length,
+          exportedSize: outputBuffer.length,
+        })
+
+        return new Response(outputBuffer, {
+          headers: {
+            "Content-Type": contentType,
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Content-Length": outputBuffer.length.toString(),
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to export gallery image", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
   },
 
   // Get gallery statistics

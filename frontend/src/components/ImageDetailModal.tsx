@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useState } from "react"
+import { useEffect, useCallback, useState, useRef } from "react"
 import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { ShareButton } from "./ShareButton"
+import { useAuth } from "../hooks/useAuth"
 
 // Fallback placeholder component for modal
 function ModalImagePlaceholder() {
@@ -49,7 +50,22 @@ export function ImageDetailModal({
   hasNext = false,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
+  const { token } = useAuth()
   const [imageError, setImageError] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   // Reset image error when image changes
   useEffect(() => {
@@ -92,21 +108,53 @@ export function ImageDetailModal({
 
   if (!isOpen || !image) return null
 
-  const handleDownload = async () => {
+  const handleExport = async (format: "png" | "jpg" | "webp") => {
+    if (!token || isExporting) return
+    setIsExporting(true)
+    setShowExportMenu(false)
+    
     try {
-      const response = await fetch(image.imageUrl)
+      const response = await fetch(
+        `/api/gallery/export/${image.id}?format=${format}&quality=90`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      
+      if (!response.ok) {
+        throw new Error("Export failed")
+      }
+      
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `promptink-${image.id}-${Date.now()}.png`
+      
+      // Extract filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get("Content-Disposition")
+      let filename = `promptink-${image.id}.${format}`
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/)
+        if (match) filename = match[1]
+      }
+      
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      console.error("Download failed:", err)
+      console.error("Export failed:", err)
+    } finally {
+      setIsExporting(false)
     }
+  }
+
+  const handleDownload = async () => {
+    // Default to PNG for backward compatibility
+    await handleExport("png")
   }
 
   const handleFavorite = async () => {
@@ -356,28 +404,69 @@ export function ImageDetailModal({
                   </>
                 )}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={handleDownload}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-4 h-4 mr-1"
+              
+              {/* Export dropdown */}
+              <div className="relative flex-1" ref={exportMenuRef}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={isExporting}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                  />
-                </svg>
-                {t.gallery.download}
-              </Button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-4 h-4 mr-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                    />
+                  </svg>
+                  {isExporting ? t.gallery.exporting || "Exporting..." : t.gallery.download}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-3 h-3 ml-1"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </Button>
+                
+                {showExportMenu && (
+                  <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden z-50">
+                    <button
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent flex items-center justify-between"
+                      onClick={() => handleExport("png")}
+                    >
+                      <span>PNG</span>
+                      <span className="text-xs text-muted-foreground">{t.gallery.exportBestQuality || "Best quality"}</span>
+                    </button>
+                    <button
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent flex items-center justify-between border-t border-border"
+                      onClick={() => handleExport("jpg")}
+                    >
+                      <span>JPG</span>
+                      <span className="text-xs text-muted-foreground">{t.gallery.exportSmaller || "Smaller file"}</span>
+                    </button>
+                    <button
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent flex items-center justify-between border-t border-border"
+                      onClick={() => handleExport("webp")}
+                    >
+                      <span>WebP</span>
+                      <span className="text-xs text-muted-foreground">{t.gallery.exportSmallest || "Smallest file"}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-2">

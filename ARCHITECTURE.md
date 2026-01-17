@@ -308,11 +308,34 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 - Filter by favorites
 - Keyboard navigation in detail modal (arrows, escape)
 - Toggle favorite status
-- Download images
+- **Export/Download images with format conversion** (PNG, JPG, WebP)
 - Share images (integrates with social sharing)
 - Soft delete with confirmation
 - Image metadata display (prompt, model, size, date)
 - Visual badges for favorited and edited images
+
+### 8. Image Export with Format Conversion
+
+**Problem**: Users want to download images in different formats for various use cases (web, print, sharing).
+
+**Solution**: Server-side image format conversion using Sharp library with quality controls.
+
+**Implementation**:
+- Backend uses [Sharp](https://sharp.pixelplumbing.com/) library for high-performance image processing
+- Export endpoint: `GET /api/gallery/export/:id?format=png|jpg|webp&quality=1-100`
+- Frontend provides dropdown menu with format options in image detail modal
+
+**Supported Formats**:
+| Format | Content-Type | Use Case |
+|--------|--------------|----------|
+| PNG | image/png | Best quality, lossless compression |
+| JPG | image/jpeg | Smaller file size, good for photos |
+| WebP | image/webp | Smallest file size, modern format |
+
+**API Parameters**:
+- `format` - Output format: `png`, `jpg`, or `webp` (default: `png`)
+- `quality` - Compression quality: 1-100 (default: 85, applies to JPG/WebP)
+- `width` / `height` - Optional resize dimensions (maintains aspect ratio)
 
 ---
 
@@ -624,7 +647,14 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 | DELETE | `/api/gallery/:id` | Yes | Soft delete gallery image |
 | POST | `/api/gallery/:id/favorite` | Yes | Toggle favorite status |
 | GET | `/api/gallery/image/:id` | Yes | Serve gallery image file |
+| GET | `/api/gallery/export/:id` | Yes | Export image with format conversion (PNG/JPG/WebP) |
 | GET | `/api/gallery/stats` | Yes | Get gallery statistics |
+| GET | `/api/gallery/debug` | Yes | Debug endpoint for gallery issues |
+
+**Export Query Parameters:**
+- `format` - Output format: `png`, `jpg`, or `webp` (default: `png`)
+- `quality` - Compression quality: 1-100 (default: 85)
+- `width` / `height` - Optional resize dimensions
 
 ### Orders
 
@@ -926,6 +956,7 @@ RAZORPAY_PLAN_ID=plan_...
 - **Auth:** JWT + Argon2id
 - **API Style:** REST
 - **Payments:** Razorpay
+- **Image Processing:** Sharp (format conversion, resizing)
 
 ### Frontend
 - **Framework:** React 19
