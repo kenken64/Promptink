@@ -81,9 +81,10 @@ export const batchRoutes = {
 
   // Get a specific batch job with items
   "/api/batch/:id": {
-    GET: withAuth(async (req, user, params) => {
+    GET: withAuth(async (req, user) => {
       try {
-        const batchId = parseInt(params.id)
+        const url = new URL(req.url)
+        const batchId = parseInt(url.pathname.split("/").pop() || "0", 10)
         if (isNaN(batchId)) {
           return Response.json({ error: "Invalid batch ID" }, { status: 400 })
         }
@@ -101,9 +102,10 @@ export const batchRoutes = {
     }),
 
     // Cancel a batch job
-    PATCH: withAuth(async (req, user, params) => {
+    PATCH: withAuth(async (req, user) => {
       try {
-        const batchId = parseInt(params.id)
+        const url = new URL(req.url)
+        const batchId = parseInt(url.pathname.split("/").pop() || "0", 10)
         if (isNaN(batchId)) {
           return Response.json({ error: "Invalid batch ID" }, { status: 400 })
         }
@@ -130,9 +132,10 @@ export const batchRoutes = {
     }),
 
     // Delete a batch job
-    DELETE: withAuth(async (req, user, params) => {
+    DELETE: withAuth(async (req, user) => {
       try {
-        const batchId = parseInt(params.id)
+        const url = new URL(req.url)
+        const batchId = parseInt(url.pathname.split("/").pop() || "0", 10)
         if (isNaN(batchId)) {
           return Response.json({ error: "Invalid batch ID" }, { status: 400 })
         }
@@ -155,9 +158,12 @@ export const batchRoutes = {
 
   // Get batch job status (for polling)
   "/api/batch/:id/status": {
-    GET: withAuth(async (req, user, params) => {
+    GET: withAuth(async (req, user) => {
       try {
-        const batchId = parseInt(params.id)
+        const url = new URL(req.url)
+        // Extract ID from /api/batch/:id/status
+        const pathParts = url.pathname.split("/")
+        const batchId = parseInt(pathParts[pathParts.length - 2] || "0", 10)
         if (isNaN(batchId)) {
           return Response.json({ error: "Invalid batch ID" }, { status: 400 })
         }

@@ -8,7 +8,7 @@ import {
 } from "../db"
 import { generateImage, type GenerateImageOptions } from "./openai-service"
 import { saveImageToGallery, getGalleryImageUrl } from "../routes/gallery"
-import { syncImageToTrmnl } from "./trmnl-service"
+import { syncToTrmnl } from "../routes/sync"
 
 // Style preset definitions (same as in images.ts)
 const stylePresets: Record<string, string> = {
@@ -161,7 +161,7 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     if (batch.auto_sync_trmnl === 1) {
       try {
         const imageUrl = getGalleryImageUrl(galleryImage.id)
-        await syncImageToTrmnl(batch.user_id, imageUrl)
+        await syncToTrmnl(imageUrl, item.prompt, batch.user_id)
         log("INFO", "Batch image synced to TRMNL", { 
           batchId: batch.id, 
           itemId: item.id,
