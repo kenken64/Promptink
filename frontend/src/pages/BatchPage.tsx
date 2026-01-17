@@ -95,13 +95,13 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Batch Name (Optional) */}
       <div>
-        <label className="block text-sm font-medium mb-1">{t("batchName") || "Batch Name (Optional)"}</label>
+        <label className="block text-sm font-medium mb-1">{t.batch?.batchName || "Batch Name (Optional)"}</label>
         <input
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           className="w-full p-2 border rounded-md bg-background"
-          placeholder={t("batchNamePlaceholder") || "e.g., Nature scenes"}
+          placeholder={t.batch?.batchNamePlaceholder || "e.g., Nature scenes"}
         />
       </div>
 
@@ -109,7 +109,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="block text-sm font-medium">
-            {t("prompts") || "Prompts"} ({validPrompts.length}/{MAX_BATCH_SIZE})
+            {t.batch?.prompts || "Prompts"} ({validPrompts.length}/{MAX_BATCH_SIZE})
           </label>
           <Button
             type="button"
@@ -119,7 +119,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
             disabled={prompts.length >= MAX_BATCH_SIZE}
           >
             <Plus className="h-4 w-4 mr-1" />
-            {t("addPrompt") || "Add"}
+            {t.batch?.addPrompt || "Add"}
           </Button>
         </div>
         <div className="space-y-2">
@@ -130,7 +130,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
                   value={prompt}
                   onChange={e => updatePrompt(index, e.target.value)}
                   className="w-full min-h-[60px] p-2 border rounded-md bg-background resize-none"
-                  placeholder={`${t("prompt") || "Prompt"} ${index + 1}...`}
+                  placeholder={`${t.gallery?.prompt || "Prompt"} ${index + 1}...`}
                 />
               </div>
               {prompts.length > 1 && (
@@ -152,7 +152,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
       {/* Size & Style */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">{t("imageSize") || "Image Size"}</label>
+          <label className="block text-sm font-medium mb-1">{t.imageSize || "Image Size"}</label>
           <select
             value={size}
             onChange={e => setSize(e.target.value)}
@@ -166,7 +166,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{t("stylePreset") || "Style Preset"}</label>
+          <label className="block text-sm font-medium mb-1">{t.imageStyle || "Style Preset"}</label>
           <select
             value={stylePreset}
             onChange={e => setStylePreset(e.target.value)}
@@ -192,14 +192,14 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
         />
         <label htmlFor="autoSyncTrmnl" className="text-sm flex items-center gap-1">
           <Monitor className="h-4 w-4" />
-          {t("autoSyncTrmnl") || "Auto-sync each image to TRMNL display"}
+          {t.schedule?.autoSyncTrmnl || "Auto-sync each image to TRMNL display"}
         </label>
       </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-          {t("cancel")}
+          {t.schedule?.cancel || "Cancel"}
         </Button>
         <Button type="submit" disabled={isSubmitting || validPrompts.length === 0} className="flex-1">
           {isSubmitting ? (
@@ -207,7 +207,7 @@ function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
           ) : (
             <Check className="h-4 w-4 mr-2" />
           )}
-          {t("startBatch") || `Start Batch (${validPrompts.length} images)`}
+          {t.batch?.startBatch || `Start Batch (${validPrompts.length} images)`}
         </Button>
       </div>
     </form>
@@ -242,7 +242,8 @@ function BatchCard({ batch, onView, onCancel, onDelete }: BatchCardProps) {
   }
 
   const getStatusText = () => {
-    return t(batch.status) || batch.status.charAt(0).toUpperCase() + batch.status.slice(1)
+    const statusKey = batch.status as keyof typeof t.batch
+    return t.batch?.[statusKey] || batch.status.charAt(0).toUpperCase() + batch.status.slice(1)
   }
 
   const progress = Math.round(
@@ -273,7 +274,7 @@ function BatchCard({ batch, onView, onCancel, onDelete }: BatchCardProps) {
               </span>
               {batch.failed_count > 0 && (
                 <span className="text-red-500">
-                  {batch.failed_count} {t("failed") || "failed"}
+                  {batch.failed_count} {t.batch?.failed || "failed"}
                 </span>
               )}
               <span>{batch.size}</span>
@@ -292,13 +293,13 @@ function BatchCard({ batch, onView, onCancel, onDelete }: BatchCardProps) {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {progress}% {t("complete") || "complete"}
+                  {progress}% {t.batch?.complete || "complete"}
                 </p>
               </div>
             )}
 
             <p className="text-xs text-muted-foreground mt-1">
-              {t("created") || "Created"}: {new Date(batch.created_at).toLocaleString()}
+              {t.batch?.created || "Created"}: {new Date(batch.created_at).toLocaleString()}
             </p>
           </div>
 
@@ -362,24 +363,24 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
           {/* Summary */}
           <div className="flex items-center gap-4 text-sm">
             <span>
-              <strong>{t("status") || "Status"}:</strong> {batch.status}
+              <strong>{t.batch?.status || "Status"}:</strong> {batch.status}
             </span>
             <span>
-              <strong>{t("total") || "Total"}:</strong> {batch.total_count}
+              <strong>{t.batch?.total || "Total"}:</strong> {batch.total_count}
             </span>
             <span>
-              <strong>{t("completed") || "Completed"}:</strong> {batch.completed_count}
+              <strong>{t.batch?.completed || "Completed"}:</strong> {batch.completed_count}
             </span>
             {batch.failed_count > 0 && (
               <span className="text-red-500">
-                <strong>{t("failed") || "Failed"}:</strong> {batch.failed_count}
+                <strong>{t.batch?.failed || "Failed"}:</strong> {batch.failed_count}
               </span>
             )}
           </div>
 
           {/* Items */}
           <div className="space-y-2">
-            <h3 className="font-medium">{t("images") || "Images"}</h3>
+            <h3 className="font-medium">{t.batch?.images || "Images"}</h3>
             {batch.items.map((item, index) => (
               <div key={item.id} className="flex items-start gap-2 p-2 bg-muted rounded-md">
                 <div className="flex items-center gap-2 min-w-[80px]">
@@ -413,7 +414,7 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
 
         <div className="flex justify-end p-4 border-t">
           <Button onClick={onClose}>
-            {t("close") || "Close"}
+            {t.close || "Close"}
           </Button>
         </div>
       </div>
@@ -470,14 +471,14 @@ export default function BatchPage() {
   }
 
   const handleCancel = async (batch: BatchJob) => {
-    if (confirm(t("confirmCancelBatch") || "Are you sure you want to cancel this batch?")) {
+    if (confirm(t.batch?.confirmCancelBatch || "Are you sure you want to cancel this batch?")) {
       stopPolling()
       await cancelBatch(batch.id)
     }
   }
 
   const handleDelete = async (batch: BatchJob) => {
-    if (confirm(t("confirmDeleteBatch") || "Are you sure you want to delete this batch?")) {
+    if (confirm(t.batch?.confirmDeleteBatch || "Are you sure you want to delete this batch?")) {
       await deleteBatch(batch.id)
     }
   }
@@ -499,11 +500,11 @@ export default function BatchPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Layers className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">{t("batchGeneration") || "Batch Generation"}</h1>
+          <h1 className="text-2xl font-bold">{t.batch?.title || "Batch Generation"}</h1>
         </div>
         <Button onClick={() => setShowForm(true)} disabled={showForm}>
           <Plus className="h-4 w-4 mr-2" />
-          {t("newBatch") || "New Batch"}
+          {t.batch?.newBatch || "New Batch"}
         </Button>
       </div>
 
@@ -518,7 +519,7 @@ export default function BatchPage() {
       {showForm && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg">{t("createBatch") || "Create Batch Job"}</CardTitle>
+            <CardTitle className="text-lg">{t.batch?.createBatch || "Create Batch Job"}</CardTitle>
           </CardHeader>
           <CardContent>
             <BatchForm
@@ -535,8 +536,8 @@ export default function BatchPage() {
         <div className="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 p-3 rounded-md mb-4 flex items-center gap-2">
           <RefreshCw className="h-4 w-4 animate-spin" />
           {activeBatches.length === 1
-            ? t("oneBatchProcessing") || "1 batch is being processed..."
-            : `${activeBatches.length} ${t("batchesProcessing") || "batches are being processed..."}`}
+            ? t.batch?.oneBatchProcessing || "1 batch is being processed..."
+            : `${activeBatches.length} ${t.batch?.batchesProcessing || "batches are being processed..."}`}
         </div>
       )}
 
@@ -544,14 +545,14 @@ export default function BatchPage() {
       {isLoading && batches.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-          {t("loading") || "Loading..."}
+          {t.settings?.saving ? "Loading..." : "Loading..."}
         </div>
       ) : batches.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Layers className="h-12 w-12 mx-auto mb-2 opacity-50" />
-          <p>{t("noBatches") || "No batch jobs yet"}</p>
+          <p>{t.batch?.noBatches || "No batch jobs yet"}</p>
           <p className="text-sm mt-1">
-            {t("createBatchHint") || "Create a batch to generate multiple images at once"}
+            {t.batch?.createBatchHint || "Create a batch to generate multiple images at once"}
           </p>
         </div>
       ) : (
