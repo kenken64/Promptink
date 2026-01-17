@@ -92,12 +92,12 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Prompt */}
       <div>
-        <label className="block text-sm font-medium mb-1">{t("prompt")}</label>
+        <label className="block text-sm font-medium mb-1">{t.schedule?.prompt || "Prompt"}</label>
         <textarea
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
           className="w-full min-h-[80px] p-2 border rounded-md bg-background resize-none"
-          placeholder={t("enterPrompt") || "Enter your image prompt..."}
+          placeholder={t.schedule?.enterPrompt || "Enter your image prompt..."}
           required
         />
       </div>
@@ -105,7 +105,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {/* Size & Style */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">{t("imageSize") || "Image Size"}</label>
+          <label className="block text-sm font-medium mb-1">{t.imageSize || "Image Size"}</label>
           <select
             value={size}
             onChange={e => setSize(e.target.value)}
@@ -119,7 +119,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{t("stylePreset") || "Style Preset"}</label>
+          <label className="block text-sm font-medium mb-1">{t.imageStyle || "Style Preset"}</label>
           <select
             value={stylePreset}
             onChange={e => setStylePreset(e.target.value)}
@@ -136,7 +136,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
 
       {/* Schedule Type */}
       <div>
-        <label className="block text-sm font-medium mb-1">{t("scheduleType") || "Schedule Type"}</label>
+        <label className="block text-sm font-medium mb-1">{t.schedule?.scheduleType || "Schedule Type"}</label>
         <div className="flex gap-2">
           {(["once", "daily", "weekly"] as const).map(type => (
             <button
@@ -149,7 +149,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
                   : "bg-background hover:bg-muted"
               }`}
             >
-              {t(type) || type.charAt(0).toUpperCase() + type.slice(1)}
+              {t.schedule?.[type] || type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
           ))}
         </div>
@@ -158,7 +158,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {/* Schedule Time (for daily/weekly) */}
       {scheduleType !== "once" && (
         <div>
-          <label className="block text-sm font-medium mb-1">{t("scheduleTime") || "Time"}</label>
+          <label className="block text-sm font-medium mb-1">{t.schedule?.scheduleTime || "Time"}</label>
           <Input
             type="time"
             value={scheduleTime}
@@ -171,7 +171,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {/* Schedule Days (for weekly) */}
       {scheduleType === "weekly" && (
         <div>
-          <label className="block text-sm font-medium mb-1">{t("scheduleDays") || "Days"}</label>
+          <label className="block text-sm font-medium mb-1">{t.schedule?.scheduleDays || "Days"}</label>
           <div className="flex gap-1">
             {DAY_NAMES.map((name, index) => (
               <button
@@ -194,7 +194,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {/* Scheduled At (for once) */}
       {scheduleType === "once" && (
         <div>
-          <label className="block text-sm font-medium mb-1">{t("scheduledAt") || "Date & Time"}</label>
+          <label className="block text-sm font-medium mb-1">{t.schedule?.scheduledAt || "Date & Time"}</label>
           <Input
             type="datetime-local"
             value={scheduledAt}
@@ -216,14 +216,14 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
         />
         <label htmlFor="autoSyncTrmnl" className="text-sm flex items-center gap-1">
           <Monitor className="h-4 w-4" />
-          {t("autoSyncTrmnl") || "Auto-sync to TRMNL display"}
+          {t.schedule?.autoSyncTrmnl || "Auto-sync to TRMNL display"}
         </label>
       </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-          {t("cancel")}
+          {t.schedule?.cancel || "Cancel"}
         </Button>
         <Button type="submit" disabled={isSubmitting || !prompt.trim()} className="flex-1">
           {isSubmitting ? (
@@ -231,7 +231,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
           ) : (
             <Check className="h-4 w-4 mr-2" />
           )}
-          {initialData ? t("update") || "Update" : t("create") || "Create"}
+          {initialData ? t.schedule?.update || "Update" : t.schedule?.create || "Create"}
         </Button>
       </div>
     </form>
@@ -255,8 +255,8 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
     const now = new Date()
     const diffMs = date.getTime() - now.getTime()
 
-    if (diffMs < 0) return t("overdue") || "Overdue"
-    if (diffMs < 60000) return t("soon") || "Soon"
+    if (diffMs < 0) return t.schedule?.overdue || "Overdue"
+    if (diffMs < 60000) return t.schedule?.soon || "Soon"
     if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m`
     if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h`
     return date.toLocaleDateString()
@@ -269,7 +269,7 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
         : "-"
     }
     if (job.schedule_type === "daily") {
-      return `${t("daily") || "Daily"} @ ${job.schedule_time}`
+      return `${t.schedule?.daily || "Daily"} @ ${job.schedule_time}`
     }
     if (job.schedule_type === "weekly") {
       const days = job.schedule_days?.map(d => DAY_NAMES[d]).join(", ") || ""
@@ -292,7 +292,7 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 <Clock className="h-3 w-3" />
                 <span>
-                  {t("nextRun") || "Next"}: {formatNextRun(job.next_run_at)}
+                  {t.schedule?.nextRun || "Next"}: {formatNextRun(job.next_run_at)}
                 </span>
               </div>
             )}
@@ -306,7 +306,7 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
                 </span>
               )}
               {job.run_count > 0 && (
-                <span>{job.run_count} {t("runs") || "runs"}</span>
+                <span>{job.run_count} {t.schedule?.runs || "runs"}</span>
               )}
             </div>
           </div>
@@ -381,10 +381,10 @@ export function SchedulePage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Calendar className="h-6 w-6" />
-            {t("schedule") || "Schedule"}
+            {t.schedule?.title || "Schedule"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {t("scheduleDescription") || "Automatically generate images on a schedule"}
+            {t.schedule?.description || "Automatically generate images on a schedule"}
           </p>
         </div>
         {!showForm && !editingJob && (
@@ -394,7 +394,7 @@ export function SchedulePage() {
             title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
           >
             <Plus className="h-4 w-4 mr-2" />
-            {t("newSchedule") || "New"}
+            {t.schedule?.newSchedule || "New"}
           </Button>
         )}
       </div>
@@ -403,7 +403,7 @@ export function SchedulePage() {
       {showForm && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t("createSchedule") || "Create Schedule"}</CardTitle>
+            <CardTitle>{t.schedule?.createSchedule || "Create Schedule"}</CardTitle>
           </CardHeader>
           <CardContent>
             <ScheduleForm
@@ -419,7 +419,7 @@ export function SchedulePage() {
       {editingJob && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t("editSchedule") || "Edit Schedule"}</CardTitle>
+            <CardTitle>{t.schedule?.editSchedule || "Edit Schedule"}</CardTitle>
           </CardHeader>
           <CardContent>
             <ScheduleForm
@@ -441,7 +441,7 @@ export function SchedulePage() {
 
       {/* Stats */}
       <div className="text-sm text-muted-foreground mb-4">
-        {total} / {limit} {t("schedulesUsed") || "schedules"}
+        {total} / {limit} {t.schedule?.schedulesUsed || "schedules"}
       </div>
 
       {/* Jobs List */}
@@ -452,9 +452,9 @@ export function SchedulePage() {
       ) : jobs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>{t("noSchedules") || "No scheduled jobs yet"}</p>
+          <p>{t.schedule?.noSchedules || "No scheduled jobs yet"}</p>
           <p className="text-sm mt-1">
-            {t("createFirstSchedule") || "Create your first schedule to get started"}
+            {t.schedule?.createFirstSchedule || "Create your first schedule to get started"}
           </p>
         </div>
       ) : (
@@ -471,15 +471,15 @@ export function SchedulePage() {
               {deleteConfirm === job.id && (
                 <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center rounded-lg">
                   <div className="text-center p-4">
-                    <p className="font-medium mb-3">{t("confirmDelete") || "Delete this schedule?"}</p>
+                    <p className="font-medium mb-3">{t.schedule?.confirmDelete || "Delete this schedule?"}</p>
                     <div className="flex gap-2 justify-center">
                       <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)}>
                         <X className="h-4 w-4 mr-1" />
-                        {t("cancel")}
+                        {t.schedule?.cancel || "Cancel"}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => handleDelete(job.id)}>
                         <Trash2 className="h-4 w-4 mr-1" />
-                        {t("delete")}
+                        {t.schedule?.delete || "Delete"}
                       </Button>
                     </div>
                   </div>
