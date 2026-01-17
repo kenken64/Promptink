@@ -139,12 +139,12 @@ export function ShareButton({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/50 sm:bg-transparent"
+            className="fixed inset-0 z-[100] bg-black/50"
             onClick={() => setShowMenu(false)}
           />
 
-          {/* Menu */}
-          <div className="fixed sm:absolute bottom-auto sm:bottom-full top-1/2 sm:top-auto left-1/2 sm:left-auto right-auto sm:right-0 -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 sm:mb-2 z-50 bg-popover border border-border rounded-lg shadow-xl p-4 sm:p-3 w-[280px] sm:w-auto sm:min-w-[240px] animate-in fade-in zoom-in-95 sm:slide-in-from-bottom-2 duration-200">
+          {/* Menu - always fixed center for consistency across all contexts */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] bg-popover border border-border rounded-lg shadow-xl p-4 w-[280px] animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium">{shareText}</span>
               <Button
