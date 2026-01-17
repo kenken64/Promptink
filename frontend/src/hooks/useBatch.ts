@@ -68,10 +68,14 @@ export function useBatch(): UseBatchReturn {
   const [currentBatch, setCurrentBatch] = useState<BatchJobWithItems | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader, logout } = useAuth()
+  const { getAuthHeader, logout, isAuthenticated, isLoading: authLoading } = useAuth()
   const pollIntervalRef = useRef<NodeJS.Timer | null>(null)
 
   const fetchBatches = useCallback(async () => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated) {
+      return
+    }
     setIsLoading(true)
     setError(null)
     try {
@@ -95,7 +99,7 @@ export function useBatch(): UseBatchReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader, logout])
+  }, [getAuthHeader, logout, isAuthenticated])
 
   const fetchBatch = useCallback(async (id: number): Promise<BatchJobWithItems | null> => {
     setError(null)
@@ -278,10 +282,12 @@ export function useBatch(): UseBatchReturn {
     }
   }, [stopPolling])
 
-  // Fetch batches on mount
+  // Fetch batches on mount (only after auth is loaded)
   useEffect(() => {
-    fetchBatches()
-  }, [fetchBatches])
+    if (!authLoading && isAuthenticated) {
+      fetchBatches()
+    }
+  }, [fetchBatches, authLoading, isAuthenticated])
 
   return {
     batches,

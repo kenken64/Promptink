@@ -53,9 +53,13 @@ export function useSchedule(): UseScheduleReturn {
   const [limit, setLimit] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader, logout } = useAuth()
+  const { getAuthHeader, logout, isAuthenticated, isLoading: authLoading } = useAuth()
 
   const fetchJobs = useCallback(async () => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated) {
+      return
+    }
     setIsLoading(true)
     setError(null)
     try {
@@ -81,7 +85,7 @@ export function useSchedule(): UseScheduleReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader, logout])
+  }, [getAuthHeader, logout, isAuthenticated])
 
   const createJob = useCallback(async (input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
@@ -198,10 +202,12 @@ export function useSchedule(): UseScheduleReturn {
     }
   }, [getAuthHeader, logout])
 
-  // Fetch jobs on mount
+  // Fetch jobs on mount (only after auth is loaded)
   useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs])
+    if (!authLoading && isAuthenticated) {
+      fetchJobs()
+    }
+  }, [fetchJobs, authLoading, isAuthenticated])
 
   return {
     jobs,
