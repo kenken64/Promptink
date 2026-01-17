@@ -56,10 +56,11 @@ export async function saveImageToGallery(imageUrl: string, userId: number, image
 }
 
 // Transform database image to response format
+// Uses permanent server URL instead of expired OpenAI URL
 function transformImage(img: GeneratedImage) {
   return {
     id: img.id,
-    imageUrl: img.image_url,
+    imageUrl: getGalleryImageUrl(img.id), // Use permanent URL, not expired OpenAI URL
     originalPrompt: img.original_prompt,
     revisedPrompt: img.revised_prompt,
     model: img.model,
