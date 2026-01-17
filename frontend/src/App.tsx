@@ -639,12 +639,12 @@ export default function App() {
 
   // Schedule page rendering
   const renderSchedulePage = () => (
-    <SchedulePage />
+    <SchedulePage onNavigate={(page) => setAppPage(page)} />
   )
 
   // Batch page rendering
   const renderBatchPage = () => (
-    <BatchPage />
+    <BatchPage onNavigate={(page) => setAppPage(page)} />
   )
 
   const renderCurrentPage = () => {
