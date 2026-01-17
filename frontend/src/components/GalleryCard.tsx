@@ -97,7 +97,7 @@ export function GalleryCard({
           <ImagePlaceholder />
         ) : (
           <img
-            src={image.imageUrl}
+            src={image.thumbnailUrl || image.imageUrl}
             alt={image.originalPrompt}
             className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
             loading="lazy"

@@ -4,6 +4,7 @@ import { useAuth } from "./useAuth"
 export interface GalleryImage {
   id: number
   imageUrl: string
+  thumbnailUrl: string
   originalPrompt: string
   revisedPrompt: string | null
   model: string

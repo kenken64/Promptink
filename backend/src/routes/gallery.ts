@@ -31,6 +31,11 @@ export function getGalleryImageUrl(imageId: number): string {
   return `${config.server.baseUrl}/api/gallery/image/${imageId}`
 }
 
+// Get the thumbnail URL for a gallery image (smaller, compressed for list views)
+export function getGalleryThumbnailUrl(imageId: number): string {
+  return `${config.server.baseUrl}/api/gallery/thumbnail/${imageId}`
+}
+
 // Download image from URL and save to gallery
 export async function saveImageToGallery(imageUrl: string, userId: number, imageId: number): Promise<string> {
   log("INFO", "Saving image to gallery", { imageUrl: imageUrl.substring(0, 100) + "...", userId, imageId })
@@ -60,7 +65,8 @@ export async function saveImageToGallery(imageUrl: string, userId: number, image
 function transformImage(img: GeneratedImage) {
   return {
     id: img.id,
-    imageUrl: getGalleryImageUrl(img.id), // Use permanent URL, not expired OpenAI URL
+    imageUrl: getGalleryImageUrl(img.id), // Full quality image for detail view
+    thumbnailUrl: getGalleryThumbnailUrl(img.id), // Compressed thumbnail for list view
     originalPrompt: img.original_prompt,
     revisedPrompt: img.revised_prompt,
     model: img.model,
@@ -232,6 +238,53 @@ export const galleryRoutes = {
         })
       } catch (error) {
         log("ERROR", "Failed to serve gallery image", error)
+        return new Response("Internal server error", { status: 500 })
+      }
+    },
+  },
+
+  // Serve compressed thumbnail for gallery list view (faster loading on mobile)
+  "/api/gallery/thumbnail/:id": {
+    GET: async (req: Request & { params: { id: string } }) => {
+      try {
+        const imageId = parseInt(req.params.id, 10)
+
+        if (isNaN(imageId)) {
+          return new Response("Invalid image ID", { status: 400 })
+        }
+
+        // Get image to find user
+        const image = generatedImageQueries.findById.get(imageId)
+
+        if (!image) {
+          return new Response("Image not found", { status: 404 })
+        }
+
+        const filePath = getGalleryImagePath(image.user_id, imageId)
+        const file = Bun.file(filePath)
+
+        if (!(await file.exists())) {
+          return new Response("Image file not found", { status: 404 })
+        }
+
+        // Generate compressed thumbnail (300x300 WebP at 60% quality)
+        const inputBuffer = Buffer.from(await file.arrayBuffer())
+        const thumbnailBuffer = await sharp(inputBuffer)
+          .resize(300, 300, {
+            fit: "cover",
+            position: "center",
+          })
+          .webp({ quality: 60 })
+          .toBuffer()
+
+        return new Response(thumbnailBuffer, {
+          headers: {
+            "Content-Type": "image/webp",
+            "Cache-Control": "public, max-age=31536000",
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to serve gallery thumbnail", error)
         return new Response("Internal server error", { status: 500 })
       }
     },
