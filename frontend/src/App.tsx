@@ -135,6 +135,7 @@ export default function App() {
         result = await response.json()
       } else {
         // Use regular image generation
+        console.log("Generating image with size:", selectedSize)
         result = await generateImage({ prompt, language, authHeaders: getAuthHeader(), size: selectedSize })
       }
 
