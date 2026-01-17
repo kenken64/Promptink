@@ -207,22 +207,6 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: O
     return count === 1 ? `${count} order` : `${count} orders`
   }
 
-  // Order more button for header
-  const orderMoreButton = (
-    <Button
-      size="sm"
-      onClick={onOrderMore}
-      className={cn(
-        "rounded-xl font-medium text-white transition-all duration-300 hidden sm:flex",
-        "bg-gradient-to-r from-teal-500 to-emerald-500",
-        "hover:from-teal-400 hover:to-emerald-400"
-      )}
-    >
-      <Plus className="h-4 w-4 mr-2" />
-      {t.orders?.orderMore || "Order More"}
-    </Button>
-  )
-
   return (
     <div className="min-h-screen bg-background">
       {/* Standardized Header */}
@@ -230,7 +214,6 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: O
         title={t.orders?.title || "Orders"}
         onNavigate={onNavigate}
         currentPage="orders"
-        rightContent={orderMoreButton}
         onLogout={onLogout}
       />
 
@@ -241,7 +224,7 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: O
       </div>
 
       <div className="relative max-w-2xl mx-auto p-4">
-        {/* Stats & Mobile order button */}
+        {/* Stats & Order More button */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground text-sm">
             {getOrderCountText(orders.length)}
@@ -249,7 +232,7 @@ export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: O
           <Button
             onClick={onOrderMore}
             className={cn(
-              "rounded-xl font-medium text-white transition-all duration-300 sm:hidden",
+              "rounded-xl font-medium text-white transition-all duration-300",
               "bg-gradient-to-r from-teal-500 to-emerald-500",
               "hover:from-teal-400 hover:to-emerald-400"
             )}

@@ -503,14 +503,6 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
     b => b.status === "pending" || b.status === "processing"
   )
 
-  // New batch button for header
-  const newBatchButton = (
-    <Button size="sm" onClick={() => setShowForm(true)} disabled={showForm} className="hidden sm:flex">
-      <Plus className="h-4 w-4 mr-2" />
-      {t.batch?.newBatch || "New Batch"}
-    </Button>
-  )
-
   return (
     <div className="min-h-screen bg-background">
       {/* Standardized Header */}
@@ -518,17 +510,21 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
         title={t.batch?.title || "Batch Generation"}
         onNavigate={onNavigate}
         currentPage="batch"
-        rightContent={newBatchButton}
         onLogout={onLogout}
       />
 
       <div className="container mx-auto p-4 max-w-2xl">
-        {/* Mobile new button */}
-        <div className="flex justify-end mb-4 sm:hidden">
-          <Button onClick={() => setShowForm(true)} disabled={showForm}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t.batch?.newBatch || "New Batch"}
-          </Button>
+        {/* Description and New Batch button */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-muted-foreground">
+            {t.batch?.description || "Generate multiple images at once"}
+          </p>
+          {!showForm && (
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t.batch?.newBatch || "New Batch"}
+            </Button>
+          )}
         </div>
 
         {error && (
