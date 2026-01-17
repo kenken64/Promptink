@@ -12,8 +12,42 @@ import { shareRoutes } from "./share"
 import { galleryRoutes } from "./gallery"
 import { db } from "../db"
 import { config } from "../config"
-import { existsSync, readFileSync } from "fs"
+import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
+
+// Helper to recursively list files in a directory
+function listFilesRecursive(dir: string, baseDir: string = dir): { path: string; size: number; isDir: boolean }[] {
+  const results: { path: string; size: number; isDir: boolean }[] = []
+  
+  if (!existsSync(dir)) {
+    return results
+  }
+
+  try {
+    const entries = readdirSync(dir)
+    for (const entry of entries) {
+      const fullPath = join(dir, entry)
+      const relativePath = fullPath.replace(baseDir, "").replace(/^[\/\\]/, "")
+      try {
+        const stat = statSync(fullPath)
+        if (stat.isDirectory()) {
+          results.push({ path: relativePath + "/", size: 0, isDir: true })
+          // Recursively list subdirectory contents
+          const subFiles = listFilesRecursive(fullPath, baseDir)
+          results.push(...subFiles)
+        } else {
+          results.push({ path: relativePath, size: stat.size, isDir: false })
+        }
+      } catch {
+        // Skip files we can't stat
+      }
+    }
+  } catch {
+    // Can't read directory
+  }
+
+  return results
+}
 
 // Health check endpoint for Railway
 const healthRoutes = {
@@ -47,6 +81,10 @@ const healthRoutes = {
         volumeStatus = "not-mounted"
       }
 
+      // List files in data directory
+      const files = listFilesRecursive(dataDir)
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+
       return Response.json({
         status: "ok",
         timestamp: new Date().toISOString(),
@@ -58,6 +96,10 @@ const healthRoutes = {
           info: volumeInfo,
           imagesDir: config.storage.imagesDir,
           imagesDirExists: existsSync(config.storage.imagesDir),
+          files: files,
+          totalFiles: files.filter(f => !f.isDir).length,
+          totalSize: totalSize,
+          totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + " MB",
         },
       })
     },
