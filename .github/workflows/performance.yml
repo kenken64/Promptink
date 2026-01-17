@@ -223,6 +223,85 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Generate HTML report
+        run: |
+          mkdir -p reports
+          
+          # Create HTML report
+          cat > reports/performance-report.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>K6 Performance Test Report</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #1a1a2e; color: #eee; }
+              h1 { color: #00d9ff; }
+              h2 { color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 10px; }
+              .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+              .metric { display: inline-block; padding: 15px 25px; margin: 10px; background: #0f3460; border-radius: 8px; text-align: center; }
+              .metric-value { font-size: 2em; font-weight: bold; color: #00d9ff; }
+              .metric-label { color: #888; font-size: 0.9em; }
+              .success { color: #10b981; }
+              .warning { color: #f59e0b; }
+              .error { color: #ef4444; }
+              pre { background: #0f3460; padding: 15px; border-radius: 8px; overflow-x: auto; }
+              table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+              th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+              th { background: #0f3460; color: #00d9ff; }
+              tr:hover { background: #1e3a5f; }
+            </style>
+          </head>
+          <body>
+            <h1>🚀 PromptInk Performance Test Report</h1>
+            <div class="card">
+              <p><strong>Target:</strong> ${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }}</p>
+              <p><strong>Run:</strong> #${{ github.run_number }}</p>
+              <p><strong>Date:</strong> $(date -u +'%Y-%m-%d %H:%M:%S UTC')</p>
+              <p><strong>Commit:</strong> ${{ github.sha }}</p>
+            </div>
+          EOF
+
+          # Parse smoke test results if available
+          if [ -f "artifacts/smoke-test-results/smoke-summary.json" ]; then
+            echo "<h2>Smoke Test Results</h2>" >> reports/performance-report.html
+            echo "<div class='card'>" >> reports/performance-report.html
+            
+            # Extract metrics using jq-like parsing with grep/sed
+            REQS=$(grep -o '"http_reqs":{[^}]*"count":[0-9]*' artifacts/smoke-test-results/smoke-summary.json | grep -o 'count":[0-9]*' | cut -d: -f2 || echo "N/A")
+            AVG=$(grep -o '"http_req_duration":{[^}]*"avg":[0-9.]*' artifacts/smoke-test-results/smoke-summary.json | grep -o 'avg":[0-9.]*' | cut -d: -f2 || echo "N/A")
+            P95=$(grep -o '"p(95)":[0-9.]*' artifacts/smoke-test-results/smoke-summary.json | head -1 | cut -d: -f2 || echo "N/A")
+            
+            cat >> reports/performance-report.html << EOF2
+              <div class="metric">
+                <div class="metric-value">${REQS:-N/A}</div>
+                <div class="metric-label">Total Requests</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">${AVG:-N/A}ms</div>
+                <div class="metric-label">Avg Response Time</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">${P95:-N/A}ms</div>
+                <div class="metric-label">P95 Response Time</div>
+              </div>
+            </div>
+            <details>
+              <summary>Raw JSON Data</summary>
+              <pre>$(cat artifacts/smoke-test-results/smoke-summary.json)</pre>
+            </details>
+          EOF2
+          fi
+
+          # Close HTML
+          echo "</body></html>" >> reports/performance-report.html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: reports/
+          retention-days: 90
+
       - name: Generate summary report
         run: |
           echo "# Performance Test Results" >> $GITHUB_STEP_SUMMARY
@@ -230,6 +309,8 @@ jobs:
           echo "**Target:** ${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "**Run:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📥 **Download the HTML report from the Artifacts section below.**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "artifacts/smoke-test-results/smoke-summary.json" ]; then
