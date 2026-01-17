@@ -3,14 +3,18 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
 import { ImageDetailModal } from "../components/ImageDetailModal"
+import { PageHeader } from "../components/PageHeader"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
+import { RefreshCw } from "lucide-react"
+
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface GalleryPageProps {
-  onBack: () => void
+  onNavigate: (page: AppPage) => void
 }
 
-export function GalleryPage({ onBack }: GalleryPageProps) {
+export function GalleryPage({ onNavigate }: GalleryPageProps) {
   const { t } = useLanguage()
   const {
     images,
@@ -68,73 +72,45 @@ export function GalleryPage({ onBack }: GalleryPageProps) {
     ? images.findIndex((img) => img.id === selectedImage.id)
     : -1
 
+  // Refresh button for header
+  const refreshButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={refresh}
+      disabled={isLoading}
+      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+      title={t.gallery?.refresh || "Refresh"}
+    >
+      <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+    </Button>
+  )
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">{t.gallery.title}</h1>
-              {stats && (
-                <p className="text-sm text-muted-foreground">
-                  {t.gallery.totalImages.replace("{count}", String(stats.total))}
-                  {stats.favorites > 0 && (
-                    <> · {t.gallery.totalFavorites.replace("{count}", String(stats.favorites))}</>
-                  )}
-                </p>
-              )}
-            </div>
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.gallery?.title}
+        onNavigate={onNavigate}
+        currentPage="gallery"
+        rightContent={refreshButton}
+      />
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refresh}
-                disabled={isLoading}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className={`w-4 h-4 mr-1 ${isLoading ? "animate-spin" : ""}`}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-                  />
-                </svg>
-                {t.gallery.refresh}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-4 h-4 mr-1"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
-                  />
-                </svg>
-                {t.gallery.back}
-              </Button>
-            </div>
-          </div>
+      {/* Sub-header with stats, filters & search */}
+      <div className="sticky top-[57px] z-[9] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="container max-w-7xl mx-auto px-4 py-4">
+          {/* Stats */}
+          {stats && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {t.gallery?.totalImages?.replace("{count}", String(stats.total))}
+              {stats.favorites > 0 && (
+                <> · {t.gallery?.totalFavorites?.replace("{count}", String(stats.favorites))}</>
+              )}
+            </p>
+          )}
 
           {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {/* Filter tabs */}
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
@@ -145,7 +121,7 @@ export function GalleryPage({ onBack }: GalleryPageProps) {
                 }`}
                 onClick={() => setFilter("all")}
               >
-                {t.gallery.allImages}
+                {t.gallery?.allImages}
               </button>
               <button
                 className={`px-4 py-2 text-sm font-medium transition-colors border-l border-border ${
@@ -167,7 +143,7 @@ export function GalleryPage({ onBack }: GalleryPageProps) {
                     clipRule="evenodd"
                   />
                 </svg>
-                {t.gallery.favorites}
+                {t.gallery?.favorites}
               </button>
             </div>
 
@@ -176,7 +152,7 @@ export function GalleryPage({ onBack }: GalleryPageProps) {
               <div className="relative flex-1">
                 <Input
                   type="text"
-                  placeholder={t.gallery.searchPlaceholder}
+                  placeholder={t.gallery?.searchPlaceholder}
                   value={localSearch}
                   onChange={(e) => setLocalSearch(e.target.value)}
                   className="pr-8"
@@ -227,13 +203,13 @@ export function GalleryPage({ onBack }: GalleryPageProps) {
           {searchQuery && (
             <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
               <span>
-                {t.gallery.searchingFor}: <strong>"{searchQuery}"</strong>
+                {t.gallery?.searchingFor}: <strong>"{searchQuery}"</strong>
               </span>
               <button
                 className="text-primary hover:underline"
                 onClick={clearSearch}
               >
-                {t.gallery.clearSearch}
+                {t.gallery?.clearSearch}
               </button>
             </div>
           )}

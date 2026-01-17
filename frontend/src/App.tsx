@@ -574,7 +574,7 @@ export default function App() {
     <SettingsPage
       userId={user?.id || 0}
       authHeaders={getAuthHeader()}
-      onBack={() => setAppPage("chat")}
+      onNavigate={(page) => setAppPage(page)}
       translations={t.settings}
     />
   )
@@ -584,7 +584,7 @@ export default function App() {
     <PurchasePage
       authHeaders={getAuthHeader()}
       onSuccess={handleOrderSuccess}
-      onBack={hasFullAccess() ? () => setAppPage("chat") : undefined}
+      onNavigate={hasFullAccess() ? (page) => setAppPage(page) : undefined}
       onSkip={() => {
         setHasSkippedPurchase(true)
         setAppPage("chat")
@@ -619,7 +619,7 @@ export default function App() {
   const renderOrdersPage = () => (
     <OrdersPage
       authHeaders={getAuthHeader()}
-      onBack={() => setAppPage("chat")}
+      onNavigate={(page) => setAppPage(page)}
       onOrderMore={() => setAppPage("purchase")}
     />
   )
@@ -628,13 +628,13 @@ export default function App() {
   const renderSubscriptionPage = () => (
     <SubscriptionPage
       authHeaders={getAuthHeader()}
-      onBack={() => setAppPage("chat")}
+      onNavigate={(page) => setAppPage(page)}
     />
   )
 
   // Gallery page rendering
   const renderGalleryPage = () => (
-    <GalleryPage onBack={() => setAppPage("chat")} />
+    <GalleryPage onNavigate={(page) => setAppPage(page)} />
   )
 
   // Schedule page rendering

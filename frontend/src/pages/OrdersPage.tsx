@@ -8,18 +8,20 @@ import {
   XCircle,
   Gift,
   ExternalLink,
-  ArrowLeft,
   Plus,
   Loader2,
   MapPin,
 } from "lucide-react"
 import { Button } from "../components/ui/button"
+import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
 import { useOrders, useLanguage, type Order } from "../hooks"
 
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+
 interface OrdersPageProps {
   authHeaders: { Authorization?: string }
-  onBack: () => void
+  onNavigate: (page: AppPage) => void
   onOrderMore: () => void
 }
 
@@ -193,7 +195,7 @@ function OrderCard({ order, t, language }: OrderCardProps) {
   )
 }
 
-export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps) {
+export function OrdersPage({ authHeaders, onNavigate, onOrderMore }: OrdersPageProps) {
   const { orders, isLoading, error } = useOrders()
   const { t, language } = useLanguage()
 
@@ -204,45 +206,54 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
     return count === 1 ? `${count} order` : `${count} orders`
   }
 
+  // Order more button for header
+  const orderMoreButton = (
+    <Button
+      size="sm"
+      onClick={onOrderMore}
+      className={cn(
+        "rounded-xl font-medium text-white transition-all duration-300 hidden sm:flex",
+        "bg-gradient-to-r from-teal-500 to-emerald-500",
+        "hover:from-teal-400 hover:to-emerald-400"
+      )}
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      {t.orders?.orderMore || "Order More"}
+    </Button>
+  )
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.orders?.title || "Orders"}
+        onNavigate={onNavigate}
+        currentPage="orders"
+        rightContent={orderMoreButton}
+      />
+
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
-      <div className="relative max-w-2xl mx-auto p-4 pt-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="p-2 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <ShoppingBag className="h-6 w-6 text-teal-400" />
-                {t.orders.title}
-              </h1>
-              <p className="text-slate-400 text-sm">
-                {getOrderCountText(orders.length)}
-              </p>
-            </div>
-          </div>
+      <div className="relative max-w-2xl mx-auto p-4">
+        {/* Stats & Mobile order button */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-slate-400 text-sm">
+            {getOrderCountText(orders.length)}
+          </p>
           <Button
             onClick={onOrderMore}
             className={cn(
-              "rounded-xl font-medium text-white transition-all duration-300",
+              "rounded-xl font-medium text-white transition-all duration-300 sm:hidden",
               "bg-gradient-to-r from-teal-500 to-emerald-500",
-              "hover:from-teal-400 hover:to-emerald-400",
-              "shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40"
+              "hover:from-teal-400 hover:to-emerald-400"
             )}
           >
             <Plus className="h-4 w-4 mr-2" />
-            {t.orders.orderMore}
+            {t.orders?.orderMore || "Order More"}
           </Button>
         </div>
 
@@ -254,8 +265,8 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
         ) : error ? (
           <div className="text-center py-20">
             <p className="text-red-400 mb-4">{error}</p>
-            <Button onClick={onBack} variant="outline">
-              {t.orders.goBack}
+            <Button onClick={() => onNavigate("chat")} variant="outline">
+              {t.orders?.goBack || "Go Back"}
             </Button>
           </div>
         ) : orders.length === 0 ? (
@@ -263,9 +274,9 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
             <div className="h-16 w-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center mx-auto mb-4">
               <ShoppingBag className="h-8 w-8 text-slate-500" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">{t.orders.noOrdersTitle}</h2>
+            <h2 className="text-xl font-semibold text-white mb-2">{t.orders?.noOrdersTitle}</h2>
             <p className="text-slate-400 mb-6">
-              {t.orders.noOrdersDescription}
+              {t.orders?.noOrdersDescription}
             </p>
             <Button
               onClick={onOrderMore}
@@ -277,7 +288,7 @@ export function OrdersPage({ authHeaders, onBack, onOrderMore }: OrdersPageProps
               )}
             >
               <Plus className="h-4 w-4 mr-2" />
-              {t.orders.orderNow}
+              {t.orders?.orderNow || "Order Now"}
             </Button>
           </div>
         ) : (

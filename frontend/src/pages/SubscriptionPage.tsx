@@ -6,17 +6,19 @@ import {
   AlertCircle,
   PauseCircle,
   Calendar,
-  ArrowLeft,
   Loader2,
   RefreshCw,
 } from "lucide-react"
 import { Button } from "../components/ui/button"
+import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
 import { useSubscription, useLanguage, useAuth, type SubscriptionStatus } from "../hooks"
 
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+
 interface SubscriptionPageProps {
   authHeaders: { Authorization?: string }
-  onBack: () => void
+  onNavigate: (page: AppPage) => void
 }
 
 // Razorpay types for subscription
@@ -72,7 +74,7 @@ const statusColors: Record<SubscriptionStatus, { color: string; bgColor: string 
   past_due: { color: "text-orange-400", bgColor: "bg-orange-400/10" },
 }
 
-export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps) {
+export function SubscriptionPage({ authHeaders, onNavigate }: SubscriptionPageProps) {
   const { t, language } = useLanguage()
   const { user } = useAuth()
   const {
@@ -298,29 +300,22 @@ export function SubscriptionPage({ authHeaders, onBack }: SubscriptionPageProps)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.subscription.title}
+        onNavigate={onNavigate}
+        currentPage="subscription"
+      />
+
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
-      <div className="relative max-w-lg mx-auto p-4 pt-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 transition-all"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <CreditCard className="h-6 w-6 text-teal-400" />
-              {t.subscription.title}
-            </h1>
-            <p className="text-slate-400 text-sm">{t.subscription.subtitle}</p>
-          </div>
-        </div>
+      <div className="relative max-w-lg mx-auto p-4">
+        {/* Subtitle */}
+        <p className="text-slate-400 text-sm mb-6">{t.subscription.subtitle}</p>
 
         {/* Message */}
         {message && (

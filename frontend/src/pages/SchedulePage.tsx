@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { PageHeader } from "../components/PageHeader"
 import { useSchedule, CreateScheduledJobInput, ScheduledJob } from "../hooks/useSchedule"
 import { useLanguage } from "../hooks/useLanguage"
 import {
@@ -16,7 +17,13 @@ import {
   Check,
   RefreshCw,
   Monitor,
-} from "lucide-react"
+}from "lucide-react"
+
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+
+interface SchedulePageProps {
+  onNavigate: (page: AppPage) => void
+}
 
 const STYLE_PRESETS = [
   { id: "none", label: "None" },
@@ -331,7 +338,7 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
   )
 }
 
-export function SchedulePage() {
+export function SchedulePage({ onNavigate }: SchedulePageProps) {
   const { t } = useLanguage()
   const { jobs, total, limit, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
   const [showForm, setShowForm] = useState(false)
@@ -375,29 +382,48 @@ export function SchedulePage() {
 
   const canCreateMore = total < limit
 
+  // New schedule button for header
+  const newScheduleButton = !showForm && !editingJob ? (
+    <Button
+      size="sm"
+      onClick={() => setShowForm(true)}
+      disabled={!canCreateMore}
+      title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
+      className="hidden sm:flex"
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      {t.schedule?.newSchedule || "New"}
+    </Button>
+  ) : null
+
   return (
-    <div className="container max-w-2xl mx-auto p-4 pb-24">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="h-6 w-6" />
-            {t.schedule?.title || "Schedule"}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+    <div className="min-h-screen bg-background">
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.schedule?.title || "Schedule"}
+        onNavigate={onNavigate}
+        currentPage="schedule"
+        rightContent={newScheduleButton}
+      />
+
+      <div className="container max-w-2xl mx-auto p-4 pb-24">
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-muted-foreground">
             {t.schedule?.description || "Automatically generate images on a schedule"}
           </p>
+          {/* Mobile new button */}
+          {!showForm && !editingJob && (
+            <Button
+              onClick={() => setShowForm(true)}
+              disabled={!canCreateMore}
+              title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
+              className="sm:hidden"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t.schedule?.newSchedule || "New"}
+            </Button>
+          )}
         </div>
-        {!showForm && !editingJob && (
-          <Button
-            onClick={() => setShowForm(true)}
-            disabled={!canCreateMore}
-            title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {t.schedule?.newSchedule || "New"}
-          </Button>
-        )}
-      </div>
 
       {/* Create Form */}
       {showForm && (
@@ -489,6 +515,7 @@ export function SchedulePage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

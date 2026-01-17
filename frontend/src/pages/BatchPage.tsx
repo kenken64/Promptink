@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { PageHeader } from "../components/PageHeader"
 import { useBatch, BatchJob, BatchJobWithItems, CreateBatchJobInput, BatchStatus } from "../hooks/useBatch"
 import { useLanguage } from "../hooks/useLanguage"
 import {
@@ -18,6 +19,12 @@ import {
   Image,
   Eye,
 } from "lucide-react"
+
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+
+interface BatchPageProps {
+  onNavigate: (page: AppPage) => void
+}
 
 const STYLE_PRESETS = [
   { id: "none", label: "None" },
@@ -422,7 +429,7 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
   )
 }
 
-export default function BatchPage() {
+export default function BatchPage({ onNavigate }: BatchPageProps) {
   const { t } = useLanguage()
   const {
     batches,
@@ -495,25 +502,39 @@ export default function BatchPage() {
     b => b.status === "pending" || b.status === "processing"
   )
 
-  return (
-    <div className="container mx-auto p-4 max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Layers className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">{t.batch?.title || "Batch Generation"}</h1>
-        </div>
-        <Button onClick={() => setShowForm(true)} disabled={showForm}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t.batch?.newBatch || "New Batch"}
-        </Button>
-      </div>
+  // New batch button for header
+  const newBatchButton = (
+    <Button size="sm" onClick={() => setShowForm(true)} disabled={showForm} className="hidden sm:flex">
+      <Plus className="h-4 w-4 mr-2" />
+      {t.batch?.newBatch || "New Batch"}
+    </Button>
+  )
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {error}
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.batch?.title || "Batch Generation"}
+        onNavigate={onNavigate}
+        currentPage="batch"
+        rightContent={newBatchButton}
+      />
+
+      <div className="container mx-auto p-4 max-w-2xl">
+        {/* Mobile new button */}
+        <div className="flex justify-end mb-4 sm:hidden">
+          <Button onClick={() => setShowForm(true)} disabled={showForm}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t.batch?.newBatch || "New Batch"}
+          </Button>
         </div>
-      )}
+
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
 
       {/* Create Form */}
       {showForm && (
@@ -573,6 +594,7 @@ export default function BatchPage() {
       {showDetail && currentBatch && (
         <BatchDetailModal batch={currentBatch} onClose={closeDetail} />
       )}
+      </div>
     </div>
   )
 }

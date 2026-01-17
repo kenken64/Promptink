@@ -1,7 +1,5 @@
 import { useState, FormEvent } from "react"
 import {
-  ShoppingCart,
-  Package,
   Gift,
   MapPin,
   Phone,
@@ -14,14 +12,17 @@ import {
   Check,
 } from "lucide-react"
 import { Button } from "../components/ui/button"
+import { PageHeader } from "../components"
 import { cn } from "../lib/utils"
 import { useOrders, useSubscription, useLanguage, type CreateOrderInput } from "../hooks"
 import photoFrameImage from "../assets/1000091170.png"
 
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+
 interface PurchasePageProps {
   authHeaders: { Authorization?: string }
   onSuccess: (orderId: number, isFirstOrder: boolean) => void
-  onBack?: () => void
+  onNavigate?: (page: AppPage) => void
   onSkip?: () => void
 }
 
@@ -69,7 +70,7 @@ const GST_RATE = 0.09 // Singapore GST 9%
 const SUBSCRIPTION_GST = SUBSCRIPTION_FEE * GST_RATE
 const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST
 
-export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: PurchasePageProps) {
+export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
   const { subscription } = useSubscription()
   const { t } = useLanguage()
@@ -275,7 +276,17 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
   }
 
   return (
-    <div className="h-screen overflow-y-auto scroll-touch bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header with logo - only show if we have navigation */}
+      {onNavigate && (
+        <PageHeader
+          title={t.purchase?.title || "Purchase"}
+          onNavigate={onNavigate}
+          currentPage="orders"
+        />
+      )}
+
+      <div className="h-screen overflow-y-auto scroll-touch">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
@@ -555,6 +566,7 @@ export function PurchasePage({ authHeaders, onSuccess, onBack, onSkip }: Purchas
         <p className="text-center text-slate-500 text-xs mt-6">
           {t.purchase.securePayment}
         </p>
+      </div>
       </div>
       </div>
     </div>

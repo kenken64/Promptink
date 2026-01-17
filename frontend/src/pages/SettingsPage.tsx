@@ -1,12 +1,15 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Key, Wifi, ArrowLeft, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor } from "lucide-react"
+import { Settings, Key, Wifi, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor } from "lucide-react"
 import { Button } from "../components/ui/button"
+import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
+
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface SettingsPageProps {
   userId: number
   authHeaders: { Authorization?: string }
-  onBack: () => void
+  onNavigate: (page: AppPage) => void
   translations: {
     title: string
     subtitle: string
@@ -34,7 +37,7 @@ interface UserSettings {
   trmnl_background_color: "black" | "white"
 }
 
-export function SettingsPage({ userId, authHeaders, onBack, translations: t }: SettingsPageProps) {
+export function SettingsPage({ userId, authHeaders, onNavigate, translations: t }: SettingsPageProps) {
   const [deviceApiKey, setDeviceApiKey] = useState("")
   const [macAddress, setMacAddress] = useState("")
   const [backgroundColor, setBackgroundColor] = useState<"black" | "white">("black")
@@ -115,48 +118,46 @@ export function SettingsPage({ userId, authHeaders, onBack, translations: t }: S
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Standardized Header */}
+      <PageHeader
+        title={t.title}
+        onNavigate={onNavigate}
+        currentPage="settings"
+      />
 
-      <div className="w-full max-w-md relative">
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t.backToChat}
-        </button>
+      <div className="flex items-center justify-center p-4">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
+        </div>
 
-        {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
-          {/* Header */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
-              <Settings className="h-8 w-8 text-white" />
+        <div className="w-full max-w-md relative">
+          {/* Card */}
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+            {/* Header */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
+                <Settings className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">{t.subtitle}</h2>
             </div>
-            <h1 className="text-2xl font-bold text-white">{t.title}</h1>
-            <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
-          </div>
 
-          {/* Message */}
-          {message && (
-            <div
-              className={cn(
-                "mb-6 p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
-                message.type === "success"
-                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                  : "bg-red-500/10 border border-red-500/20 text-red-400"
-              )}
-            >
-              {message.text}
-            </div>
-          )}
+            {/* Message */}
+            {message && (
+              <div
+                className={cn(
+                  "mb-6 p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
+                  message.type === "success"
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                )}
+              >
+                {message.text}
+              </div>
+            )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -302,12 +303,13 @@ export function SettingsPage({ userId, authHeaders, onBack, translations: t }: S
               {t.webhookUrlNote}
             </p>
           </div>
-        </div>
+          </div>
 
-        {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
-          Powered by DALL-E 3 & TRMNL
-        </p>
+          {/* Footer */}
+          <p className="text-center text-slate-500 text-xs mt-6">
+            Powered by DALL-E 3 & TRMNL
+          </p>
+        </div>
       </div>
     </div>
   )
