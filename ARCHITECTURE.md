@@ -83,6 +83,7 @@ PromptInk/
 │   │   │   ├── sync.ts        # TRMNL sync & webhook
 │   │   │   ├── share.ts       # Social sharing
 │   │   │   ├── gallery.ts     # Image gallery
+│   │   │   ├── suggestions.ts # AI-generated prompt suggestions
 │   │   │   ├── orders.ts      # Order management
 │   │   │   ├── subscription.ts    # Subscription management
 │   │   │   └── razorpay-webhook.ts # Payment webhooks
@@ -125,7 +126,8 @@ PromptInk/
 │   │   │   ├── useTrmnlSync.ts
 │   │   │   ├── useOrders.ts
 │   │   │   ├── useSubscription.ts
-│   │   │   └── useGallery.ts      # Gallery state management
+│   │   │   ├── useGallery.ts      # Gallery state management
+│   │   │   └── useSuggestions.ts  # AI-generated suggestions
 │   │   ├── pages/             # Page components
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterPage.tsx
@@ -685,11 +687,28 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 
 *Verified via webhook signature
 
+### Suggestions
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/suggestions` | No | Get AI-generated prompt suggestions |
+| GET | `/api/suggestions/refresh` | No | Force refresh suggestions (bypass cache) |
+
+**Query Parameters:**
+- `lang` - Language: `en` or `zh` (default: `en`)
+
+**Features:**
+- Uses GPT-4o-mini for fast, cost-effective generation
+- 5-minute in-memory cache to reduce API calls
+- Falls back to static translations on API error
+- Generates 4 creative, diverse image prompts per request
+
 ### Health Check
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/api/health` | No | Health check for deployment |
+| GET | `/api/health` | No | Basic health check for deployment |
+| GET | `/api/health/details` | Yes | Detailed health with volume/file info |
 
 ---
 
@@ -717,7 +736,8 @@ App
 │       │   ├── WelcomeScreen (when no messages)
 │       │   │   ├── Logo
 │       │   │   ├── Welcome Text
-│       │   │   └── Suggestion Cards
+│       │   │   ├── Refresh Suggestions Button
+│       │   │   └── AI-Generated Suggestion Cards
 │       │   │
 │       │   └── ChatMessages (when messages exist)
 │       │       └── ChatMessage (repeated)
@@ -742,6 +762,12 @@ App
 │   │   └── GalleryCard (repeated)
 │   ├── Load More Button
 │   └── ImageDetailModal
+│       ├── Image View with Navigation
+│       ├── Prompt Details
+│       ├── Favorite Toggle
+│       ├── Export Dropdown (PNG/JPG/WebP)
+│       ├── ShareButton (centered popup)
+│       └── Delete Button
 │
 ├── SettingsPage
 │   ├── Device API Key Input
