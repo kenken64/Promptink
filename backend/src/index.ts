@@ -3,6 +3,73 @@ import { log } from "./utils"
 import { routes } from "./routes"
 import { initDatabase } from "./db"
 import { join } from "path"
+import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync } from "fs"
+
+// Verify volume persistence (critical for production data)
+function verifyVolumePersistence() {
+  const dataDir = "/app/data"
+  const markerFile = join(dataDir, ".volume-marker")
+  const imagesDir = config.storage.imagesDir
+  
+  if (process.env.NODE_ENV !== "production") {
+    log("INFO", "Skipping volume check in development mode")
+    return
+  }
+
+  // Check if data directory exists
+  if (!existsSync(dataDir)) {
+    log("WARN", "⚠️ Data directory does not exist! Volume may not be mounted.", { dataDir })
+    mkdirSync(dataDir, { recursive: true })
+  }
+
+  // Check for volume marker file
+  const now = new Date().toISOString()
+  if (existsSync(markerFile)) {
+    try {
+      const markerContent = readFileSync(markerFile, "utf-8")
+      const markerData = JSON.parse(markerContent)
+      log("INFO", "✓ Volume persistence verified", { 
+        createdAt: markerData.createdAt,
+        lastBoot: markerData.lastBoot,
+        bootCount: markerData.bootCount + 1
+      })
+      // Update marker
+      markerData.lastBoot = now
+      markerData.bootCount = (markerData.bootCount || 0) + 1
+      writeFileSync(markerFile, JSON.stringify(markerData, null, 2))
+    } catch (e) {
+      log("WARN", "Failed to read volume marker", e)
+    }
+  } else {
+    // First boot or volume was reset
+    log("WARN", "⚠️ Volume marker not found - this may be a fresh volume or data was lost!")
+    try {
+      const markerData = { createdAt: now, lastBoot: now, bootCount: 1 }
+      writeFileSync(markerFile, JSON.stringify(markerData, null, 2))
+      log("INFO", "Created new volume marker")
+    } catch (e) {
+      log("ERROR", "❌ Cannot write to volume! Data will NOT persist across deployments!", e)
+    }
+  }
+
+  // Ensure images directory exists
+  if (!existsSync(imagesDir)) {
+    mkdirSync(imagesDir, { recursive: true })
+    log("INFO", "Created images directory", { imagesDir })
+  }
+
+  // Check if we can write to the volume
+  try {
+    const testFile = join(dataDir, ".write-test")
+    writeFileSync(testFile, "test")
+    log("INFO", "✓ Volume is writable")
+  } catch (e) {
+    log("ERROR", "❌ Volume is NOT writable! Images will NOT be saved!", e)
+  }
+}
+
+// Verify volume before initializing database
+verifyVolumePersistence()
 
 // Initialize database
 initDatabase()

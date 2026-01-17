@@ -11,6 +11,9 @@ import { razorpayWebhookRoutes } from "./razorpay-webhook"
 import { shareRoutes } from "./share"
 import { galleryRoutes } from "./gallery"
 import { db } from "../db"
+import { config } from "../config"
+import { existsSync, readFileSync } from "fs"
+import { join } from "path"
 
 // Health check endpoint for Railway
 const healthRoutes = {
@@ -25,12 +28,37 @@ const healthRoutes = {
         // Table might not exist yet
       }
 
+      // Check volume status
+      const dataDir = "/app/data"
+      const markerFile = join(dataDir, ".volume-marker")
+      let volumeStatus = "unknown"
+      let volumeInfo = null
+      
+      if (existsSync(markerFile)) {
+        try {
+          volumeInfo = JSON.parse(readFileSync(markerFile, "utf-8"))
+          volumeStatus = "healthy"
+        } catch {
+          volumeStatus = "marker-corrupt"
+        }
+      } else if (existsSync(dataDir)) {
+        volumeStatus = "no-marker"
+      } else {
+        volumeStatus = "not-mounted"
+      }
+
       return Response.json({
         status: "ok",
         timestamp: new Date().toISOString(),
         dbPath: process.env.DB_PATH || "./data/promptink.db",
         jwtConfigured: !!process.env.JWT_SECRET,
         userCount,
+        volume: {
+          status: volumeStatus,
+          info: volumeInfo,
+          imagesDir: config.storage.imagesDir,
+          imagesDirExists: existsSync(config.storage.imagesDir),
+        },
       })
     },
   },
