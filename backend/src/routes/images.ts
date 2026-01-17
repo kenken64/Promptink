@@ -10,6 +10,28 @@ import { verifyToken } from "../services/auth-service"
 import { generatedImageQueries } from "../db"
 import { saveImageToGallery, getGalleryImageUrl } from "./gallery"
 
+// Style preset definitions with prompt modifiers
+const stylePresets: Record<string, string> = {
+  "none": "",
+  "photorealistic": ", photorealistic, high-resolution photography, detailed, sharp focus, professional photography",
+  "anime": ", anime style, Japanese animation, vibrant colors, cel-shaded, manga-inspired",
+  "watercolor": ", watercolor painting style, soft brushstrokes, flowing colors, artistic, traditional watercolor on paper",
+  "oil-painting": ", oil painting style, textured brushstrokes, rich colors, classical art technique, canvas texture",
+  "pixel-art": ", pixel art style, 8-bit, retro video game aesthetic, blocky pixels, nostalgic",
+  "3d-render": ", 3D render, CGI, Blender style, realistic lighting, raytraced, octane render",
+  "sketch": ", pencil sketch style, hand-drawn, graphite, charcoal drawing, artistic sketch on paper",
+  "pop-art": ", pop art style, bold colors, comic book style, Roy Lichtenstein inspired, halftone dots",
+  "minimalist": ", minimalist style, clean lines, simple shapes, flat design, negative space, modern",
+  "cinematic": ", cinematic style, dramatic lighting, movie poster aesthetic, film grain, wide aspect, epic",
+}
+
+// Apply style preset to prompt
+function applyStylePreset(prompt: string, stylePreset: string): string {
+  const modifier = stylePresets[stylePreset] || ""
+  if (!modifier) return prompt
+  return prompt + modifier
+}
+
 // Helper to extract user from request (optional auth)
 async function getUserFromRequest(req: Request): Promise<{ id: number } | null> {
   const authHeader = req.headers.get("Authorization")
@@ -39,8 +61,21 @@ export const imageRoutes = {
           return Response.json({ error: "prompt is required" }, { status: 400 })
         }
 
+        // Apply style preset to prompt if specified
+        const originalPrompt = body.prompt
+        const styledPrompt = body.stylePreset 
+          ? applyStylePreset(body.prompt, body.stylePreset)
+          : body.prompt
+
+        log("INFO", "Generating image", {
+          userId: user?.id,
+          stylePreset: body.stylePreset || "none",
+          originalPromptPreview: originalPrompt.substring(0, 50),
+          styledPromptPreview: styledPrompt.substring(0, 80),
+        })
+
         const options: GenerateImageOptions = {
-          prompt: body.prompt,
+          prompt: styledPrompt,
           model: body.model || "dall-e-3",
           n: body.n,
           size: body.size || "1024x1024",
@@ -54,6 +89,7 @@ export const imageRoutes = {
         log("INFO", "Image generated", {
           userId: user?.id,
           language: body.language,
+          stylePreset: body.stylePreset || "none",
           hasRevisedPrompt: !!result.data?.[0]?.revised_prompt,
           revisedPromptPreview: result.data?.[0]?.revised_prompt?.substring(0, 50)
         })

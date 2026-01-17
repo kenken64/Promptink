@@ -16,11 +16,26 @@ interface AuthHeaders {
   Authorization?: string
 }
 
+// Style presets that modify the prompt for different visual styles
+export type ImageStylePreset = 
+  | "none"
+  | "photorealistic"
+  | "anime"
+  | "watercolor"
+  | "oil-painting"
+  | "pixel-art"
+  | "3d-render"
+  | "sketch"
+  | "pop-art"
+  | "minimalist"
+  | "cinematic"
+
 interface GenerateImageOptions {
   prompt: string
   language?: Language
   authHeaders?: AuthHeaders
   size?: "1024x1024" | "1792x1024" | "1024x1792"
+  stylePreset?: ImageStylePreset
 }
 
 interface UseImageGenerationReturn {
@@ -33,7 +48,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const generateImage = async ({ prompt, language, authHeaders, size = "1024x1024" }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
+  const generateImage = async ({ prompt, language, authHeaders, size = "1024x1024", stylePreset = "none" }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
     setIsLoading(true)
     setError(null)
 
@@ -50,6 +65,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
           model: "dall-e-3",
           size,
           quality: "standard",
+          stylePreset,
         }),
       })
 

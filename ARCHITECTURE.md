@@ -339,6 +339,39 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 - `quality` - Compression quality: 1-100 (default: 85, applies to JPG/WebP)
 - `width` / `height` - Optional resize dimensions (maintains aspect ratio)
 
+### 9. Image Style Presets
+
+**Problem**: Users want to apply consistent visual styles without manually describing them in every prompt.
+
+**Solution**: Predefined style presets that automatically append style modifiers to prompts.
+
+**Implementation**:
+- Backend defines style preset mappings with prompt modifiers
+- Frontend provides dropdown selector with 11 style options
+- Selected style is sent with the generation request
+- Prompt is enhanced server-side before sending to DALL-E 3
+
+**Available Styles**:
+| Style | Description |
+|-------|-------------|
+| None | No style modification (default) |
+| Photorealistic | High-resolution photography style |
+| Anime | Japanese animation/manga style |
+| Watercolor | Traditional watercolor painting |
+| Oil Painting | Classical oil painting technique |
+| Pixel Art | Retro 8-bit/16-bit game style |
+| 3D Render | Modern CGI/Blender-style rendering |
+| Sketch | Pencil/charcoal drawing |
+| Pop Art | Bold colors, comic book style |
+| Minimalist | Clean lines, simple shapes |
+| Cinematic | Movie poster, dramatic lighting |
+
+**Code locations**:
+- `backend/src/routes/images.ts` - Style preset definitions and prompt modification
+- `frontend/src/App.tsx` - Style selector UI
+- `frontend/src/hooks/useImageGeneration.ts` - Style parameter in API call
+- `frontend/src/hooks/useLanguage.ts` - Translations for EN/ZH
+
 ---
 
 ## Database Schema
@@ -754,6 +787,19 @@ App
 │       │   ├── Landscape (1792x1024)
 │       │   └── Portrait (1024x1792)
 │       │
+│       ├── Style Selector (dropdown)
+│       │   ├── None (default)
+│       │   ├── Photorealistic
+│       │   ├── Anime
+│       │   ├── Watercolor
+│       │   ├── Oil Painting
+│       │   ├── Pixel Art
+│       │   ├── 3D Render
+│       │   ├── Sketch
+│       │   ├── Pop Art
+│       │   ├── Minimalist
+│       │   └── Cinematic
+│       │
 │       └── ChatInput
 │           ├── Textarea
 │           ├── Attach Button
@@ -1127,9 +1173,9 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 - [x] AI-generated prompt suggestions
 - [x] Multiple image sizes selection
 - [x] Image export with format conversion (PNG/JPG/WebP)
+- [x] Image style presets
 
 ## Future Enhancements
 
-- [ ] Image style presets
 - [ ] Scheduled image generation
 - [ ] Batch image generation

@@ -15,7 +15,7 @@ import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
 import { OrdersPage } from "./pages/OrdersPage"
 import { SubscriptionPage } from "./pages/SubscriptionPage"
 import { GalleryPage } from "./pages/GalleryPage"
-import { useImageGeneration } from "./hooks/useImageGeneration"
+import { useImageGeneration, type ImageStylePreset } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
 import { useLanguage } from "./hooks/useLanguage"
 import { useTrmnlSync } from "./hooks/useTrmnlSync"
@@ -44,6 +44,7 @@ export default function App() {
   const [hasSkippedPurchase, setHasSkippedPurchase] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedSize, setSelectedSize] = useState<ImageSize>("1024x1024")
+  const [selectedStyle, setSelectedStyle] = useState<ImageStylePreset>("none")
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -135,8 +136,8 @@ export default function App() {
         result = await response.json()
       } else {
         // Use regular image generation
-        console.log("Generating image with size:", selectedSize)
-        result = await generateImage({ prompt, language, authHeaders: getAuthHeader(), size: selectedSize })
+        console.log("Generating image with size:", selectedSize, "style:", selectedStyle)
+        result = await generateImage({ prompt, language, authHeaders: getAuthHeader(), size: selectedSize, stylePreset: selectedStyle })
       }
 
       const imageUrl = result.data[0]?.url
@@ -449,51 +450,76 @@ export default function App() {
 
       {/* Input Area */}
       <div className="safe-area-bottom sticky bottom-0 z-10 bg-gradient-to-t from-background via-background to-transparent pt-4 sm:pt-6 pb-2">
-        {/* Size Selector */}
-        <div className="flex items-center justify-center gap-1 mb-2 px-4">
-          <span className="text-xs text-muted-foreground mr-2">{t.imageSize}:</span>
-          <button
-            onClick={() => setSelectedSize("1024x1024")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
-              selectedSize === "1024x1024"
-                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-            }`}
-            title={t.sizeSquare}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="2" y="2" width="12" height="12" rx="1" />
-            </svg>
-            <span className="hidden sm:inline">{t.sizeSquare}</span>
-          </button>
-          <button
-            onClick={() => setSelectedSize("1792x1024")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
-              selectedSize === "1792x1024"
-                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-            }`}
-            title={t.sizeLandscape}
-          >
-            <svg className="w-4 h-3" viewBox="0 0 16 10" fill="currentColor">
-              <rect x="1" y="1" width="14" height="8" rx="1" />
-            </svg>
-            <span className="hidden sm:inline">{t.sizeLandscape}</span>
-          </button>
-          <button
-            onClick={() => setSelectedSize("1024x1792")}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
-              selectedSize === "1024x1792"
-                ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-            }`}
-            title={t.sizePortrait}
-          >
-            <svg className="w-2.5 h-4" viewBox="0 0 10 16" fill="currentColor">
-              <rect x="1" y="1" width="8" height="14" rx="1" />
-            </svg>
-            <span className="hidden sm:inline">{t.sizePortrait}</span>
-          </button>
+        {/* Size & Style Selectors */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-2 px-4">
+          {/* Size Selector */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground mr-1">{t.imageSize}:</span>
+            <button
+              onClick={() => setSelectedSize("1024x1024")}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
+                selectedSize === "1024x1024"
+                  ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+              }`}
+              title={t.sizeSquare}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="2" y="2" width="12" height="12" rx="1" />
+              </svg>
+              <span className="hidden sm:inline">{t.sizeSquare}</span>
+            </button>
+            <button
+              onClick={() => setSelectedSize("1792x1024")}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
+                selectedSize === "1792x1024"
+                  ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+              }`}
+              title={t.sizeLandscape}
+            >
+              <svg className="w-4 h-3" viewBox="0 0 16 10" fill="currentColor">
+                <rect x="1" y="1" width="14" height="8" rx="1" />
+              </svg>
+              <span className="hidden sm:inline">{t.sizeLandscape}</span>
+            </button>
+            <button
+              onClick={() => setSelectedSize("1024x1792")}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-all ${
+                selectedSize === "1024x1792"
+                  ? "bg-teal-500 text-white ring-2 ring-teal-500/50"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+              }`}
+              title={t.sizePortrait}
+            >
+              <svg className="w-2.5 h-4" viewBox="0 0 10 16" fill="currentColor">
+                <rect x="1" y="1" width="8" height="14" rx="1" />
+              </svg>
+              <span className="hidden sm:inline">{t.sizePortrait}</span>
+            </button>
+          </div>
+
+          {/* Style Preset Selector */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground mr-1">{t.imageStyle}:</span>
+            <select
+              value={selectedStyle}
+              onChange={(e) => setSelectedStyle(e.target.value as ImageStylePreset)}
+              className="px-2 py-1 rounded-md text-xs bg-secondary/50 text-foreground border-none outline-none cursor-pointer hover:bg-secondary transition-all"
+            >
+              <option value="none">{t.styleNone}</option>
+              <option value="photorealistic">{t.stylePhotorealistic}</option>
+              <option value="anime">{t.styleAnime}</option>
+              <option value="watercolor">{t.styleWatercolor}</option>
+              <option value="oil-painting">{t.styleOilPainting}</option>
+              <option value="pixel-art">{t.stylePixelArt}</option>
+              <option value="3d-render">{t.style3DRender}</option>
+              <option value="sketch">{t.styleSketch}</option>
+              <option value="pop-art">{t.stylePopArt}</option>
+              <option value="minimalist">{t.styleMinimalist}</option>
+              <option value="cinematic">{t.styleCinematic}</option>
+            </select>
+          </div>
         </div>
         <ChatInput
           onSend={handleSend}
