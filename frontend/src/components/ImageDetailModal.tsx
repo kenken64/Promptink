@@ -4,6 +4,7 @@ import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { ShareButton } from "./ShareButton"
 import { useAuth } from "../hooks/useAuth"
+import { useTrmnlSync } from "../hooks/useTrmnlSync"
 
 // Fallback placeholder component for modal
 function ModalImagePlaceholder() {
@@ -51,9 +52,11 @@ export function ImageDetailModal({
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
   const { token } = useAuth()
+  const { syncToTrmnl, isSyncing } = useTrmnlSync()
   const [imageError, setImageError] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [syncSuccess, setSyncSuccess] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
 
   // Close export menu when clicking outside
@@ -67,9 +70,10 @@ export function ImageDetailModal({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Reset image error when image changes
+  // Reset image error and sync state when image changes
   useEffect(() => {
     setImageError(false)
+    setSyncSuccess(false)
   }, [image?.id])
 
   // Handle keyboard navigation
@@ -468,6 +472,86 @@ export function ImageDetailModal({
                 )}
               </div>
             </div>
+
+            {/* Sync to TRMNL button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={async () => {
+                if (isSyncing || syncSuccess) return
+                try {
+                  await syncToTrmnl(
+                    image.imageUrl,
+                    image.originalPrompt,
+                    token ? { Authorization: `Bearer ${token}` } : {}
+                  )
+                  setSyncSuccess(true)
+                  setTimeout(() => setSyncSuccess(false), 2000)
+                } catch (err) {
+                  console.error("Failed to sync to TRMNL:", err)
+                }
+              }}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <>
+                  <svg
+                    className="animate-spin w-4 h-4 mr-1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  {t.syncing}
+                </>
+              ) : syncSuccess ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4 mr-1 text-green-500"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  {t.syncSuccess}
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-4 h-4 mr-1"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-7.5a2.25 2.25 0 012.25-2.25H12"
+                    />
+                  </svg>
+                  {t.syncToTrmnl}
+                </>
+              )}
+            </Button>
 
             <div className="flex gap-2">
               <ShareButton
