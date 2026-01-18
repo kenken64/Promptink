@@ -3,6 +3,7 @@ import { scheduledJobQueries, generatedImageQueries, userQueries, type Scheduled
 import { generateImage, type GenerateImageOptions } from "./openai-service"
 import { saveImageToGallery, getGalleryImageUrl } from "../routes/gallery"
 import { syncToTrmnl } from "../routes/sync"
+import { cleanupExpiredTokens } from "./auth-service"
 
 // Style preset definitions (same as in images.ts)
 const stylePresets: Record<string, string> = {
@@ -334,12 +335,24 @@ export function startScheduler(): void {
   }
 
   log("INFO", "Starting scheduler service")
-  
+
   // Run immediately on startup
   checkDueJobs()
+  cleanupExpiredTokens()
 
   // Then run every minute
   schedulerInterval = setInterval(checkDueJobs, 60 * 1000)
+
+  // Schedule periodic token cleanup (every hour)
+  // Clean up expired tokens from token_blacklist and refresh_tokens tables
+  const TOKEN_CLEANUP_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
+  setInterval(() => {
+    try {
+      cleanupExpiredTokens()
+    } catch (error) {
+      log("ERROR", "Token cleanup failed", error)
+    }
+  }, TOKEN_CLEANUP_INTERVAL_MS)
 }
 
 // Stop the scheduler

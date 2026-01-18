@@ -52,9 +52,9 @@ export interface TokenPair {
   expiresIn: number
 }
 
-// Generate a unique JWT ID
+// Generate a unique JWT ID using cryptographically secure random UUID
 function generateJti(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+  return crypto.randomUUID()
 }
 
 // Hash a string using SHA-256 (for storing refresh token hashes)
@@ -206,7 +206,10 @@ export async function generateTokenPair(
       userAgent || null
     )
   } catch (error) {
-    log("ERROR", "Failed to store refresh token", error)
+    log("ERROR", "Failed to store refresh token - database insert failed", error)
+    // If we can't store the refresh token, we should regenerate with a new JTI
+    // to avoid returning a token that won't work
+    throw new Error("Failed to create refresh token - please try again")
   }
 
   return {

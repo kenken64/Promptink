@@ -26,6 +26,52 @@ type RouteDefinition = { [method: string]: RouteHandler }
 type Routes = { [path: string]: RouteDefinition }
 
 /**
+ * Add security headers to all responses
+ */
+function addSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers)
+  const isDev = process.env.NODE_ENV !== "production"
+
+  // Content Security Policy
+  headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: blob: https:; " +
+    "font-src 'self' data:; " +
+    "connect-src 'self'; " +
+    "frame-ancestors 'none'"
+  )
+
+  // Prevent clickjacking
+  headers.set("X-Frame-Options", "DENY")
+
+  // Prevent MIME type sniffing
+  headers.set("X-Content-Type-Options", "nosniff")
+
+  // Enable XSS protection
+  headers.set("X-XSS-Protection", "1; mode=block")
+
+  // Referrer policy
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+  // Permissions policy
+  headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+  // HSTS (only in production over HTTPS)
+  if (!isDev) {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
+/**
  * Apply rate limiting to routes based on path patterns
  */
 function applyRateLimiting(routes: Routes): Routes {
@@ -40,34 +86,41 @@ function applyRateLimiting(routes: Routes): Routes {
         // Auth endpoints: strict rate limiting (5 req / 15 min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await authLimiter(req)
-          if (limitResponse) return limitResponse
-          return handler(req, ...args)
+          if (limitResponse) return addSecurityHeaders(limitResponse)
+          const response = await handler(req, ...args)
+          return addSecurityHeaders(response)
         }
       } else if (path === "/api/images/generate" || path === "/api/images/edit") {
         // Image generation: cost control (5 req / min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await generateLimiter(req)
-          if (limitResponse) return limitResponse
-          return handler(req, ...args)
+          if (limitResponse) return addSecurityHeaders(limitResponse)
+          const response = await handler(req, ...args)
+          return addSecurityHeaders(response)
         }
       } else if (path === "/api/speech/transcribe") {
         // Speech transcription: Whisper API cost control (10 req / min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await speechLimiter(req)
-          if (limitResponse) return limitResponse
-          return handler(req, ...args)
+          if (limitResponse) return addSecurityHeaders(limitResponse)
+          const response = await handler(req, ...args)
+          return addSecurityHeaders(response)
         }
       } else if (path.startsWith("/api/") && path !== "/api/health") {
         // General API endpoints: DDoS protection (100 req / min)
         // Skip health check for Railway uptime monitoring
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await apiLimiter(req)
-          if (limitResponse) return limitResponse
-          return handler(req, ...args)
+          if (limitResponse) return addSecurityHeaders(limitResponse)
+          const response = await handler(req, ...args)
+          return addSecurityHeaders(response)
         }
       } else {
-        // No rate limiting (health check, non-API routes)
-        rateLimitedMethods[method] = handler
+        // No rate limiting (health check, non-API routes) - still add security headers
+        rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
+          const response = await handler(req, ...args)
+          return addSecurityHeaders(response)
+        }
       }
     }
 

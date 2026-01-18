@@ -137,7 +137,7 @@ export function useAuth() {
   }, [clearAuth])
 
   // Verify token with backend
-  const verifyToken = async (accessToken: string) => {
+  const verifyToken = useCallback(async (accessToken: string) => {
     try {
       const response = await fetch("/api/auth/me", {
         headers: {
@@ -170,7 +170,7 @@ export function useAuth() {
       }
       return false
     }
-  }
+  }, [refreshAccessToken, clearAuth])
 
   // Initialize auth state from localStorage
   useEffect(() => {

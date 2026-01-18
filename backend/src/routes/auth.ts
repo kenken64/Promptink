@@ -141,7 +141,15 @@ export const authRoutes = {
         if (refreshToken) {
           const refreshPayload = await verifyToken(refreshToken, "refresh")
           if (refreshPayload && refreshPayload.jti) {
+            // Blacklist the specific refresh token JTI
             revokeToken(refreshPayload.jti, user.id, refreshPayload.exp, "user logout")
+
+            // Also revoke the refresh token in the database to keep state consistent
+            const { refreshTokenQueries } = await import("../db")
+            const storedToken = refreshTokenQueries.findByJti.get(refreshPayload.jti)
+            if (storedToken) {
+              refreshTokenQueries.revoke.run(storedToken.id)
+            }
           }
         }
       } catch (error) {
