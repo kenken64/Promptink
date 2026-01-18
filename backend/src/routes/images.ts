@@ -130,6 +130,7 @@ export const imageRoutes = {
               
               // Update the URL to our permanent URL
               const permanentUrl = getGalleryImageUrl(galleryImage.id)
+              generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
               
               // Add gallery info to response
               ;(result as any).galleryId = galleryImage.id
@@ -202,6 +203,7 @@ export const imageRoutes = {
             if (galleryImage) {
               await saveImageToGallery(result.data[0].url, user.id, galleryImage.id)
               const permanentUrl = getGalleryImageUrl(galleryImage.id)
+              generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
               ;(result as any).galleryId = galleryImage.id
               ;(result as any).galleryUrl = permanentUrl
               log("INFO", "Edited image saved to gallery", { userId: user.id, galleryId: galleryImage.id })

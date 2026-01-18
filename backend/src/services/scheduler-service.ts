@@ -133,10 +133,14 @@ async function executeScheduledJob(job: ScheduledJob): Promise<void> {
       await saveImageToGallery(result.data[0].url, job.user_id, galleryImage.id)
       const permanentUrl = getGalleryImageUrl(galleryImage.id)
 
+      // Update the database with the permanent URL (replace expired DALL-E URL)
+      generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
+
       log("INFO", "Scheduled image saved to gallery", { 
         jobId: job.id, 
         userId: job.user_id, 
-        galleryId: galleryImage.id 
+        galleryId: galleryImage.id,
+        permanentUrl
       })
 
       // Auto-sync to TRMNL if enabled

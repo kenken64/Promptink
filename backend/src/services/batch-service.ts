@@ -156,12 +156,15 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
 
     // Download and save the image
     await saveImageToGallery(result.data[0].url, batch.user_id, galleryImage.id)
+    
+    // Update the database with the permanent URL (replace expired DALL-E URL)
+    const permanentUrl = getGalleryImageUrl(galleryImage.id)
+    generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
 
     // Auto-sync to TRMNL if enabled
     if (batch.auto_sync_trmnl === 1) {
       try {
-        const imageUrl = getGalleryImageUrl(galleryImage.id)
-        await syncToTrmnl(imageUrl, item.prompt, batch.user_id)
+        await syncToTrmnl(permanentUrl, item.prompt, batch.user_id)
         log("INFO", "Batch image synced to TRMNL", { 
           batchId: batch.id, 
           itemId: item.id,
