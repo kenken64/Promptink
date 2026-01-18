@@ -130,13 +130,17 @@ PromptInk/
 │   │   └── lib/            # Utilities
 │   └── package.json
 │
-├── peekachoo-trmnl/        # TRMNL plugin
+├── trmnl-plugin/           # TRMNL plugin
 │   └── src/                # Liquid templates
+│
+├── docs/                   # Documentation
+│   ├── ARCHITECTURE.md     # Detailed architecture docs
+│   ├── CHANGELOG.md        # Version history
+│   └── *.md                # Feature documentation
 │
 ├── scripts/                # Management scripts
 ├── Dockerfile              # Docker deployment
-├── railway.toml            # Railway deployment config
-└── ARCHITECTURE.md         # Detailed architecture docs
+└── railway.toml            # Railway deployment config
 ```
 
 ## API Endpoints
@@ -184,7 +188,7 @@ PromptInk/
 ### Plugin Deployment
 
 ```bash
-cd peekachoo-trmnl
+cd trmnl-plugin
 trmnlp login          # First time only
 trmnlp push           # Upload to TRMNL server
 ```
