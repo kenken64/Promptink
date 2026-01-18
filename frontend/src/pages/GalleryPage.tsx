@@ -88,7 +88,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   )
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Standardized Header */}
       <PageHeader
         title={t.gallery?.title}
