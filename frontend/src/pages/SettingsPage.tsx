@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Key, Wifi, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor } from "lucide-react"
+import { Settings, Key, Wifi, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
@@ -29,6 +29,21 @@ interface SettingsPageProps {
     webhookUrl: string
     webhookUrlNote: string
     notConfigured: string
+    changePassword: {
+      title: string
+      currentPasswordLabel: string
+      currentPasswordPlaceholder: string
+      newPasswordLabel: string
+      newPasswordPlaceholder: string
+      confirmPasswordLabel: string
+      confirmPasswordPlaceholder: string
+      submitButton: string
+      submitting: string
+      success: string
+      error: string
+      passwordMismatch: string
+      passwordTooShort: string
+    }
   }
 }
 
@@ -47,6 +62,15 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Change password state
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const webhookUrl = `${window.location.origin}/api/trmnl/webhook/${userId}`
 
@@ -108,6 +132,52 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
     await navigator.clipboard.writeText(webhookUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault()
+    setPasswordMessage(null)
+
+    // Validate passwords
+    if (newPassword.length < 8) {
+      setPasswordMessage({ type: "error", text: t.changePassword.passwordTooShort })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ type: "error", text: t.changePassword.passwordMismatch })
+      return
+    }
+
+    setIsChangingPassword(true)
+
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      })
+
+      if (response.ok) {
+        setPasswordMessage({ type: "success", text: t.changePassword.success })
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        const error = await response.json()
+        setPasswordMessage({ type: "error", text: error.error || t.changePassword.error })
+      }
+    } catch (error) {
+      setPasswordMessage({ type: "error", text: t.changePassword.error })
+    } finally {
+      setIsChangingPassword(false)
+    }
   }
 
   if (isLoading) {
@@ -304,6 +374,132 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
               <ExternalLink className="h-3 w-3" />
               {t.webhookUrlNote}
             </p>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+          </div>
+
+          {/* Change Password Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Lock className="h-5 w-5 text-teal-500" />
+              {t.changePassword.title}
+            </h3>
+
+            {/* Password Message */}
+            {passwordMessage && (
+              <div
+                className={cn(
+                  "p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
+                  passwordMessage.type === "success"
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                )}
+              >
+                {passwordMessage.text}
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <label htmlFor="currentPassword" className="block text-sm font-medium text-foreground">
+                  {t.changePassword.currentPasswordLabel}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <input
+                    id="currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder={t.changePassword.currentPasswordPlaceholder}
+                    required
+                    className="w-full pl-10 pr-12 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <label htmlFor="newPassword" className="block text-sm font-medium text-foreground">
+                  {t.changePassword.newPasswordLabel}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t.changePassword.newPasswordPlaceholder}
+                    required
+                    minLength={8}
+                    className="w-full pl-10 pr-12 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
+                  {t.changePassword.confirmPasswordLabel}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t.changePassword.confirmPasswordPlaceholder}
+                    required
+                    minLength={8}
+                    className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Submit button */}
+              <Button
+                type="submit"
+                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className={cn(
+                  "w-full py-3 rounded-xl font-semibold text-white transition-all duration-300",
+                  "bg-gradient-to-r from-teal-500 to-emerald-500",
+                  "hover:from-teal-400 hover:to-emerald-400",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40"
+                )}
+              >
+                {isChangingPassword ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    {t.changePassword.submitting}
+                  </span>
+                ) : (
+                  t.changePassword.submitButton
+                )}
+              </Button>
+            </form>
           </div>
           </div>
 
