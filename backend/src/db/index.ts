@@ -183,6 +183,16 @@ export interface BatchJobItem {
   completed_at: string | null
 }
 
+// Password reset token type
+export interface PasswordResetToken {
+  id: number
+  user_id: number
+  token: string
+  expires_at: string
+  used: number
+  created_at: string
+}
+
 // Initialize database tables
 export function initDatabase() {
   log("INFO", "Initializing database...", { dbPath: DB_PATH })
@@ -419,6 +429,24 @@ export function initDatabase() {
     )
   `)
 
+  // Password reset tokens table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `)
+
+  // Create indexes for password_reset_tokens
+  db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)`)
+
   // Initialize prepared statements after tables are created
   initPreparedStatements()
 
@@ -518,6 +546,14 @@ let _batchJobItemQueries: {
   create: Statement<BatchJobItem, [number, string]>
   updateStatus: Statement<void, [string, number | null, string | null, number]>
   updateCompleted: Statement<void, [string, number | null, string | null, number]>
+}
+
+let _passwordResetTokenQueries: {
+  create: Statement<PasswordResetToken, [number, string, string]>
+  findByToken: Statement<PasswordResetToken, [string]>
+  markAsUsed: Statement<void, [number]>
+  deleteExpired: Statement<void, [string]>
+  deleteByUserId: Statement<void, [number]>
 }
 
 function initPreparedStatements() {
@@ -749,6 +785,24 @@ function initPreparedStatements() {
       "UPDATE batch_job_items SET status = ?, image_id = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
   }
+
+  _passwordResetTokenQueries = {
+    create: db.prepare<PasswordResetToken, [number, string, string]>(
+      "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?) RETURNING *"
+    ),
+    findByToken: db.prepare<PasswordResetToken, [string]>(
+      "SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime('now')"
+    ),
+    markAsUsed: db.prepare<void, [number]>(
+      "UPDATE password_reset_tokens SET used = 1 WHERE id = ?"
+    ),
+    deleteExpired: db.prepare<void, [string]>(
+      "DELETE FROM password_reset_tokens WHERE expires_at < ?"
+    ),
+    deleteByUserId: db.prepare<void, [number]>(
+      "DELETE FROM password_reset_tokens WHERE user_id = ?"
+    ),
+  }
 }
 
 // Getters for prepared statements
@@ -836,4 +890,12 @@ export const batchJobItemQueries = {
   get create() { return _batchJobItemQueries.create },
   get updateStatus() { return _batchJobItemQueries.updateStatus },
   get updateCompleted() { return _batchJobItemQueries.updateCompleted },
+}
+
+export const passwordResetTokenQueries = {
+  get create() { return _passwordResetTokenQueries.create },
+  get findByToken() { return _passwordResetTokenQueries.findByToken },
+  get markAsUsed() { return _passwordResetTokenQueries.markAsUsed },
+  get deleteExpired() { return _passwordResetTokenQueries.deleteExpired },
+  get deleteByUserId() { return _passwordResetTokenQueries.deleteByUserId },
 }
