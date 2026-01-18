@@ -202,31 +202,39 @@ export default function App() {
   }
 
   const handleForgotPassword = async (email: string) => {
-    const response = await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to send reset email')
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Failed to send reset email' }
+      }
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: 'Network error. Please try again.' }
     }
-    return data
   }
 
   const handleResetPassword = async (token: string, newPassword: string) => {
-    const response = await fetch('/api/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, newPassword }),
-    })
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to reset password')
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Failed to reset password' }
+      }
+      // After successful reset, go to login page
+      setAuthPage('login')
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: 'Network error. Please try again.' }
     }
-    // After successful reset, go to login page
-    setAuthPage('login')
-    return data
   }
 
   const handleSyncWithAuth = async (imageUrl: string, prompt?: string) => {
