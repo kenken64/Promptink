@@ -36,11 +36,12 @@ function addSecurityHeaders(response: Response): Response {
   headers.set(
     "Content-Security-Policy",
     "default-src 'self'; " +
-    "script-src 'self'; " +
+    "script-src 'self' https://checkout.razorpay.com; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob: https:; " +
     "font-src 'self' data:; " +
-    "connect-src 'self'; " +
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; " +
+    "frame-src https://api.razorpay.com https://checkout.razorpay.com; " +
     "frame-ancestors 'none'"
   )
 
