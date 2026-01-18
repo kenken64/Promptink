@@ -170,3 +170,12 @@ Backend requires these environment variables (in `backend/.env`):
 - Use async/await over promises
 - Handle errors with try/catch blocks
 - Log with the backend's `log()` utility function
+
+---
+
+## Documentation Rules
+
+- **DO NOT** create markdown (`.md`) files in the project root or subdirectories
+- Exceptions: `README.md` and `claude.md` are allowed in the root
+- All other documentation must be created in the `docs/` folder
+- Update existing documentation rather than creating new files when possible
