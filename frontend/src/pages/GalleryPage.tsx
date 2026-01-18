@@ -88,7 +88,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   )
 
   return (
-    <div className="min-h-screen bg-background overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="h-screen flex flex-col bg-background">
       {/* Standardized Header */}
       <PageHeader
         title={t.gallery?.title}
@@ -98,9 +98,11 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         onLogout={onLogout}
       />
 
-      {/* Sub-header with stats, filters & search */}
-      <div className="sticky top-[57px] z-[9] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container max-w-7xl mx-auto px-4 py-4">
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* Sub-header with stats, filters & search */}
+        <div className="sticky top-0 z-[9] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+          <div className="container max-w-7xl mx-auto px-4 py-4">
           {/* Stats */}
           {stats && (
             <p className="text-sm text-muted-foreground mb-4">
@@ -218,8 +220,8 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container max-w-7xl mx-auto px-4 py-6">
+        {/* Content */}
+        <div className="container max-w-7xl mx-auto px-4 py-6">
         {/* Error state */}
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
@@ -356,6 +358,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* Image detail modal */}
