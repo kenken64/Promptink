@@ -26,39 +26,146 @@ function applyStylePreset(prompt: string, stylePreset: string | null): string {
   return prompt + modifier
 }
 
+// Helper to get current time in a specific timezone
+function getNowInTimezone(timezone: string): Date {
+  // Get current time as ISO string in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  
+  const parts = formatter.formatToParts(new Date())
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0'
+  
+  // Create a date object representing "now" in user's timezone
+  // We return it as a Date but treat the values as if they're in the user's timezone
+  const year = parseInt(get('year'))
+  const month = parseInt(get('month')) - 1
+  const day = parseInt(get('day'))
+  const hour = parseInt(get('hour'))
+  const minute = parseInt(get('minute'))
+  const second = parseInt(get('second'))
+  
+  return new Date(year, month, day, hour, minute, second)
+}
+
+// Convert a local datetime string in user's timezone to UTC ISO string
+function localDatetimeToUTC(localDatetime: string, timezone: string): string {
+  // localDatetime is like "2026-01-18T14:36" (no timezone info)
+  // We need to interpret this as being in the user's timezone
+  
+  // Parse the local datetime
+  const [datePart, timePart] = localDatetime.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hours, minutes] = timePart.split(':').map(Number)
+  
+  // Create a formatter to find the UTC offset for this datetime in the target timezone
+  const testDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
+  
+  // Get the offset by comparing UTC time with the timezone's local time
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+  
+  // Use a simpler approach: construct the date string with timezone
+  // and let Date parse it
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+  
+  // Create Date in user's timezone by using the timezone in formatting
+  // This is a workaround since JS doesn't have great timezone support
+  const utcDate = new Date(dateStr + 'Z') // Treat as UTC first
+  
+  // Get the timezone offset
+  const utcFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  })
+  const tzFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit', 
+    hour: '2-digit', minute: '2-digit', hour12: false
+  })
+  
+  // Find offset by checking what UTC time corresponds to the local time
+  // We want to find the UTC time such that when displayed in `timezone`, it shows `localDatetime`
+  // Start with assuming the input IS in UTC, then adjust
+  const localInTz = tzFormatter.format(utcDate)
+  const localParts = localInTz.match(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+)/)
+  if (!localParts) {
+    return utcDate.toISOString()
+  }
+  
+  const tzMonth = parseInt(localParts[1])
+  const tzDay = parseInt(localParts[2])
+  const tzYear = parseInt(localParts[3])
+  const tzHour = parseInt(localParts[4])
+  const tzMinute = parseInt(localParts[5])
+  
+  // Calculate difference
+  const diffMinutes = (hours - tzHour) * 60 + (minutes - tzMinute) + 
+                      (day - tzDay) * 24 * 60 +
+                      (month - tzMonth) * 30 * 24 * 60 + 
+                      (year - tzYear) * 365 * 24 * 60
+  
+  // Adjust UTC date by the difference
+  const adjustedUtc = new Date(utcDate.getTime() + diffMinutes * 60 * 1000)
+  
+  return adjustedUtc.toISOString()
+}
+
 // Calculate next run time based on schedule
 export function calculateNextRunTime(
   scheduleType: string,
-  scheduleTime: string, // HH:MM
+  scheduleTime: string, // HH:MM (in user's timezone)
   scheduleDays: string | null, // JSON array like "[1,3,5]" for Mon, Wed, Fri
-  scheduledAt: string | null, // ISO datetime for 'once' type
+  scheduledAt: string | null, // Local datetime like "2026-01-18T14:36" (in user's timezone)
   timezone: string
 ): string | null {
   const now = new Date()
   
   if (scheduleType === 'once') {
     if (!scheduledAt) return null
-    const scheduled = new Date(scheduledAt)
+    // Convert local datetime to UTC for storage and comparison
+    const scheduledUtc = localDatetimeToUTC(scheduledAt, timezone)
+    const scheduled = new Date(scheduledUtc)
     // If already passed, return null (job won't run again)
-    return scheduled > now ? scheduledAt : null
+    return scheduled > now ? scheduledUtc : null
   }
 
-  // Parse time
+  // For daily/weekly, we need to work in the user's timezone
   if (!scheduleTime) return null
   const timeParts = scheduleTime.split(':').map(Number)
   const hours = timeParts[0] ?? 0
   const minutes = timeParts[1] ?? 0
   
-  // Create a date for today at the scheduled time
-  const nextRun = new Date()
-  nextRun.setHours(hours, minutes, 0, 0)
+  // Get current time in user's timezone
+  const nowInTz = getNowInTimezone(timezone)
+  
+  // Create next run date in user's timezone
+  const nextRunLocal = new Date(nowInTz)
+  nextRunLocal.setHours(hours, minutes, 0, 0)
 
   if (scheduleType === 'daily') {
     // If today's time has passed, schedule for tomorrow
-    if (nextRun <= now) {
-      nextRun.setDate(nextRun.getDate() + 1)
+    if (nextRunLocal <= nowInTz) {
+      nextRunLocal.setDate(nextRunLocal.getDate() + 1)
     }
-    return nextRun.toISOString()
+    // Convert to UTC for storage
+    const localStr = `${nextRunLocal.getFullYear()}-${String(nextRunLocal.getMonth() + 1).padStart(2, '0')}-${String(nextRunLocal.getDate()).padStart(2, '0')}T${String(nextRunLocal.getHours()).padStart(2, '0')}:${String(nextRunLocal.getMinutes()).padStart(2, '0')}`
+    return localDatetimeToUTC(localStr, timezone)
   }
 
   if (scheduleType === 'weekly') {
@@ -68,18 +175,19 @@ export function calculateNextRunTime(
     // Sort days
     days.sort((a, b) => a - b)
 
-    const currentDay = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const currentDay = nowInTz.getDay() // 0 = Sunday, 1 = Monday, etc.
     
     // Find the next scheduled day
     for (let i = 0; i < 7; i++) {
       const checkDay = (currentDay + i) % 7
       if (days.includes(checkDay)) {
-        const candidate = new Date(now)
-        candidate.setDate(now.getDate() + i)
+        const candidate = new Date(nowInTz)
+        candidate.setDate(nowInTz.getDate() + i)
         candidate.setHours(hours, minutes, 0, 0)
         
-        if (candidate > now) {
-          return candidate.toISOString()
+        if (candidate > nowInTz) {
+          const localStr = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, '0')}-${String(candidate.getDate()).padStart(2, '0')}T${String(candidate.getHours()).padStart(2, '0')}:${String(candidate.getMinutes()).padStart(2, '0')}`
+          return localDatetimeToUTC(localStr, timezone)
         }
       }
     }
@@ -87,8 +195,9 @@ export function calculateNextRunTime(
     // If we get here, schedule for next week's first day
     const firstDay = days[0] ?? 0
     const daysUntil = (firstDay - currentDay + 7) % 7 || 7
-    nextRun.setDate(now.getDate() + daysUntil)
-    return nextRun.toISOString()
+    nextRunLocal.setDate(nowInTz.getDate() + daysUntil)
+    const localStr = `${nextRunLocal.getFullYear()}-${String(nextRunLocal.getMonth() + 1).padStart(2, '0')}-${String(nextRunLocal.getDate()).padStart(2, '0')}T${String(nextRunLocal.getHours()).padStart(2, '0')}:${String(nextRunLocal.getMinutes()).padStart(2, '0')}`
+    return localDatetimeToUTC(localStr, timezone)
   }
 
   return null
@@ -195,8 +304,13 @@ async function checkDueJobs(): Promise<void> {
   try {
     const dueJobs = scheduledJobQueries.findDueJobs.all(now)
     
+    // Log every check for debugging (can be removed later)
+    log("DEBUG", `Scheduler check: now=${now}, found ${dueJobs.length} due job(s)`)
+    
     if (dueJobs.length > 0) {
-      log("INFO", `Found ${dueJobs.length} due scheduled job(s)`)
+      log("INFO", `Found ${dueJobs.length} due scheduled job(s)`, {
+        jobs: dueJobs.map(j => ({ id: j.id, next_run_at: j.next_run_at, prompt: j.prompt.substring(0, 30) }))
+      })
     }
 
     for (const job of dueJobs) {

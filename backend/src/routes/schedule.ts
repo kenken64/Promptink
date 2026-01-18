@@ -265,4 +265,33 @@ export const scheduleRoutes = {
       }
     }),
   },
+
+  // Debug endpoint to check scheduler status
+  "/api/schedule/debug": {
+    GET: withAuth(async (req, user) => {
+      try {
+        const now = new Date().toISOString()
+        const jobs = scheduledJobQueries.findAllByUserId.all(user.id)
+        
+        const debugInfo = jobs.map(job => ({
+          id: job.id,
+          prompt: job.prompt.substring(0, 50),
+          schedule_type: job.schedule_type,
+          is_enabled: job.is_enabled,
+          next_run_at: job.next_run_at,
+          timezone: job.timezone,
+          is_due: job.is_enabled === 1 && job.next_run_at && job.next_run_at <= now,
+          server_time_utc: now,
+        }))
+
+        return Response.json({
+          server_time_utc: now,
+          jobs: debugInfo,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to get schedule debug info", error)
+        return Response.json({ error: "Failed to get debug info" }, { status: 500 })
+      }
+    }),
+  },
 }
