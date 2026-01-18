@@ -51,7 +51,7 @@ export function useSpeechToText(language: Language = "en"): UseSpeechToTextRetur
    * Send audio to backend for Whisper transcription
    */
   const transcribeWithWhisper = useCallback(async (audioBlob: Blob): Promise<string> => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('promptink_token')
     if (!token) {
       throw new Error('Not authenticated')
     }
