@@ -1,4 +1,4 @@
-import { extractToken, verifyToken, getUserById, type AuthUser } from "../services/auth-service"
+import { extractToken, verifyToken, getUserById, type AuthUser, type JWTPayload } from "../services/auth-service"
 import { log } from "../utils"
 
 export interface AuthenticatedRequest extends Request {
@@ -8,7 +8,7 @@ export interface AuthenticatedRequest extends Request {
 // Middleware to verify JWT and attach user to request
 export async function authenticateRequest(
   req: Request
-): Promise<{ user: AuthUser } | { error: string; status: number }> {
+): Promise<{ user: AuthUser; payload: JWTPayload } | { error: string; status: number }> {
   const authHeader = req.headers.get("Authorization")
   const token = extractToken(authHeader)
 
@@ -16,7 +16,7 @@ export async function authenticateRequest(
     return { error: "No token provided", status: 401 }
   }
 
-  const payload = verifyToken(token)
+  const payload = await verifyToken(token, "access")
   if (!payload) {
     return { error: "Invalid or expired token", status: 401 }
   }
@@ -26,12 +26,12 @@ export async function authenticateRequest(
     return { error: "User not found", status: 401 }
   }
 
-  return { user }
+  return { user, payload }
 }
 
 // Helper to create protected route handler
 export function withAuth(
-  handler: (req: Request, user: AuthUser) => Promise<Response> | Response
+  handler: (req: Request, user: AuthUser, payload?: JWTPayload) => Promise<Response> | Response
 ) {
   return async (req: Request): Promise<Response> => {
     const authResult = await authenticateRequest(req)
@@ -43,25 +43,26 @@ export function withAuth(
       )
     }
 
-    return handler(req, authResult.user)
+    return handler(req, authResult.user, authResult.payload)
   }
 }
 
 // Optional auth - attaches user if token present, but doesn't require it
 export async function optionalAuth(
   req: Request
-): Promise<AuthUser | null> {
+): Promise<{ user: AuthUser | null; payload: JWTPayload | null }> {
   const authHeader = req.headers.get("Authorization")
   const token = extractToken(authHeader)
 
   if (!token) {
-    return null
+    return { user: null, payload: null }
   }
 
-  const payload = verifyToken(token)
+  const payload = await verifyToken(token, "access")
   if (!payload) {
-    return null
+    return { user: null, payload: null }
   }
 
-  return getUserById(payload.userId)
+  const user = getUserById(payload.userId)
+  return { user, payload }
 }

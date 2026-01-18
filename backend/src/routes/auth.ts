@@ -1,8 +1,17 @@
-import { registerUser, loginUser, hashPassword, verifyPassword } from "../services/auth-service"
+import { registerUser, loginUser, refreshAccessToken, revokeToken, revokeAllUserTokens, verifyToken, hashPassword, verifyPassword } from "../services/auth-service"
 import { withAuth } from "../middleware/auth"
 import { log } from "../utils"
 import { userQueries, passwordResetTokenQueries } from "../db"
 import { sendPasswordResetEmail, sendPasswordChangeConfirmation } from "../services/email-service"
+
+// Helper to extract IP and User-Agent from request
+function getClientInfo(req: Request) {
+  const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+                   req.headers.get("x-real-ip") ||
+                   "unknown"
+  const userAgent = req.headers.get("user-agent") || "unknown"
+  return { ipAddress, userAgent }
+}
 
 export const authRoutes = {
   // Register new user
@@ -19,7 +28,8 @@ export const authRoutes = {
           )
         }
 
-        const result = await registerUser(email, password, name)
+        const { ipAddress, userAgent } = getClientInfo(req)
+        const result = await registerUser(email, password, name, ipAddress, userAgent)
 
         if ("error" in result) {
           return Response.json({ error: result.error }, { status: 400 })
@@ -28,7 +38,9 @@ export const authRoutes = {
         return Response.json({
           message: "Registration successful",
           user: result.user,
-          token: result.token,
+          accessToken: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+          expiresIn: result.tokens.expiresIn,
         })
       } catch (error) {
         log("ERROR", "Registration error", error)
@@ -54,7 +66,8 @@ export const authRoutes = {
           )
         }
 
-        const result = await loginUser(email, password)
+        const { ipAddress, userAgent } = getClientInfo(req)
+        const result = await loginUser(email, password, ipAddress, userAgent)
 
         if ("error" in result) {
           log("WARN", "Login failed", { email, error: result.error })
@@ -65,11 +78,44 @@ export const authRoutes = {
         return Response.json({
           message: "Login successful",
           user: result.user,
-          token: result.token,
+          accessToken: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+          expiresIn: result.tokens.expiresIn,
         })
       } catch (error) {
         log("ERROR", "Login error", error)
         return Response.json({ error: "Login failed" }, { status: 500 })
+      }
+    },
+  },
+
+  // Refresh access token
+  "/api/auth/refresh": {
+    POST: async (req: Request) => {
+      try {
+        const text = await req.text()
+        const { refreshToken } = text ? JSON.parse(text) : {}
+
+        if (!refreshToken) {
+          return Response.json(
+            { error: "Refresh token is required" },
+            { status: 400 }
+          )
+        }
+
+        const result = await refreshAccessToken(refreshToken)
+
+        if ("error" in result) {
+          return Response.json({ error: result.error }, { status: 401 })
+        }
+
+        return Response.json({
+          accessToken: result.accessToken,
+          expiresIn: result.expiresIn,
+        })
+      } catch (error) {
+        log("ERROR", "Token refresh error", error)
+        return Response.json({ error: "Token refresh failed" }, { status: 500 })
       }
     },
   },
@@ -81,10 +127,37 @@ export const authRoutes = {
     }),
   },
 
-  // Logout (client-side token removal, but can be used for session invalidation)
+  // Logout (revoke current token)
   "/api/auth/logout": {
-    POST: withAuth(async (req, user) => {
-      // In a more complex system, you might invalidate the token here
+    POST: withAuth(async (req, user, payload) => {
+      // Revoke the current access token
+      if (payload && payload.jti) {
+        revokeToken(payload.jti, user.id, payload.exp, "user logout")
+      }
+
+      // Optionally revoke refresh token if provided
+      try {
+        const text = await req.text()
+        const { refreshToken } = text ? JSON.parse(text) : {}
+
+        if (refreshToken) {
+          const refreshPayload = await verifyToken(refreshToken, "refresh")
+          if (refreshPayload && refreshPayload.jti) {
+            // Blacklist the specific refresh token JTI
+            revokeToken(refreshPayload.jti, user.id, refreshPayload.exp, "user logout")
+
+            // Also revoke the refresh token in the database to keep state consistent
+            const { refreshTokenQueries } = await import("../db")
+            const storedToken = refreshTokenQueries.findByJti.get(refreshPayload.jti)
+            if (storedToken) {
+              refreshTokenQueries.revoke.run(storedToken.id)
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors in refresh token revocation
+      }
+
       log("INFO", "User logged out", { userId: user.id })
       return Response.json({ message: "Logged out successfully" })
     }),
@@ -325,6 +398,22 @@ export const authRoutes = {
           { status: 500 }
         )
       }
+    }),
+  },
+
+  // Logout from all devices (revoke all tokens)
+  "/api/auth/logout-all": {
+    POST: withAuth(async (req, user, payload) => {
+      // Revoke current access token
+      if (payload && payload.jti) {
+        revokeToken(payload.jti, user.id, payload.exp, "logout all devices")
+      }
+
+      // Revoke all refresh tokens
+      revokeAllUserTokens(user.id)
+
+      log("INFO", "User logged out from all devices", { userId: user.id })
+      return Response.json({ message: "Logged out from all devices successfully" })
     }),
   },
 }
