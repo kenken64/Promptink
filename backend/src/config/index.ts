@@ -16,4 +16,10 @@ export const config = {
   storage: {
     imagesDir: process.env.IMAGES_DIR || "/app/data/images",
   },
+  email: {
+    brevoApiKey: process.env.BREVO_API_KEY,
+    senderEmail: process.env.SENDER_EMAIL || "noreply@promptink.app",
+    senderName: process.env.SENDER_NAME || "Promptink",
+    frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  },
 }

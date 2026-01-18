@@ -1,4 +1,4 @@
-import { userQueries, tokenBlacklistQueries, refreshTokenQueries, type User } from "../db"
+import { userQueries, tokenBlacklistQueries, refreshTokenQueries, passwordResetTokenQueries, type User } from "../db"
 import { log } from "../utils"
 
 // JWT Configuration
@@ -382,7 +382,8 @@ export function cleanupExpiredTokens(): void {
     const now = new Date().toISOString()
     tokenBlacklistQueries.deleteExpired.run(now)
     refreshTokenQueries.deleteExpired.run(now)
-    log("INFO", "Expired tokens cleaned up")
+    passwordResetTokenQueries.deleteExpired.run(now)
+    log("INFO", "Expired tokens cleaned up (blacklist, refresh, password reset)")
   } catch (error) {
     log("ERROR", "Failed to cleanup expired tokens", error)
   }
