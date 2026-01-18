@@ -1225,7 +1225,26 @@ RAZORPAY_PLAN_ID=plan_...
 5. **Input Validation:** Prompt sanitization before OpenAI API
 6. **Per-User Data:** Users can only access their own images
 7. **Webhook Verification:** Razorpay webhooks verified via signature
-8. **Rate Limiting:** Recommended for production
+8. **Rate Limiting:** In-memory rate limiting with per-endpoint configuration
+
+### Rate Limiting Configuration
+
+The application uses in-memory rate limiting (`backend/src/middleware/rate-limit.ts`) with the following limits:
+
+| Endpoint Category | Max Requests | Window | Purpose |
+|-------------------|--------------|--------|---------|
+| Auth (`/api/auth/*`) | 5 | 15 min | Brute force protection |
+| Image Generation (`/api/images/generate`, `/api/images/edit`) | 5 | 1 min | DALL-E API cost control |
+| General API (`/api/*`) | 100 | 1 min | DDoS/abuse protection |
+| Health Check (`/api/health`) | Unlimited | - | Railway uptime monitoring |
+
+Rate limit responses include headers:
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Requests remaining in window
+- `X-RateLimit-Reset`: Unix timestamp when window resets
+- `Retry-After`: Seconds until retry is allowed
+
+Monitor rate limit stats via the `/api/health/details` endpoint (requires authentication).
 
 ---
 
@@ -1338,4 +1357,44 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 
 ## Future Enhancements
 
-- [ ] Image templates
+### Quick Wins
+- [ ] **Image templates** - Pre-defined prompt templates users can customize (e.g., "Profile picture", "Product photo", "Book cover")
+- [ ] **Prompt history autocomplete** - Suggest previously used prompts as user types
+- [ ] **Keyboard shortcuts** - Quick actions (Ctrl+Enter to generate, Ctrl+S to sync, etc.)
+- [ ] **Image comparison view** - Side-by-side comparison of original vs edited images
+
+### User Experience
+- [ ] **Collections/folders** - Organize gallery images into custom collections
+- [ ] **Bulk operations** - Select multiple gallery images for batch delete, export, or share
+- [ ] **Image tagging** - Add custom tags to images for better organization and search
+- [ ] **Generation history timeline** - Visual timeline view of all generated images
+- [ ] **Undo/redo for edits** - Track edit history and allow reverting changes
+
+### Advanced Features
+- [ ] **Prompt enhancement AI** - Use GPT to improve user prompts before generation
+- [ ] **Image upscaling** - AI-powered upscaling for higher resolution exports
+- [ ] **Background removal** - Automatic background removal tool
+- [ ] **Inpainting improvements** - Better mask drawing tools with brush sizes
+- [ ] **Image-to-prompt** - Reverse engineer prompts from uploaded images using vision AI
+
+### Collaboration & Social
+- [ ] **Public gallery** - Optional public profile showcasing user's best work
+- [ ] **Community prompts** - Share and discover prompts from other users
+- [ ] **Prompt remix** - Fork and modify shared prompts from community
+
+### Integrations
+- [ ] **Zapier/Make integration** - Automate workflows with external tools
+- [ ] **Slack/Discord bot** - Generate images directly from chat platforms
+- [ ] **Browser extension** - Quick image generation from any webpage
+- [ ] **Mobile app** - Native iOS/Android app for on-the-go generation
+
+### Analytics & Insights
+- [ ] **Usage dashboard** - Visualize generation stats, popular prompts, peak times
+- [ ] **Cost tracking** - Track API usage and estimated costs per user
+- [ ] **A/B prompt testing** - Compare different prompts for the same concept
+
+### Enterprise
+- [ ] **Team workspaces** - Shared galleries and settings for teams
+- [ ] **Role-based access** - Admin, editor, viewer roles
+- [ ] **API access** - REST API for programmatic image generation
+- [ ] **White-label option** - Custom branding for enterprise customers

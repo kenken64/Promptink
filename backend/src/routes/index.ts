@@ -18,6 +18,56 @@ import { config } from "../config"
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
 import { withAuth } from "../middleware/auth"
+import { authLimiter, generateLimiter, apiLimiter, getRateLimitStats } from "../middleware/rate-limit"
+
+type RouteHandler = (req: Request, ...args: any[]) => Promise<Response> | Response
+type RouteDefinition = { [method: string]: RouteHandler }
+type Routes = { [path: string]: RouteDefinition }
+
+/**
+ * Apply rate limiting to routes based on path patterns
+ */
+function applyRateLimiting(routes: Routes): Routes {
+  const rateLimitedRoutes: Routes = {}
+
+  for (const [path, methods] of Object.entries(routes)) {
+    const rateLimitedMethods: RouteDefinition = {}
+
+    for (const [method, handler] of Object.entries(methods)) {
+      // Determine which rate limiter(s) to apply based on path
+      if (path.startsWith("/api/auth/")) {
+        // Auth endpoints: strict rate limiting (5 req / 15 min)
+        rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
+          const limitResponse = await authLimiter(req)
+          if (limitResponse) return limitResponse
+          return handler(req, ...args)
+        }
+      } else if (path === "/api/images/generate" || path === "/api/images/edit") {
+        // Image generation: cost control (5 req / min)
+        rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
+          const limitResponse = await generateLimiter(req)
+          if (limitResponse) return limitResponse
+          return handler(req, ...args)
+        }
+      } else if (path.startsWith("/api/") && path !== "/api/health") {
+        // General API endpoints: DDoS protection (100 req / min)
+        // Skip health check for Railway uptime monitoring
+        rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
+          const limitResponse = await apiLimiter(req)
+          if (limitResponse) return limitResponse
+          return handler(req, ...args)
+        }
+      } else {
+        // No rate limiting (health check, non-API routes)
+        rateLimitedMethods[method] = handler
+      }
+    }
+
+    rateLimitedRoutes[path] = rateLimitedMethods
+  }
+
+  return rateLimitedRoutes
+}
 
 // Helper to recursively list files in a directory
 function listFilesRecursive(dir: string, baseDir: string = dir): { path: string; size: number; isDir: boolean }[] {
@@ -106,6 +156,11 @@ const healthRoutes = {
         jwtConfigured: !!process.env.JWT_SECRET,
         userCount,
         requestedBy: { id: user.id, email: user.email },
+        rateLimits: {
+          auth: getRateLimitStats("auth"),
+          generate: getRateLimitStats("generate"),
+          api: getRateLimitStats("api"),
+        },
         volume: {
           status: volumeStatus,
           info: volumeInfo,
@@ -121,7 +176,8 @@ const healthRoutes = {
   },
 }
 
-export const routes = {
+// Combine all routes and apply rate limiting
+const allRoutes = {
   ...healthRoutes,
   ...displayRoutes,
   ...pluginRoutes,
@@ -139,3 +195,6 @@ export const routes = {
   ...scheduleRoutes,
   ...batchRoutes,
 }
+
+// Export rate-limited routes
+export const routes = applyRateLimiting(allRoutes)
