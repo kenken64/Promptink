@@ -235,9 +235,35 @@ const healthRoutes = {
   },
 }
 
+// Logo SVG for Razorpay checkout
+const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2dd4bf;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="20" fill="url(#grad)"/>
+  <path d="M50 20 L65 45 L90 50 L70 70 L75 95 L50 82 L25 95 L30 70 L10 50 L35 45 Z" fill="white"/>
+</svg>`
+
+const logoRoutes: Routes = {
+  "/api/logo.svg": {
+    GET: async () => {
+      return new Response(logoSvg, {
+        headers: {
+          "Content-Type": "image/svg+xml",
+          "Cache-Control": "public, max-age=86400",
+        },
+      })
+    },
+  },
+}
+
 // Combine all routes and apply rate limiting
 const allRoutes = {
   ...healthRoutes,
+  ...logoRoutes,
   ...displayRoutes,
   ...pluginRoutes,
   ...deviceRoutes,

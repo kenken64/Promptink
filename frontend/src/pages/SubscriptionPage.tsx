@@ -34,6 +34,7 @@ interface RazorpaySubscriptionOptions {
   subscription_id: string
   name: string
   description: string
+  image?: string
   handler: (response: RazorpaySubscriptionResponse) => void
   prefill?: {
     name?: string
@@ -163,6 +164,7 @@ export function SubscriptionPage({ authHeaders, onNavigate, onLogout }: Subscrip
       subscription_id: subscriptionId,
       name: "PromptInk",
       description: "Monthly Subscription - $6.53/month (incl. GST)",
+      image: `${window.location.origin}/api/logo.svg`,
       handler: onSuccess,
       prefill: {
         name: user?.name || "",

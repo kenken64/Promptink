@@ -39,6 +39,7 @@ interface RazorpayOptions {
   currency: string
   name: string
   description: string
+  image?: string
   order_id: string
   handler: (response: RazorpayResponse) => void
   prefill?: {
@@ -218,6 +219,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
         currency: razorpay.currency,
         name: "PromptInk",
         description: `TRMNL Photo Frame x${quantity}`,
+        image: `${window.location.origin}/api/logo.svg`,
         order_id: razorpay.orderId,
         handler: async (response: RazorpayResponse) => {
           console.log("[Payment] Razorpay response received:", {
