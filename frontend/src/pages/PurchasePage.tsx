@@ -277,7 +277,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-background dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header with logo - only show if we have navigation */}
       {onNavigate && (
         <PageHeader
@@ -291,15 +291,15 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
       <div className="h-screen overflow-y-auto scroll-touch">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 dark:bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/5 dark:bg-teal-400/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 py-4 sm:py-8 px-4 flex justify-center">
         <div className="w-full max-w-lg relative">
         {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+        <div className="bg-card/80 dark:bg-slate-800/50 backdrop-blur-xl border border-border dark:border-slate-700/50 rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-full max-w-xs mb-4 rounded-xl overflow-hidden shadow-lg shadow-teal-500/25">
@@ -309,33 +309,33 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                 className="w-full h-auto object-cover"
               />
             </div>
-            <h1 className="text-2xl font-bold text-white">{t.purchase.title}</h1>
-            <p className="text-slate-400 text-sm mt-1">{t.purchase.subtitle}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.purchase.title}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{t.purchase.subtitle}</p>
           </div>
 
           {/* Price and Quantity */}
-          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-6">
+          <div className="bg-muted/50 dark:bg-slate-900/50 border border-border dark:border-slate-700 rounded-xl p-4 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-300 font-medium">{t.purchase.pricePerFrame}</span>
-              <span className="text-xl font-bold text-white">${UNIT_PRICE}.00</span>
+              <span className="text-foreground/80 font-medium">{t.purchase.pricePerFrame}</span>
+              <span className="text-xl font-bold text-foreground">${UNIT_PRICE}.00</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-300 font-medium">{t.purchase.quantity}</span>
+              <span className="text-foreground/80 font-medium">{t.purchase.quantity}</span>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => handleQuantityChange(-1)}
                   disabled={quantity <= 1}
-                  className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="p-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
-                <span className="text-xl font-bold text-white w-8 text-center">{quantity}</span>
+                <span className="text-xl font-bold text-foreground w-8 text-center">{quantity}</span>
                 <button
                   type="button"
                   onClick={() => handleQuantityChange(1)}
                   disabled={quantity >= 10}
-                  className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="p-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -361,12 +361,12 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                   "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
                   isGift
                     ? "bg-teal-500 border-teal-500"
-                    : "bg-transparent border-slate-600 hover:border-slate-500"
+                    : "bg-transparent border-border hover:border-primary/50"
                 )}
               >
                 {isGift && <Check className="h-4 w-4 text-white" />}
               </button>
-              <label className="flex items-center gap-2 text-slate-300 cursor-pointer" onClick={() => setIsGift(!isGift)}>
+              <label className="flex items-center gap-2 text-foreground/80 cursor-pointer" onClick={() => setIsGift(!isGift)}>
                 <Gift className="h-4 w-4" />
                 {t.purchase.thisIsGift}
               </label>
@@ -374,44 +374,44 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
 
             {/* Shipping Address Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-foreground/80 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 {t.purchase.shippingAddress}
               </h3>
 
               {/* Full Name */}
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="text"
                   value={shipping.name}
                   onChange={(e) => handleShippingChange("name", e.target.value)}
                   placeholder={t.purchase.fullName}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
 
               {/* Email */}
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="email"
                   value={shipping.email}
                   onChange={(e) => handleShippingChange("email", e.target.value)}
                   placeholder={t.purchase.email}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
 
               {/* Phone */}
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="tel"
                   value={shipping.phone}
                   onChange={(e) => handleShippingChange("phone", e.target.value)}
                   placeholder={t.purchase.phone}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
 
@@ -421,7 +421,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                 value={shipping.addressLine1}
                 onChange={(e) => handleShippingChange("addressLine1", e.target.value)}
                 placeholder={t.purchase.addressLine1}
-                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
               />
 
               {/* Address Line 2 */}
@@ -430,7 +430,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                 value={shipping.addressLine2}
                 onChange={(e) => handleShippingChange("addressLine2", e.target.value)}
                 placeholder={t.purchase.addressLine2}
-                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
               />
 
               {/* City & State */}
@@ -440,14 +440,14 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                   value={shipping.city}
                   onChange={(e) => handleShippingChange("city", e.target.value)}
                   placeholder={t.purchase.city}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <input
                   type="text"
                   value={shipping.state}
                   onChange={(e) => handleShippingChange("state", e.target.value)}
                   placeholder={t.purchase.state}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
 
@@ -458,14 +458,14 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                   value={shipping.postalCode}
                   onChange={(e) => handleShippingChange("postalCode", e.target.value)}
                   placeholder={t.purchase.postalCode}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
                 <input
                   type="text"
                   value={shipping.country}
                   onChange={(e) => handleShippingChange("country", e.target.value)}
                   placeholder={t.purchase.country}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -473,7 +473,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
             {/* Gift Section (conditional) */}
             {isGift && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-foreground/80 flex items-center gap-2">
                   <Gift className="h-4 w-4" />
                   {t.purchase.giftDetails}
                 </h3>
@@ -483,7 +483,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                   value={gift.recipientName}
                   onChange={(e) => handleGiftChange("recipientName", e.target.value)}
                   placeholder={t.purchase.recipientName}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
                 />
 
                 <textarea
@@ -491,35 +491,35 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                   onChange={(e) => handleGiftChange("message", e.target.value)}
                   placeholder={t.purchase.giftMessage}
                   rows={3}
-                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all resize-none"
+                  className="w-full px-4 py-3 bg-muted/50 dark:bg-slate-900/50 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all resize-none"
                 />
               </div>
             )}
 
             {/* Divider */}
-            <div className="border-t border-slate-700 pt-4">
+            <div className="border-t border-border pt-4">
               {/* Order Summary */}
               <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-muted-foreground">
                   <span>{t.purchase.subtotal} ({quantity} {quantity > 1 ? t.purchase.frames : t.purchase.frame})</span>
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-muted-foreground">
                   <span>{t.purchase.gst}</span>
                   <span>${frameGst.toFixed(2)}</span>
                 </div>
                 {!hasExistingSubscription && (
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>{t.purchase.monthlySubscription} ({t.purchase.inclGst})</span>
                     <span>${SUBSCRIPTION_WITH_GST.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-slate-700">
+                <div className="flex justify-between text-foreground font-bold text-lg pt-2 border-t border-border">
                   <span>{t.purchase.totalToday}</span>
                   <span>${totalAmount.toFixed(2)}</span>
                 </div>
                 {!hasExistingSubscription && (
-                  <p className="text-slate-500 text-xs">
+                  <p className="text-muted-foreground text-xs">
                     {t.purchase.subscriptionNote}
                   </p>
                 )}
@@ -555,7 +555,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
                 <button
                   type="button"
                   onClick={onSkip}
-                  className="w-full py-3 text-slate-400 hover:text-slate-300 text-sm transition-colors"
+                  className="w-full py-3 text-muted-foreground hover:text-foreground text-sm transition-colors"
                 >
                   {t.purchase.skipForNow}
                 </button>
@@ -565,7 +565,7 @@ export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLog
         </div>
 
         {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-muted-foreground text-xs mt-6">
           {t.purchase.securePayment}
         </p>
       </div>

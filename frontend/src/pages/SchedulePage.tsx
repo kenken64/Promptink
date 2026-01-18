@@ -404,6 +404,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
               onClick={() => setShowForm(true)}
               disabled={!canCreateMore}
               title={!canCreateMore ? `Maximum ${limit} schedules` : undefined}
+              className="rounded-xl font-medium text-white transition-all duration-300 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 disabled:opacity-50"
             >
               <Plus className="h-4 w-4 mr-2" />
               {t.schedule?.newSchedule || "New Schedule"}

@@ -520,7 +520,10 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
             {t.batch?.description || "Generate multiple images at once"}
           </p>
           {!showForm && (
-            <Button onClick={() => setShowForm(true)}>
+            <Button 
+              onClick={() => setShowForm(true)}
+              className="rounded-xl font-medium text-white transition-all duration-300 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400"
+            >
               <Plus className="h-4 w-4 mr-2" />
               {t.batch?.newBatch || "New Batch"}
             </Button>
