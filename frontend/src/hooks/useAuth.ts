@@ -118,7 +118,8 @@ export function useAuth() {
       }))
 
       // Schedule next refresh (refresh 1 minute before expiry)
-      const refreshIn = (refreshData.expiresIn - 60) * 1000
+      // Ensure minimum delay of 10 seconds to prevent negative timeout
+      const refreshIn = Math.max((refreshData.expiresIn - 60) * 1000, 10000)
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current)
       }
@@ -236,7 +237,8 @@ export function useAuth() {
         })
 
         // Schedule token refresh (refresh 1 minute before expiry)
-        const refreshIn = (authData.expiresIn - 60) * 1000
+        // Ensure minimum delay of 10 seconds to prevent negative timeout
+        const refreshIn = Math.max((authData.expiresIn - 60) * 1000, 10000)
         if (refreshTimeoutRef.current) {
           clearTimeout(refreshTimeoutRef.current)
         }
@@ -284,7 +286,8 @@ export function useAuth() {
         })
 
         // Schedule token refresh (refresh 1 minute before expiry)
-        const refreshIn = (authData.expiresIn - 60) * 1000
+        // Ensure minimum delay of 10 seconds to prevent negative timeout
+        const refreshIn = Math.max((authData.expiresIn - 60) * 1000, 10000)
         if (refreshTimeoutRef.current) {
           clearTimeout(refreshTimeoutRef.current)
         }

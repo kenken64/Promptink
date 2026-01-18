@@ -84,7 +84,11 @@ function constantTimeEqual(a: string, b: string): boolean {
 function base64urlEncode(data: string): string {
   const encoder = new TextEncoder()
   const bytes = encoder.encode(data)
-  const base64 = btoa(String.fromCharCode(...bytes))
+
+  // Use chunked approach for robustness with large data
+  const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('')
+  const base64 = btoa(binary)
+
   return base64
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
@@ -127,7 +131,10 @@ async function signHMAC(data: string, secret: string): Promise<string> {
 
   const signature = await crypto.subtle.sign("HMAC", key, messageData)
   const signatureArray = Array.from(new Uint8Array(signature))
-  const base64 = btoa(String.fromCharCode(...signatureArray))
+
+  // Use chunked approach for robustness
+  const binary = signatureArray.map((b) => String.fromCharCode(b)).join('')
+  const base64 = btoa(binary)
 
   // URL-safe base64
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
@@ -297,12 +304,27 @@ export async function refreshAccessToken(
       return { error: "Invalid refresh token" }
     }
 
-    // Check if expired
+    // Verify token expiration both in payload and database
     const now = new Date()
     const expiresAt = new Date(storedToken.expires_at)
-    if (expiresAt < now) {
-      log("WARN", "Refresh token expired in database", { jti: payload.jti })
+    const payloadExpiry = new Date(payload.exp * 1000)
+
+    if (expiresAt < now || payloadExpiry < now) {
+      log("WARN", "Refresh token expired", {
+        jti: payload.jti,
+        dbExpiry: expiresAt.toISOString(),
+        tokenExpiry: payloadExpiry.toISOString()
+      })
       return { error: "Refresh token expired" }
+    }
+
+    // Verify JTI matches between token and database
+    if (storedToken.jti !== payload.jti) {
+      log("WARN", "JTI mismatch between token and database", {
+        tokenJti: payload.jti,
+        dbJti: storedToken.jti
+      })
+      return { error: "Invalid refresh token" }
     }
 
     // Update last used timestamp
