@@ -213,12 +213,23 @@ export const authRoutes = {
         passwordResetTokenQueries.markAsUsed.run(resetToken.id)
 
         // Send confirmation email
-        await sendPasswordChangeConfirmation(user.email, user.name || undefined)
-
-        log("INFO", "Password reset successful", { email: user.email, userId: user.id })
-        return Response.json({
-          message: "Password has been reset successfully. You can now log in with your new password.",
-        })
+        try {
+          await sendPasswordChangeConfirmation(user.email, user.name || undefined)
+          log("INFO", "Password reset successful", { email: user.email, userId: user.id })
+          return Response.json({
+            message: "Password has been reset successfully. You can now log in with your new password.",
+          })
+        } catch (emailError) {
+          log("ERROR", "Failed to send password reset confirmation email", {
+            userId: user.id,
+            email: user.email,
+            error: emailError,
+          })
+          return Response.json({
+            message: "Password has been reset successfully, but we were unable to send a confirmation email.",
+            emailNotification: "failed",
+          })
+        }
       } catch (error) {
         log("ERROR", "Reset password error", error)
         return Response.json(
@@ -290,12 +301,23 @@ export const authRoutes = {
         userQueries.updatePassword.run(passwordHash, user.id)
 
         // Send confirmation email
-        await sendPasswordChangeConfirmation(user.email, user.name || undefined)
-
-        log("INFO", "Password changed successfully", { userId: user.id, email: user.email })
-        return Response.json({
-          message: "Password has been changed successfully",
-        })
+        try {
+          await sendPasswordChangeConfirmation(user.email, user.name || undefined)
+          log("INFO", "Password changed successfully", { userId: user.id, email: user.email })
+          return Response.json({
+            message: "Password has been changed successfully",
+          })
+        } catch (emailError) {
+          log("ERROR", "Failed to send password change confirmation email", {
+            userId: user.id,
+            email: user.email,
+            error: emailError,
+          })
+          return Response.json({
+            message: "Password has been changed successfully, but we were unable to send a confirmation email.",
+            emailNotification: "failed",
+          })
+        }
       } catch (error) {
         log("ERROR", "Change password error", error)
         return Response.json(

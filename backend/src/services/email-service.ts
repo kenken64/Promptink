@@ -1,11 +1,9 @@
 import { log } from "../utils"
+import { config } from "../config"
 
-// Brevo API configuration
-const BREVO_API_KEY = process.env.BREVO_API_KEY
+// Brevo API configuration - use centralized config
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-const SENDER_EMAIL = process.env.SENDER_EMAIL || "noreply@promptink.app"
-const SENDER_NAME = process.env.SENDER_NAME || "Promptink"
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173"
+const { brevoApiKey: BREVO_API_KEY, senderEmail: SENDER_EMAIL, senderName: SENDER_NAME, frontendUrl: FRONTEND_URL } = config.email
 
 interface SendEmailParams {
   to: string
