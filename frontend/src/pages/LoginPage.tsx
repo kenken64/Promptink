@@ -6,6 +6,7 @@ import { cn } from "../lib/utils"
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   onSwitchToRegister: () => void
+  onForgotPassword: () => void
   translations: {
     title: string
     subtitle: string
@@ -21,7 +22,7 @@ interface LoginPageProps {
   }
 }
 
-export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: LoginPageProps) {
+export function LoginPage({ onLogin, onSwitchToRegister, onForgotPassword, translations: t }: LoginPageProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -92,9 +93,18 @@ export function LoginPage({ onLogin, onSwitchToRegister, translations: t }: Logi
 
             {/* Password field */}
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                {t.passwordLabel}
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                  {t.passwordLabel}
+                </label>
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-xs text-teal-500 hover:text-teal-400 transition-colors"
+                >
+                  {t.forgotPassword}
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input

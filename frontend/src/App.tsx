@@ -9,6 +9,8 @@ import { LanguageToggle } from "./components/LanguageToggle"
 import { AuthGuard } from "./components/AuthGuard"
 import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
+import { ResetPasswordPage } from "./pages/ResetPasswordPage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { PurchasePage } from "./pages/PurchasePage"
 import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
@@ -33,7 +35,7 @@ interface Message {
   isLoading?: boolean
 }
 
-type AuthPage = "login" | "register"
+type AuthPage = "login" | "register" | "forgot-password" | "reset-password"
 type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery" | "schedule" | "batch"
 type ImageSize = "1024x1024" | "1792x1024" | "1024x1792"
 
@@ -47,6 +49,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedSize, setSelectedSize] = useState<ImageSize>("1024x1024")
   const [selectedStyle, setSelectedStyle] = useState<ImageStylePreset>("none")
+  const [resetToken, setResetToken] = useState<string>("")
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -86,6 +89,20 @@ export default function App() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [mobileMenuOpen])
+
+  // Check for reset token in URL on page load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const path = window.location.pathname
+
+    if (path === '/reset-password' && token) {
+      setResetToken(token)
+      setAuthPage('reset-password')
+      // Clean up URL
+      window.history.replaceState({}, '', '/')
+    }
+  }, [])
 
   const handleSend = async (prompt: string, imageFile?: File) => {
     const userMessageId = Date.now().toString()
@@ -184,6 +201,34 @@ export default function App() {
     return await register({ email, password, name })
   }
 
+  const handleForgotPassword = async (email: string) => {
+    const response = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to send reset email')
+    }
+    return data
+  }
+
+  const handleResetPassword = async (token: string, newPassword: string) => {
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to reset password')
+    }
+    // After successful reset, go to login page
+    setAuthPage('login')
+    return data
+  }
+
   const handleSyncWithAuth = async (imageUrl: string, prompt?: string) => {
     return await syncToTrmnl(imageUrl, prompt, getAuthHeader())
   }
@@ -202,7 +247,30 @@ export default function App() {
         <LoginPage
           onLogin={handleLogin}
           onSwitchToRegister={() => setAuthPage("register")}
+          onForgotPassword={() => setAuthPage("forgot-password")}
           translations={t.auth.login}
+        />
+      )
+    }
+    if (authPage === "forgot-password") {
+      return (
+        <ForgotPasswordPage
+          onSubmit={handleForgotPassword}
+          onBackToLogin={() => setAuthPage("login")}
+          translations={t.auth.forgotPassword}
+        />
+      )
+    }
+    if (authPage === "reset-password") {
+      return (
+        <ResetPasswordPage
+          token={resetToken}
+          onSubmit={handleResetPassword}
+          onBackToLogin={() => {
+            setResetToken("")
+            setAuthPage("login")
+          }}
+          translations={t.auth.resetPassword}
         />
       )
     }
