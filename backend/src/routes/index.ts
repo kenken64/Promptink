@@ -205,5 +205,5 @@ const allRoutes = {
   ...speechRoutes,
 }
 
-// Export rate-limited routes
-export const routes = applyRateLimiting(allRoutes)
+// Export routes without rate limiting (rate limiting disabled)
+export const routes = allRoutes
