@@ -177,10 +177,13 @@ export const authRoutes = {
           )
         }
 
-        log("INFO", "Password reset requested", { email })
+        // Normalize email to lowercase for consistent lookup
+        const normalizedEmail = email.toLowerCase().trim()
+
+        log("INFO", "Password reset requested", { email: normalizedEmail })
 
         // Find user by email
-        const user = userQueries.findByEmail.get(email)
+        const user = userQueries.findByEmail.get(normalizedEmail)
 
         // Always return success to prevent email enumeration
         if (!user) {
@@ -207,17 +210,17 @@ export const authRoutes = {
         passwordResetTokenQueries.create.get(user.id, token, expiresAt)
 
         // Send reset email
-        const emailSent = await sendPasswordResetEmail(email, token, user.name || undefined)
+        const emailSent = await sendPasswordResetEmail(normalizedEmail, token, user.name || undefined)
 
         if (!emailSent) {
-          log("ERROR", "Failed to send password reset email", { email })
+          log("ERROR", "Failed to send password reset email", { email: normalizedEmail })
           return Response.json(
             { error: "Failed to send reset email. Please try again later." },
             { status: 500 }
           )
         }
 
-        log("INFO", "Password reset email sent", { email, userId: user.id })
+        log("INFO", "Password reset email sent", { email: normalizedEmail, userId: user.id })
         return Response.json({
           message: "If an account exists with this email, a password reset link has been sent.",
         })
@@ -254,8 +257,9 @@ export const authRoutes = {
 
         log("INFO", "Password reset attempt with token")
 
-        // Find valid token
-        const resetToken = passwordResetTokenQueries.findByToken.get(token)
+        // Find valid token (not expired and not used)
+        const now = new Date().toISOString()
+        const resetToken = passwordResetTokenQueries.findByToken.get(token, now)
 
         if (!resetToken) {
           log("WARN", "Invalid or expired reset token used")

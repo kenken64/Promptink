@@ -601,7 +601,7 @@ let _batchJobItemQueries: {
 
 let _passwordResetTokenQueries: {
   create: Statement<PasswordResetToken, [number, string, string]>
-  findByToken: Statement<PasswordResetToken, [string]>
+  findByToken: Statement<PasswordResetToken, [string, string]>
   markAsUsed: Statement<void, [number]>
   deleteExpired: Statement<void, [string]>
   deleteByUserId: Statement<void, [number]>
@@ -858,8 +858,8 @@ function initPreparedStatements() {
     create: db.prepare<PasswordResetToken, [number, string, string]>(
       "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?) RETURNING *"
     ),
-    findByToken: db.prepare<PasswordResetToken, [string]>(
-      "SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > datetime('now')"
+    findByToken: db.prepare<PasswordResetToken, [string, string]>(
+      "SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > ?"
     ),
     markAsUsed: db.prepare<void, [number]>(
       "UPDATE password_reset_tokens SET used = 1 WHERE id = ?"

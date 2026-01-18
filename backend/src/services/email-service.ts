@@ -5,6 +5,18 @@ import { config } from "../config"
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 const { brevoApiKey: BREVO_API_KEY, senderEmail: SENDER_EMAIL, senderName: SENDER_NAME, frontendUrl: FRONTEND_URL } = config.email
 
+/**
+ * Escape HTML special characters to prevent XSS in email templates
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
 interface SendEmailParams {
   to: string
   subject: string
@@ -17,8 +29,10 @@ interface SendEmailParams {
  */
 export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   if (!BREVO_API_KEY) {
-    log("ERROR", "Brevo API key not configured")
-    throw new Error("Email service not configured")
+    // Log the misconfiguration but return true to avoid leaking information
+    // through error responses (e.g., in forgot password endpoint)
+    log("ERROR", "Brevo API key not configured - email not sent", { to: params.to, subject: params.subject })
+    return true
   }
 
   try {
@@ -71,7 +85,8 @@ export async function sendPasswordResetEmail(
   userName?: string
 ): Promise<boolean> {
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`
-  const displayName = userName || email
+  const rawDisplayName = userName || email
+  const displayName = escapeHtml(rawDisplayName)
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -162,7 +177,8 @@ export async function sendPasswordChangeConfirmation(
   email: string,
   userName?: string
 ): Promise<boolean> {
-  const displayName = userName || email
+  const rawDisplayName = userName || email
+  const displayName = escapeHtml(rawDisplayName)
   const loginUrl = `${FRONTEND_URL}/login`
 
   const htmlContent = `

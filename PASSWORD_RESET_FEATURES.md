@@ -61,8 +61,9 @@ Request a password reset email.
 - Token expires in 1 hour
 - Only one active token per user (old tokens are invalidated)
 - Sends a beautifully formatted HTML email with reset link
+- Expired tokens are automatically cleaned up by the scheduler service
 
-**Rate Limiting:** Subject to auth endpoint rate limits (10 requests per 15 minutes)
+**Rate Limiting:** Rate limiting is currently disabled in the application. Configure rate limiting at your API gateway or reverse proxy (recommended: 10 requests per 15 minutes per IP or email) to mitigate abuse.
 
 ---
 
@@ -189,9 +190,10 @@ The email service sends beautifully formatted HTML emails with:
    - Hashed using Argon2id algorithm
 
 4. **Rate Limiting:**
-   - Auth endpoints limited to 10 requests per 15 minutes
-   - Prevents brute force attacks
-   - Prevents abuse of email sending
+   - Rate limiting is currently disabled in the application
+   - Configure rate limiting at your API gateway or reverse proxy
+   - Recommended: 10 requests per 15 minutes per IP/email for auth endpoints
+   - Helps prevent brute force attacks and email flooding abuse
 
 5. **Logging:**
    - All password operations are logged
