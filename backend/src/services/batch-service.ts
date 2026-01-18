@@ -51,7 +51,18 @@ export function startBatchProcessor(intervalMs: number = 5000): void {
     return
   }
 
-  log("INFO", "Starting batch processor", { intervalMs })
+  // Check for any in-progress batches that need to be resumed (e.g., after server restart)
+  const pendingBatch = batchJobQueries.findPending.get()
+  if (pendingBatch) {
+    log("INFO", "Found in-progress batch job to resume", { 
+      batchId: pendingBatch.id, 
+      status: pendingBatch.status,
+      completed: pendingBatch.completed_count,
+      total: pendingBatch.total_count
+    })
+  }
+
+  log("INFO", "Starting batch processor", { intervalMs, rateLimitDelayMs: RATE_LIMIT_DELAY_MS })
 
   processorInterval = setInterval(async () => {
     await processPendingBatches()

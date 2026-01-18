@@ -736,7 +736,8 @@ function initPreparedStatements() {
       "SELECT * FROM batch_job_items WHERE batch_id = ? ORDER BY id ASC"
     ),
     findPendingByBatchId: db.prepare<BatchJobItem, [number]>(
-      "SELECT * FROM batch_job_items WHERE batch_id = ? AND status = 'pending' ORDER BY id ASC LIMIT 1"
+      // Include 'processing' items in case server crashed mid-processing
+      "SELECT * FROM batch_job_items WHERE batch_id = ? AND (status = 'pending' OR status = 'processing') ORDER BY id ASC LIMIT 1"
     ),
     create: db.prepare<BatchJobItem, [number, string]>(
       "INSERT INTO batch_job_items (batch_id, prompt) VALUES (?, ?) RETURNING *"
