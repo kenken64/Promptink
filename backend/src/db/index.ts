@@ -183,6 +183,31 @@ export interface BatchJobItem {
   completed_at: string | null
 }
 
+// Token blacklist type
+export interface TokenBlacklist {
+  id: number
+  jti: string
+  user_id: number
+  expires_at: string
+  revoked_at: string
+  reason: string | null
+}
+
+// Refresh token type
+export interface RefreshToken {
+  id: number
+  user_id: number
+  token_hash: string
+  jti: string
+  expires_at: string
+  created_at: string
+  last_used_at: string | null
+  ip_address: string | null
+  user_agent: string | null
+  is_revoked: number
+  revoked_at: string | null
+}
+
 // Initialize database tables
 export function initDatabase() {
   log("INFO", "Initializing database...", { dbPath: DB_PATH })
@@ -407,17 +432,43 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_batch_job_items_batch_id ON batch_job_items(batch_id)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_batch_job_items_status ON batch_job_items(status)`)
 
-  // Sessions/refresh tokens table (optional, for token invalidation)
+  // Token blacklist table (for revoked tokens)
   db.run(`
-    CREATE TABLE IF NOT EXISTS sessions (
+    CREATE TABLE IF NOT EXISTS token_blacklist (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      jti TEXT UNIQUE NOT NULL,
       user_id INTEGER NOT NULL,
-      token_hash TEXT NOT NULL,
       expires_at DATETIME NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      revoked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      reason TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `)
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_token_blacklist_jti ON token_blacklist(jti)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_token_blacklist_expires_at ON token_blacklist(expires_at)`)
+
+  // Refresh tokens table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT UNIQUE NOT NULL,
+      jti TEXT UNIQUE NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME,
+      ip_address TEXT,
+      user_agent TEXT,
+      is_revoked INTEGER DEFAULT 0,
+      revoked_at DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `)
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_jti ON refresh_tokens(jti)`)
 
   // Initialize prepared statements after tables are created
   initPreparedStatements()
@@ -518,6 +569,23 @@ let _batchJobItemQueries: {
   create: Statement<BatchJobItem, [number, string]>
   updateStatus: Statement<void, [string, number | null, string | null, number]>
   updateCompleted: Statement<void, [string, number | null, string | null, number]>
+}
+
+let _tokenBlacklistQueries: {
+  findByJti: Statement<TokenBlacklist, [string]>
+  create: Statement<TokenBlacklist, [string, number, string, string | null]>
+  deleteExpired: Statement<void, [string]>
+}
+
+let _refreshTokenQueries: {
+  findByTokenHash: Statement<RefreshToken, [string]>
+  findByJti: Statement<RefreshToken, [string]>
+  findAllByUserId: Statement<RefreshToken, [number]>
+  create: Statement<RefreshToken, [number, string, string, string, string | null, string | null]>
+  updateLastUsed: Statement<void, [string, number]>
+  revoke: Statement<void, [number]>
+  revokeAllByUserId: Statement<void, [number]>
+  deleteExpired: Statement<void, [string]>
 }
 
 function initPreparedStatements() {
@@ -749,6 +817,45 @@ function initPreparedStatements() {
       "UPDATE batch_job_items SET status = ?, image_id = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
   }
+
+  _tokenBlacklistQueries = {
+    findByJti: db.prepare<TokenBlacklist, [string]>(
+      "SELECT * FROM token_blacklist WHERE jti = ?"
+    ),
+    create: db.prepare<TokenBlacklist, [string, number, string, string | null]>(
+      "INSERT INTO token_blacklist (jti, user_id, expires_at, reason) VALUES (?, ?, ?, ?) RETURNING *"
+    ),
+    deleteExpired: db.prepare<void, [string]>(
+      "DELETE FROM token_blacklist WHERE expires_at < ?"
+    ),
+  }
+
+  _refreshTokenQueries = {
+    findByTokenHash: db.prepare<RefreshToken, [string]>(
+      "SELECT * FROM refresh_tokens WHERE token_hash = ? AND is_revoked = 0"
+    ),
+    findByJti: db.prepare<RefreshToken, [string]>(
+      "SELECT * FROM refresh_tokens WHERE jti = ? AND is_revoked = 0"
+    ),
+    findAllByUserId: db.prepare<RefreshToken, [number]>(
+      "SELECT * FROM refresh_tokens WHERE user_id = ? AND is_revoked = 0 ORDER BY created_at DESC"
+    ),
+    create: db.prepare<RefreshToken, [number, string, string, string, string | null, string | null]>(
+      "INSERT INTO refresh_tokens (user_id, token_hash, jti, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
+    ),
+    updateLastUsed: db.prepare<void, [string, number]>(
+      "UPDATE refresh_tokens SET last_used_at = ? WHERE id = ?"
+    ),
+    revoke: db.prepare<void, [number]>(
+      "UPDATE refresh_tokens SET is_revoked = 1, revoked_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ),
+    revokeAllByUserId: db.prepare<void, [number]>(
+      "UPDATE refresh_tokens SET is_revoked = 1, revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND is_revoked = 0"
+    ),
+    deleteExpired: db.prepare<void, [string]>(
+      "DELETE FROM refresh_tokens WHERE expires_at < ?"
+    ),
+  }
 }
 
 // Getters for prepared statements
@@ -836,4 +943,21 @@ export const batchJobItemQueries = {
   get create() { return _batchJobItemQueries.create },
   get updateStatus() { return _batchJobItemQueries.updateStatus },
   get updateCompleted() { return _batchJobItemQueries.updateCompleted },
+}
+
+export const tokenBlacklistQueries = {
+  get findByJti() { return _tokenBlacklistQueries.findByJti },
+  get create() { return _tokenBlacklistQueries.create },
+  get deleteExpired() { return _tokenBlacklistQueries.deleteExpired },
+}
+
+export const refreshTokenQueries = {
+  get findByTokenHash() { return _refreshTokenQueries.findByTokenHash },
+  get findByJti() { return _refreshTokenQueries.findByJti },
+  get findAllByUserId() { return _refreshTokenQueries.findAllByUserId },
+  get create() { return _refreshTokenQueries.create },
+  get updateLastUsed() { return _refreshTokenQueries.updateLastUsed },
+  get revoke() { return _refreshTokenQueries.revoke },
+  get revokeAllByUserId() { return _refreshTokenQueries.revokeAllByUserId },
+  get deleteExpired() { return _refreshTokenQueries.deleteExpired },
 }

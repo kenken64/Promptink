@@ -85,6 +85,49 @@ startBatchProcessor()
 const isDev = process.env.NODE_ENV !== "production"
 log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isDev}`)
 
+// Security headers function
+function addSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers)
+
+  // Content Security Policy
+  headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: blob: https:; " +
+    "font-src 'self' data:; " +
+    "connect-src 'self'; " +
+    "frame-ancestors 'none'"
+  )
+
+  // Prevent clickjacking
+  headers.set("X-Frame-Options", "DENY")
+
+  // Prevent MIME type sniffing
+  headers.set("X-Content-Type-Options", "nosniff")
+
+  // Enable XSS protection
+  headers.set("X-XSS-Protection", "1; mode=block")
+
+  // Referrer policy
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+  // Permissions policy (formerly Feature-Policy)
+  headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+  // HSTS (only in production over HTTPS)
+  if (!isDev) {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
 if (isDev) {
   // Development: use Bun's HTML import with HMR
   const index = await import("../../frontend/index.html")
@@ -98,7 +141,8 @@ if (isDev) {
     fetch(req) {
       const url = new URL(req.url)
       log("INFO", `${req.method} ${url.pathname}`)
-      return new Response("Not Found", { status: 404 })
+      const response = new Response("Not Found", { status: 404 })
+      return addSecurityHeaders(response)
     },
     development: true,
   })
@@ -119,16 +163,18 @@ if (isDev) {
 
       // Serve index.html for root
       if (url.pathname === "/" || url.pathname === "/index.html") {
-        return new Response(indexHtml, {
+        const response = new Response(indexHtml, {
           headers: { "Content-Type": "text/html" },
         })
+        return addSecurityHeaders(response)
       }
 
       // Serve CSS
       if (url.pathname === "/assets/styles.css") {
-        return new Response(stylesCSS, {
+        const response = new Response(stylesCSS, {
           headers: { "Content-Type": "text/css" },
         })
+        return addSecurityHeaders(response)
       }
 
       // Serve static assets from dist folder
@@ -151,20 +197,23 @@ if (isDev) {
           } else if (url.pathname.endsWith(".webp")) {
             contentType = "image/webp"
           }
-          return new Response(file, {
+          const response = new Response(file, {
             headers: { "Content-Type": contentType },
           })
+          return addSecurityHeaders(response)
         }
       }
 
       // SPA fallback - serve index.html for unmatched routes
       if (!url.pathname.startsWith("/api/")) {
-        return new Response(indexHtml, {
+        const response = new Response(indexHtml, {
           headers: { "Content-Type": "text/html" },
         })
+        return addSecurityHeaders(response)
       }
 
-      return new Response("Not Found", { status: 404 })
+      const response = new Response("Not Found", { status: 404 })
+      return addSecurityHeaders(response)
     },
   })
 }
