@@ -36,9 +36,13 @@ function applyStylePreset(prompt: string, stylePreset: string | null): string {
 // Maximum items per batch
 export const MAX_BATCH_SIZE = 10
 
+// Rate limiting: 30 second delay between each image generation to avoid OpenAI rate limits
+const RATE_LIMIT_DELAY_MS = 30000
+
 // Batch processor singleton
 let isProcessing = false
 let processorInterval: Timer | null = null
+let lastImageGeneratedAt: number = 0
 
 // Start the batch processor
 export function startBatchProcessor(intervalMs: number = 5000): void {
@@ -69,6 +73,14 @@ export function stopBatchProcessor(): void {
 // Process pending batch jobs
 async function processPendingBatches(): Promise<void> {
   if (isProcessing) {
+    return
+  }
+
+  // Rate limiting: Check if 30 seconds have passed since last image generation
+  const now = Date.now()
+  const timeSinceLastGeneration = now - lastImageGeneratedAt
+  if (lastImageGeneratedAt > 0 && timeSinceLastGeneration < RATE_LIMIT_DELAY_MS) {
+    // Not enough time has passed, skip this cycle
     return
   }
 
@@ -132,6 +144,9 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     }
 
     const result = await generateImage(options)
+    
+    // Update rate limit timestamp after API call
+    lastImageGeneratedAt = Date.now()
 
     if (!result.data?.[0]?.url) {
       throw new Error("No image URL in response")
@@ -192,6 +207,9 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     })
 
   } catch (error) {
+    // Update rate limit timestamp even on failure (API call was still made)
+    lastImageGeneratedAt = Date.now()
+    
     const errorMessage = String(error)
     log("ERROR", "Failed to process batch item", { 
       batchId: batch.id, 
