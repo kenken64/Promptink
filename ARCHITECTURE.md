@@ -694,7 +694,7 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 │  Prompt  │    │          │    │          │    │          │    │  Image   │
 └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
      │                                                               │
-     │              Voice Input (Web Speech API)                     │
+     │              Voice Input (OpenAI Whisper)                     │
      └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -901,6 +901,32 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 |--------|----------|------|-------------|
 | GET | `/api/health` | No | Basic health check for deployment |
 | GET | `/api/health/details` | Yes | Detailed health with volume/file info |
+
+### Speech Transcription
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/speech/transcribe` | Yes | Transcribe audio to text using OpenAI Whisper |
+
+**Request Format:**
+- Content-Type: `multipart/form-data`
+- Body: `audio` (file), `language` (optional: `en`, `zh`, etc.)
+
+**Response:**
+```json
+{
+  "success": true,
+  "text": "Transcribed text here",
+  "language": "en"
+}
+```
+
+**Features:**
+- Uses OpenAI Whisper API for accurate multi-language transcription
+- Excellent support for Asian languages and accented speech
+- Max file size: 10MB, max duration: ~2 minutes recommended
+- Supported formats: WebM, MP3, MP4, WAV, OGG, FLAC, M4A
+- Rate limited: 10 requests/minute per user
 
 ---
 
@@ -1232,9 +1258,10 @@ RAZORPAY_PLAN_ID=plan_...
 The application uses in-memory rate limiting (`backend/src/middleware/rate-limit.ts`) with the following limits:
 
 | Endpoint Category | Max Requests | Window | Purpose |
-|-------------------|--------------|--------|---------|
+|-------------------|--------------|--------|----------|
 | Auth (`/api/auth/*`) | 10 | 15 min | Brute force protection |
 | Image Generation (`/api/images/generate`, `/api/images/edit`) | 5 | 1 min | DALL-E API cost control |
+| Speech Transcription (`/api/speech/transcribe`) | 10 | 1 min | Whisper API cost control |
 | General API (`/api/*`) | 100 | 1 min | DDoS/abuse protection |
 | Health Check (`/api/health`) | Unlimited | - | Railway uptime monitoring |
 
@@ -1331,7 +1358,7 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 ## Completed Features
 
 - [x] AI image generation with DALL-E 3
-- [x] Voice-to-text input (EN/ZH)
+- [x] Voice-to-text input with OpenAI Whisper (multi-language, accent-friendly)
 - [x] JWT authentication
 - [x] User registration/login
 - [x] SQLite database persistence

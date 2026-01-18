@@ -161,6 +161,15 @@ export const apiLimiter = rateLimit('api', {
 });
 
 /**
+ * Speech transcription limiter: 10 requests per minute
+ * Protects against Whisper API abuse (cost: $0.006/min audio)
+ */
+export const speechLimiter = rateLimit('speech', {
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 10
+});
+
+/**
  * Apply rate limiting to a route handler
  */
 export function withRateLimit(

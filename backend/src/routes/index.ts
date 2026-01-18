@@ -13,12 +13,13 @@ import { galleryRoutes } from "./gallery"
 import { suggestionsRoutes } from "./suggestions"
 import { scheduleRoutes } from "./schedule"
 import { batchRoutes } from "./batch"
+import { speechRoutes } from "./speech"
 import { db } from "../db"
 import { config } from "../config"
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
 import { withAuth } from "../middleware/auth"
-import { authLimiter, generateLimiter, apiLimiter, getRateLimitStats } from "../middleware/rate-limit"
+import { authLimiter, generateLimiter, apiLimiter, speechLimiter, getRateLimitStats } from "../middleware/rate-limit"
 
 type RouteHandler = (req: Request, ...args: any[]) => Promise<Response> | Response
 type RouteDefinition = { [method: string]: RouteHandler }
@@ -46,6 +47,13 @@ function applyRateLimiting(routes: Routes): Routes {
         // Image generation: cost control (5 req / min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await generateLimiter(req)
+          if (limitResponse) return limitResponse
+          return handler(req, ...args)
+        }
+      } else if (path === "/api/speech/transcribe") {
+        // Speech transcription: Whisper API cost control (10 req / min)
+        rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
+          const limitResponse = await speechLimiter(req)
           if (limitResponse) return limitResponse
           return handler(req, ...args)
         }
@@ -194,6 +202,7 @@ const allRoutes = {
   ...suggestionsRoutes,
   ...scheduleRoutes,
   ...batchRoutes,
+  ...speechRoutes,
 }
 
 // Export rate-limited routes
