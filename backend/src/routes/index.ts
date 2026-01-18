@@ -50,9 +50,6 @@ function addSecurityHeaders(response: Response): Response {
   // Prevent MIME type sniffing
   headers.set("X-Content-Type-Options", "nosniff")
 
-  // Enable XSS protection
-  headers.set("X-XSS-Protection", "1; mode=block")
-
   // Referrer policy
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
 

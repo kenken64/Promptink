@@ -58,6 +58,7 @@ export function useAuth() {
 
   const refreshTimeoutRef = useRef<number | null>(null)
   const isRefreshingRef = useRef(false)
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null)
 
   // Clear auth state
   const clearAuth = useCallback(() => {
@@ -81,8 +82,9 @@ export function useAuth() {
 
   // Refresh access token
   const refreshAccessToken = useCallback(async (): Promise<boolean> => {
-    if (isRefreshingRef.current) {
-      return false
+    // If a refresh is already in progress, wait for it to complete
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current
     }
 
     const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
@@ -91,49 +93,56 @@ export function useAuth() {
       return false
     }
 
-    isRefreshingRef.current = true
+    // Create and store the refresh promise
+    const refreshPromise = (async () => {
+      isRefreshingRef.current = true
 
-    try {
-      const response = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
-      })
+      try {
+        const response = await fetch("/api/auth/refresh", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        })
 
-      const data: RefreshResponse | AuthError = await response.json()
+        const data: RefreshResponse | AuthError = await response.json()
 
-      if (!response.ok || "error" in data) {
+        if (!response.ok || "error" in data) {
+          clearAuth()
+          return false
+        }
+
+        const refreshData = data as RefreshResponse
+        localStorage.setItem(ACCESS_TOKEN_KEY, refreshData.accessToken)
+
+        setState((prev) => ({
+          ...prev,
+          accessToken: refreshData.accessToken,
+        }))
+
+        // Schedule next refresh (refresh 1 minute before expiry)
+        // Ensure minimum delay of 10 seconds to prevent negative timeout
+        const refreshIn = Math.max((refreshData.expiresIn - 60) * 1000, 10000)
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current)
+        }
+        refreshTimeoutRef.current = window.setTimeout(() => {
+          refreshAccessToken()
+        }, refreshIn)
+
+        return true
+      } catch (error) {
         clearAuth()
         return false
+      } finally {
+        isRefreshingRef.current = false
+        refreshPromiseRef.current = null
       }
+    })()
 
-      const refreshData = data as RefreshResponse
-      localStorage.setItem(ACCESS_TOKEN_KEY, refreshData.accessToken)
-
-      setState((prev) => ({
-        ...prev,
-        accessToken: refreshData.accessToken,
-      }))
-
-      // Schedule next refresh (refresh 1 minute before expiry)
-      // Ensure minimum delay of 10 seconds to prevent negative timeout
-      const refreshIn = Math.max((refreshData.expiresIn - 60) * 1000, 10000)
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current)
-      }
-      refreshTimeoutRef.current = window.setTimeout(() => {
-        refreshAccessToken()
-      }, refreshIn)
-
-      return true
-    } catch (error) {
-      clearAuth()
-      return false
-    } finally {
-      isRefreshingRef.current = false
-    }
+    refreshPromiseRef.current = refreshPromise
+    return refreshPromise
   }, [clearAuth])
 
   // Verify token with backend

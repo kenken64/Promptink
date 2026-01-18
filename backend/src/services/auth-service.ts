@@ -68,13 +68,15 @@ async function hashToken(token: string): Promise<string> {
 
 // Constant-time string comparison (prevents timing attacks)
 function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
+  // Compare in time proportional to the maximum length,
+  // and fold length differences into the result instead of returning early.
+  const len = Math.max(a.length, b.length)
+  let result = a.length ^ b.length
 
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  for (let i = 0; i < len; i++) {
+    const ca = i < a.length ? a.charCodeAt(i) : 0
+    const cb = i < b.length ? b.charCodeAt(i) : 0
+    result |= ca ^ cb
   }
 
   return result === 0
