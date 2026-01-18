@@ -392,6 +392,96 @@ export const galleryRoutes = {
     }),
   },
 
+  // Upload custom image to gallery
+  "/api/gallery/upload": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const formData = await req.formData()
+        const file = formData.get("image") as File | null
+        const description = formData.get("description") as string | null
+
+        if (!file) {
+          return Response.json({ error: "No image file provided" }, { status: 400 })
+        }
+
+        // Validate file type
+        const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]
+        if (!allowedTypes.includes(file.type)) {
+          return Response.json({ 
+            error: "Invalid file type. Allowed: PNG, JPEG, WebP, GIF" 
+          }, { status: 400 })
+        }
+
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024
+        if (file.size > maxSize) {
+          return Response.json({ 
+            error: "File too large. Maximum size is 10MB" 
+          }, { status: 400 })
+        }
+
+        // Create database record for uploaded image
+        const prompt = description || "Uploaded image"
+        const result = generatedImageQueries.create.run(
+          user.id,
+          "", // Will be updated after we have the ID
+          prompt,
+          null, // no revised prompt for uploads
+          "upload", // model = "upload" to identify user uploads
+          "original", // size = original
+          null, // no style
+          0, // not an edit
+          null // no parent image
+        )
+
+        const imageId = Number(result.lastInsertRowid)
+
+        // Convert image to PNG for consistency and save to user directory
+        const inputBuffer = Buffer.from(await file.arrayBuffer())
+        const pngBuffer = await sharp(inputBuffer)
+          .png()
+          .toBuffer()
+
+        const filePath = getGalleryImagePath(user.id, imageId)
+        await Bun.write(filePath, pngBuffer)
+
+        // Update the image URL in the database
+        const imageUrl = getGalleryImageUrl(imageId)
+        generatedImageQueries.updateImageUrl.run(imageUrl, imageId)
+
+        log("INFO", "Image uploaded to gallery", {
+          userId: user.id,
+          imageId,
+          originalType: file.type,
+          originalSize: file.size,
+          savedSize: pngBuffer.length,
+          filePath,
+        })
+
+        return Response.json({
+          success: true,
+          image: {
+            id: imageId,
+            imageUrl: getGalleryImageUrl(imageId),
+            thumbnailUrl: getGalleryThumbnailUrl(imageId),
+            originalPrompt: prompt,
+            revisedPrompt: null,
+            model: "upload",
+            size: "original",
+            style: null,
+            isEdit: false,
+            parentImageId: null,
+            isFavorite: false,
+            createdAt: new Date().toISOString(),
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to upload image", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
+  },
+
   // Get gallery statistics
   "/api/gallery/stats": {
     GET: withAuth(async (req, user) => {

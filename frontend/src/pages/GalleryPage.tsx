@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
@@ -6,7 +6,7 @@ import { ImageDetailModal } from "../components/ImageDetailModal"
 import { PageHeader } from "../components/PageHeader"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Upload } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -29,6 +29,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     setSearchQuery,
     toggleFavorite,
     deleteImage,
+    uploadImage,
     loadMore,
     refresh,
   } = useGallery()
@@ -36,6 +37,9 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleSelectImage = useCallback((image: GalleryImage) => {
     setSelectedImage(image)
@@ -69,22 +73,66 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     setSearchQuery("")
   }
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    setUploadError(null)
+
+    try {
+      await uploadImage(file)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setIsUploading(false)
+      // Reset the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
   const currentIndex = selectedImage
     ? images.findIndex((img) => img.id === selectedImage.id)
     : -1
 
-  // Refresh button for header
-  const refreshButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={refresh}
-      disabled={isLoading}
-      className="h-9 w-9 text-muted-foreground hover:text-foreground"
-      title={t.gallery?.refresh || "Refresh"}
-    >
-      <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-    </Button>
+  // Header right content with upload and refresh buttons
+  const headerRightContent = (
+    <div className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleUploadClick}
+        disabled={isUploading}
+        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+        title={t.gallery?.upload || "Upload"}
+      >
+        <Upload className={`h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={refresh}
+        disabled={isLoading}
+        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+        title={t.gallery?.refresh || "Refresh"}
+      >
+        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+      </Button>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </div>
   )
 
   return (
@@ -94,7 +142,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         title={t.gallery?.title}
         onNavigate={onNavigate}
         currentPage="gallery"
-        rightContent={refreshButton}
+        rightContent={headerRightContent}
         onLogout={onLogout}
       />
 
@@ -103,6 +151,26 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         {/* Sub-header with stats, filters & search */}
         <div className="sticky top-0 z-[9] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="container max-w-7xl mx-auto px-4 py-4">
+          {/* Upload status messages */}
+          {isUploading && (
+            <div className="mb-4 px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              {t.gallery?.uploading || "Uploading..."}
+            </div>
+          )}
+          {uploadError && (
+            <div className="mb-4 px-4 py-2 bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg text-sm flex items-center justify-between">
+              <span>{uploadError}</span>
+              <button onClick={() => setUploadError(null)} className="hover:opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
           {/* Stats */}
           {stats && (
             <p className="text-sm text-muted-foreground mb-4">

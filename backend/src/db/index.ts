@@ -606,6 +606,9 @@ function initPreparedStatements() {
     softDelete: db.prepare<void, [number, number]>(
       "UPDATE generated_images SET is_deleted = 1 WHERE id = ? AND user_id = ?"
     ),
+    updateImageUrl: db.prepare<void, [string, number]>(
+      "UPDATE generated_images SET image_url = ? WHERE id = ?"
+    ),
     search: db.prepare<GeneratedImage, [number, string, string, number, number]>(
       "SELECT * FROM generated_images WHERE user_id = ? AND is_deleted = 0 AND (original_prompt LIKE ? OR revised_prompt LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?"
     ),
@@ -781,6 +784,7 @@ export const generatedImageQueries = {
   get create() { return _generatedImageQueries.create },
   get updateFavorite() { return _generatedImageQueries.updateFavorite },
   get softDelete() { return _generatedImageQueries.softDelete },
+  get updateImageUrl() { return _generatedImageQueries.updateImageUrl },
   get search() { return _generatedImageQueries.search },
 }
 

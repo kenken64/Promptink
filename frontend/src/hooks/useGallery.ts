@@ -183,6 +183,43 @@ export function useGallery() {
     }
   }, [getAuthHeader])
 
+  // Upload image
+  const uploadImage = useCallback(async (file: File, description?: string) => {
+    const formData = new FormData()
+    formData.append("image", file)
+    if (description) {
+      formData.append("description", description)
+    }
+
+    const response = await fetch("/api/gallery/upload", {
+      method: "POST",
+      headers: {
+        ...getAuthHeader(),
+      },
+      body: formData,
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to upload image")
+    }
+
+    // Add the new image to the beginning of the list
+    setState((prev) => ({
+      ...prev,
+      images: [data.image, ...prev.images],
+      stats: prev.stats
+        ? { ...prev.stats, total: prev.stats.total + 1 }
+        : null,
+      pagination: prev.pagination
+        ? { ...prev.pagination, total: prev.pagination.total + 1 }
+        : null,
+    }))
+
+    return data.image as GalleryImage
+  }, [getAuthHeader])
+
   // Load more images
   const loadMore = useCallback(() => {
     if (state.pagination?.hasMore && !state.isLoading) {
@@ -216,6 +253,7 @@ export function useGallery() {
     setSearchQuery,
     toggleFavorite,
     deleteImage,
+    uploadImage,
     loadMore,
     refresh,
   }
