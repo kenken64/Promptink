@@ -134,12 +134,12 @@ export function rateLimit(name: string, options: RateLimitOptions) {
 // Pre-configured limiters
 
 /**
- * Auth limiter: 5 requests per 15 minutes
- * Protects against brute force attacks on login/register
+ * Auth limiter: 10 requests per 15 minutes
+ * Protects against brute force attacks while allowing password typos
  */
 export const authLimiter = rateLimit('auth', {
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5
+  maxRequests: 10
 });
 
 /**

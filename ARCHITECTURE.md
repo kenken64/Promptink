@@ -1233,7 +1233,7 @@ The application uses in-memory rate limiting (`backend/src/middleware/rate-limit
 
 | Endpoint Category | Max Requests | Window | Purpose |
 |-------------------|--------------|--------|---------|
-| Auth (`/api/auth/*`) | 5 | 15 min | Brute force protection |
+| Auth (`/api/auth/*`) | 10 | 15 min | Brute force protection |
 | Image Generation (`/api/images/generate`, `/api/images/edit`) | 5 | 1 min | DALL-E API cost control |
 | General API (`/api/*`) | 100 | 1 min | DDoS/abuse protection |
 | Health Check (`/api/health`) | Unlimited | - | Railway uptime monitoring |
