@@ -4,6 +4,8 @@ import {
   generateImageEdit,
   generateImageVariation,
   translateText,
+  generateInfographicPrompt,
+  fetchUrlContent,
   type GenerateImageOptions,
 } from "../services/openai-service"
 import { verifyToken } from "../services/auth-service"
@@ -247,6 +249,84 @@ export const imageRoutes = {
         return Response.json(result)
       } catch (error) {
         log("ERROR", "Failed to create image variation", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    },
+  },
+
+  // Generate infographic from text or URL
+  "/api/images/infographic": {
+    POST: async (req: Request) => {
+      try {
+        const user = await getUserFromRequest(req)
+        const text = await req.text()
+        const body = text ? JSON.parse(text) : {}
+
+        // Either content (text/markdown) or url is required
+        if (!body.content && !body.url) {
+          return Response.json(
+            { error: "Either 'content' (text/markdown) or 'url' (GitHub URL) is required" },
+            { status: 400 }
+          )
+        }
+
+        let content = body.content
+
+        // If URL provided, fetch the content
+        if (body.url) {
+          log("INFO", "Fetching content from URL for infographic", { url: body.url, userId: user?.id })
+          content = await fetchUrlContent(body.url)
+        }
+
+        // Generate infographic prompt using GPT-4
+        log("INFO", "Generating infographic", { userId: user?.id, contentLength: content.length })
+        const infographicPrompt = await generateInfographicPrompt(content)
+
+        // Add infographic styling to the prompt
+        const styledPrompt = `${infographicPrompt}, professional infographic design, clean modern layout, presentation style, high quality, 4K resolution, suitable for business presentation or social media`
+
+        // Generate the image with DALL-E
+        const options: GenerateImageOptions = {
+          prompt: styledPrompt,
+          model: "dall-e-3",
+          size: body.size || "1792x1024", // Wide format for presentations
+          quality: "hd",
+          style: "vivid",
+        }
+
+        const result = await generateImage(options)
+
+        // Save to gallery if user is authenticated
+        if (user && result.data?.[0]?.url) {
+          try {
+            const galleryImage = generatedImageQueries.createImage.get(
+              user.id,
+              `[Infographic] ${content.substring(0, 100)}...`,
+              result.data[0].url,
+              options.size || "1792x1024",
+              "infographic",
+              null
+            )
+
+            if (galleryImage) {
+              await saveImageToGallery(result.data[0].url, user.id, galleryImage.id)
+              const permanentUrl = getGalleryImageUrl(galleryImage.id)
+              generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
+              ;(result as any).galleryId = galleryImage.id
+              ;(result as any).galleryUrl = permanentUrl
+              log("INFO", "Infographic saved to gallery", { userId: user.id, galleryId: galleryImage.id })
+            }
+          } catch (galleryError) {
+            log("WARN", "Failed to save infographic to gallery", galleryError)
+          }
+        }
+
+        return Response.json({
+          ...result,
+          infographicPrompt, // Include the generated prompt for transparency
+        })
+      } catch (error) {
+        log("ERROR", "Failed to generate infographic", error)
         return Response.json({ error: String(error) }, { status: 500 })
       }
     },

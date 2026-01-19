@@ -220,3 +220,98 @@ export async function generateImageVariation(
 
   return response.json()
 }
+
+/**
+ * Analyze markdown/text content and generate an infographic prompt
+ */
+export async function generateInfographicPrompt(content: string): Promise<string> {
+  if (!config.openai.apiKey) {
+    throw new Error("OPENAI_API_KEY not configured")
+  }
+
+  log("INFO", "Analyzing content for infographic", { contentLength: content.length })
+
+  const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.openai.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert at creating visual infographic descriptions for DALL-E image generation.
+
+Analyze the provided content (text, markdown, or documentation) and create a detailed image generation prompt for a beautiful, professional presentation-style infographic.
+
+Guidelines:
+- Create a visually striking infographic that captures the KEY concepts
+- Use modern design aesthetics: clean layouts, bold typography style, color gradients
+- Include visual metaphors and icons to represent abstract concepts
+- Design for a professional presentation or social media share
+- Focus on 3-5 main points maximum for clarity
+- Specify colors, layout structure, and visual hierarchy
+- The prompt should be detailed enough for DALL-E to create a cohesive design
+
+Output ONLY the image generation prompt, nothing else. Start directly with the visual description.`,
+        },
+        {
+          role: "user",
+          content: `Create an infographic prompt for this content:\n\n${content.substring(0, 8000)}`,
+        },
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    log("ERROR", "GPT API error for infographic", error)
+    throw new Error(error.error?.message || "Failed to analyze content")
+  }
+
+  const result = await response.json()
+  const infographicPrompt = result.choices?.[0]?.message?.content?.trim()
+
+  if (!infographicPrompt) {
+    throw new Error("Failed to generate infographic prompt")
+  }
+
+  log("INFO", "Generated infographic prompt", { promptLength: infographicPrompt.length })
+
+  return infographicPrompt
+}
+
+/**
+ * Fetch content from a URL (GitHub markdown, etc.)
+ */
+export async function fetchUrlContent(url: string): Promise<string> {
+  // Convert GitHub blob URLs to raw URLs
+  let fetchUrl = url
+  if (url.includes("github.com") && url.includes("/blob/")) {
+    fetchUrl = url
+      .replace("github.com", "raw.githubusercontent.com")
+      .replace("/blob/", "/")
+  }
+
+  log("INFO", "Fetching URL content", { originalUrl: url, fetchUrl })
+
+  const response = await fetch(fetchUrl, {
+    headers: {
+      "Accept": "text/plain, text/markdown, */*",
+      "User-Agent": "PromptInk/1.0",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`)
+  }
+
+  const content = await response.text()
+  log("INFO", "Fetched URL content", { contentLength: content.length })
+
+  return content
+}

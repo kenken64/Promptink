@@ -105,9 +105,28 @@ export default function App() {
     }
   }, [])
 
+  // Check if text contains a GitHub or markdown URL
+  const isInfographicRequest = (text: string): { isUrl: boolean; url?: string } => {
+    // Check for explicit infographic command
+    const infographicMatch = text.match(/(?:infographic|info(?:graphic)?|create infographic)(?:\s+(?:from|for|of))?\s*(https?:\/\/[^\s]+)/i)
+    if (infographicMatch) {
+      return { isUrl: true, url: infographicMatch[1] }
+    }
+    // Check for GitHub markdown URL
+    const githubMdMatch = text.match(/(https?:\/\/(?:raw\.)?github(?:usercontent)?\.com\/[^\s]+\.md)/i)
+    if (githubMdMatch) {
+      return { isUrl: true, url: githubMdMatch[1] }
+    }
+    return { isUrl: false }
+  }
+
   const handleSend = async (prompt: string, imageFile?: File) => {
     const userMessageId = Date.now().toString()
     const assistantMessageId = (Date.now() + 1).toString()
+
+    // Check for infographic request
+    const infographicCheck = isInfographicRequest(prompt)
+    const isInfographic = infographicCheck.isUrl || prompt.toLowerCase().includes("infographic")
 
     // Create user message with optional image preview
     let userContent = prompt
@@ -128,7 +147,11 @@ export default function App() {
       {
         id: assistantMessageId,
         type: "assistant",
-        content: imageFile ? t.editingImage || "Editing image..." : t.generatingImage,
+        content: imageFile 
+          ? (t.editingImage || "Editing image...") 
+          : isInfographic 
+            ? "📊 Creating infographic..." 
+            : t.generatingImage,
         isLoading: true,
       },
     ])
@@ -151,6 +174,31 @@ export default function App() {
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.error || "Failed to edit image")
+        }
+
+        result = await response.json()
+      } else if (isInfographic) {
+        // Use infographic API
+        const body: { content?: string; url?: string; size?: string } = { size: selectedSize }
+        if (infographicCheck.url) {
+          body.url = infographicCheck.url
+        } else {
+          // Use the prompt as content (removing "infographic" keyword)
+          body.content = prompt.replace(/(?:create\s+)?infographic(?:\s+(?:from|for|of))?/gi, "").trim()
+        }
+
+        const response = await fetch("/api/images/infographic", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify(body),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create infographic")
         }
 
         result = await response.json()
