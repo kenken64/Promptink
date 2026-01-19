@@ -51,7 +51,7 @@ export function ImageDetailModal({
   hasNext = false,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
-  const { token } = useAuth()
+  const { accessToken: token } = useAuth()
   const { syncToTrmnl, isSyncing } = useTrmnlSync()
   const [imageError, setImageError] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
