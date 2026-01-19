@@ -114,8 +114,9 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
       ctx.fillStyle = "rgba(255, 0, 0, 0.5)"
       ctx.fill()
     } else {
-      // Erase by clearing
+      // Erase by clearing - need to set fillStyle for destination-out to work
       ctx.globalCompositeOperation = "destination-out"
+      ctx.fillStyle = "rgba(0, 0, 0, 1)"
       ctx.fill()
       ctx.globalCompositeOperation = "source-over"
     }
