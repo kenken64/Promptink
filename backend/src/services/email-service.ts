@@ -1,9 +1,9 @@
 import { log } from "../utils"
 import { config } from "../config"
 
-// Brevo API configuration - use centralized config
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-const { brevoApiKey: BREVO_API_KEY, senderEmail: SENDER_EMAIL, senderName: SENDER_NAME, frontendUrl: FRONTEND_URL } = config.email
+// Resend API configuration - use centralized config
+const RESEND_API_URL = "https://api.resend.com/emails"
+const { resendApiKey: RESEND_API_KEY, senderEmail: SENDER_EMAIL, senderName: SENDER_NAME, frontendUrl: FRONTEND_URL } = config.email
 
 /**
  * Escape HTML special characters to prevent XSS in email templates
@@ -25,43 +25,35 @@ interface SendEmailParams {
 }
 
 /**
- * Send email using Brevo API
+ * Send email using Resend API
  */
 export async function sendEmail(params: SendEmailParams): Promise<boolean> {
-  if (!BREVO_API_KEY) {
+  if (!RESEND_API_KEY) {
     // Log the misconfiguration but return true to avoid leaking information
     // through error responses (e.g., in forgot password endpoint)
-    log("ERROR", "Brevo API key not configured - email not sent", { to: params.to, subject: params.subject })
+    log("ERROR", "Resend API key not configured - email not sent", { to: params.to, subject: params.subject })
     return true
   }
 
   try {
-    const response = await fetch(BREVO_API_URL, {
+    const response = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
-        "Accept": "application/json",
         "Content-Type": "application/json",
-        "api-key": BREVO_API_KEY,
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        sender: {
-          name: SENDER_NAME,
-          email: SENDER_EMAIL,
-        },
-        to: [
-          {
-            email: params.to,
-          },
-        ],
+        from: `${SENDER_NAME} <${SENDER_EMAIL}>`,
+        to: [params.to],
         subject: params.subject,
-        htmlContent: params.htmlContent,
-        textContent: params.textContent,
+        html: params.htmlContent,
+        text: params.textContent,
       }),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: "Unknown error" }))
-      log("ERROR", "Failed to send email via Brevo", {
+      log("ERROR", "Failed to send email via Resend", {
         status: response.status,
         error: errorData
       })

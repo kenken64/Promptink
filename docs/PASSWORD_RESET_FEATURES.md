@@ -10,17 +10,18 @@ This document describes the password reset and change password features implemen
 
 ## Setup
 
-### 1. Brevo API Configuration
+### 1. Resend API Configuration
 
-These features require a Brevo account for sending emails. Follow these steps:
+These features require a Resend account for sending emails. Follow these steps:
 
-1. Sign up for a free account at [Brevo](https://www.brevo.com/)
-2. Get your API key from [API Keys Settings](https://app.brevo.com/settings/keys/api)
-3. Add the following environment variables to your `.env` file:
+1. Sign up for a free account at [Resend](https://resend.com/)
+2. Get your API key from [API Keys](https://resend.com/api-keys)
+3. Add a verified domain or use the sandbox domain for testing
+4. Add the following environment variables to your `.env` file:
 
 ```env
-# Brevo Email Service
-BREVO_API_KEY=xkeysib-your-api-key-here
+# Resend Email Service
+RESEND_API_KEY=re_your-api-key-here
 SENDER_EMAIL=noreply@yourdomain.com
 SENDER_NAME=Promptink
 FRONTEND_URL=https://yourdomain.com
@@ -252,10 +253,10 @@ The email service sends beautifully formatted HTML emails with:
 
 ### Email Not Sending
 
-1. Check that `BREVO_API_KEY` is set correctly
-2. Verify the API key is valid in Brevo dashboard
+1. Check that `RESEND_API_KEY` is set correctly
+2. Verify the API key is valid in Resend dashboard
 3. Check server logs for email errors
-4. Ensure Brevo account is not suspended or over limits
+4. Ensure your domain is verified in Resend (or use sandbox for testing)
 
 ### Token Invalid or Expired
 
@@ -307,5 +308,5 @@ Potential improvements for future versions:
 For issues or questions:
 - Check server logs for detailed error messages
 - Verify all environment variables are set correctly
-- Ensure Brevo account is active and has sending credits
-- Review the Brevo API documentation at https://developers.brevo.com/docs
+- Ensure your domain is verified in Resend
+- Review the Resend API documentation at https://resend.com/docs
