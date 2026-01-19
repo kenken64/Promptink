@@ -8,12 +8,13 @@
     "build": "bun run build.ts && bun run build:css"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0",
-    "lucide-react": "^0.312.0"
+    "lucide-react": "^0.312.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-mask-editor": "^0.0.2",
+    "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
