@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from "react"
-import { Mic, MicOff, ArrowUp, ImageIcon, X } from "lucide-react"
+import { Mic, MicOff, ArrowUp, ImageIcon, X, Pencil } from "lucide-react"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { useSpeechToText } from "../hooks/useSpeechToText"
 import { cn } from "../lib/utils"
+import { MaskDrawer } from "./MaskDrawer"
 import type { Language } from "../hooks/useLanguage"
 
 interface ChatInputProps {
-  onSend: (message: string, imageFile?: File) => void
+  onSend: (message: string, imageFile?: File, maskFile?: File) => void
   disabled?: boolean
   language: Language
   placeholder: string
@@ -26,6 +27,8 @@ export function ChatInput({
   const [input, setInput] = useState("")
   const [attachedImage, setAttachedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [maskFile, setMaskFile] = useState<File | null>(null)
+  const [showMaskDrawer, setShowMaskDrawer] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const baseInputRef = useRef("")
@@ -63,10 +66,11 @@ export function ChatInput({
   const handleSubmit = () => {
     const textToSend = input.trim()
     if (textToSend && !disabled) {
-      onSend(textToSend, attachedImage || undefined)
+      onSend(textToSend, attachedImage || undefined, maskFile || undefined)
       setInput("")
       setAttachedImage(null)
       setImagePreview(null)
+      setMaskFile(null)
       baseInputRef.current = ""
       resetTranscript()
       if (textareaRef.current) {
@@ -134,6 +138,21 @@ export function ChatInput({
   const handleRemoveImage = () => {
     setAttachedImage(null)
     setImagePreview(null)
+    setMaskFile(null)
+  }
+
+  const handleOpenMaskDrawer = () => {
+    setShowMaskDrawer(true)
+  }
+
+  const handleMaskComplete = (maskBlob: Blob) => {
+    const mask = new File([maskBlob], "mask.png", { type: "image/png" })
+    setMaskFile(mask)
+    setShowMaskDrawer(false)
+  }
+
+  const handleMaskCancel = () => {
+    setShowMaskDrawer(false)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -166,23 +185,53 @@ export function ChatInput({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
+      {/* Mask drawer modal */}
+      {showMaskDrawer && imagePreview && (
+        <MaskDrawer
+          imageUrl={imagePreview}
+          onComplete={handleMaskComplete}
+          onCancel={handleMaskCancel}
+        />
+      )}
+
       {/* Image preview */}
       {imagePreview && (
-        <div className="mb-2 relative inline-block">
-          <img
-            src={imagePreview}
-            alt="Attached"
-            className="h-20 w-20 object-cover rounded-lg border"
-          />
+        <div className="mb-2 flex items-end gap-2">
+          <div className="relative inline-block">
+            <img
+              src={imagePreview}
+              alt="Attached"
+              className={cn(
+                "h-20 w-20 object-cover rounded-lg border",
+                maskFile && "ring-2 ring-teal-500"
+              )}
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              onClick={handleRemoveImage}
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
           <Button
             type="button"
-            variant="destructive"
-            size="icon"
-            onClick={handleRemoveImage}
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+            variant="outline"
+            size="sm"
+            onClick={handleOpenMaskDrawer}
+            className={cn(
+              "h-8 text-xs",
+              maskFile && "border-teal-500 text-teal-600"
+            )}
           >
-            <X className="h-3 w-3" />
+            <Pencil className="h-3 w-3 mr-1" />
+            {maskFile ? "Edit mask" : "Mark area"}
           </Button>
+          {maskFile && (
+            <span className="text-xs text-teal-600">✓ Area marked</span>
+          )}
         </div>
       )}
 

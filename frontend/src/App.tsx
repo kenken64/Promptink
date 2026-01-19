@@ -129,7 +129,7 @@ export default function App() {
     return { isUrl: false }
   }
 
-  const handleSend = async (prompt: string, imageFile?: File) => {
+  const handleSend = async (prompt: string, imageFile?: File, maskFile?: File) => {
     const userMessageId = Date.now().toString()
     const assistantMessageId = (Date.now() + 1).toString()
 
@@ -173,6 +173,11 @@ export default function App() {
         formData.append("image", imageFile)
         formData.append("prompt", prompt)
         formData.append("size", selectedSize)
+        
+        // Include mask if user marked an area
+        if (maskFile) {
+          formData.append("mask", maskFile)
+        }
 
         const response = await fetch("/api/images/edit", {
           method: "POST",
