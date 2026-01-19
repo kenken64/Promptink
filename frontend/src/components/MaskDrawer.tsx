@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react"
 import { Stage, Layer, Image as KonvaImage, Line } from "react-konva"
 import Konva from "konva"
-import { RotateCcw, Check, X, Minus, Plus, Eraser, Paintbrush } from "lucide-react"
+import { RotateCcw, Check, X, Minus, Plus, Paintbrush } from "lucide-react"
 import { Button } from "./ui/button"
 
 interface MaskDrawerProps {
@@ -21,7 +21,6 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
   const drawLayerRef = useRef<Konva.Layer>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(30)
-  const [tool, setTool] = useState<"brush" | "eraser">("brush")
   const [imageLoaded, setImageLoaded] = useState(false)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [image, setImage] = useState<HTMLImageElement | null>(null)
@@ -70,12 +69,12 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     setIsDrawing(true)
     const pos = getPointerPosition()
     const newLine: LineData = {
-      tool,
+      tool: "brush",
       points: [pos.x, pos.y],
       strokeWidth: brushSize,
     }
     setCurrentLine(newLine)
-  }, [tool, brushSize, getPointerPosition])
+  }, [brushSize, getPointerPosition])
 
   const handleMouseMove = useCallback(() => {
     if (!isDrawing || !currentLine) return
@@ -128,7 +127,6 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
 
     // Replay all lines to build the drawn area
     for (const line of lines) {
-      drawnCtx.globalCompositeOperation = line.tool === "brush" ? "source-over" : "destination-out"
       drawnCtx.strokeStyle = "rgba(255, 0, 0, 1)"
       drawnCtx.lineWidth = line.strokeWidth * scaleX
       drawnCtx.lineCap = "round"
@@ -198,7 +196,7 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
         style={{ 
           width: dimensions.width, 
           height: dimensions.height,
-          cursor: tool === "brush" ? "crosshair" : "cell"
+          cursor: "crosshair"
         }}
       >
         <Stage
@@ -233,9 +231,6 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
                 tension={0.5}
                 lineCap="round"
                 lineJoin="round"
-                globalCompositeOperation={
-                  line.tool === "eraser" ? "destination-out" : "source-over"
-                }
               />
             ))}
           </Layer>
@@ -244,31 +239,20 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
 
       {/* Toolbar */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        {/* Tool selection */}
+        {/* Draw indicator */}
         <div className="flex items-center gap-1 rounded-lg border bg-secondary/50 p-1">
           <Button
             type="button"
-            variant={tool === "brush" ? "default" : "ghost"}
+            variant="default"
             size="sm"
-            onClick={() => setTool("brush")}
             className="h-8 px-3"
           >
             <Paintbrush className="h-4 w-4 mr-1" />
             Draw
           </Button>
-          <Button
-            type="button"
-            variant={tool === "eraser" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTool("eraser")}
-            className="h-8 px-3"
-          >
-            <Eraser className="h-4 w-4 mr-1" />
-            Erase
-          </Button>
         </div>
 
-        {/* Brush size */}
+        {/* Brush size */}}
         <div className="flex items-center gap-1 rounded-lg border bg-secondary/50 p-1">
           <Button
             type="button"
