@@ -1,5 +1,6 @@
 import { config } from "../config"
 import { log } from "../utils"
+import sharp from "sharp"
 
 const OPENAI_API_BASE = "https://api.openai.com/v1"
 
@@ -141,13 +142,24 @@ export async function generateImageEdit(
 
   log("INFO", "Editing image", { prompt, size: options?.size })
 
+  // Convert image to RGBA PNG format (required by DALL-E 2 edit API)
+  const rgbaImage = await sharp(Buffer.from(image))
+    .ensureAlpha()
+    .png()
+    .toBuffer()
+
   const formData = new FormData()
-  formData.append("image", new Blob([image], { type: "image/png" }), "image.png")
+  formData.append("image", new Blob([rgbaImage], { type: "image/png" }), "image.png")
   formData.append("prompt", prompt)
   formData.append("model", "dall-e-2")
 
   if (options?.mask) {
-    formData.append("mask", new Blob([options.mask], { type: "image/png" }), "mask.png")
+    // Convert mask to RGBA PNG format as well
+    const rgbaMask = await sharp(Buffer.from(options.mask))
+      .ensureAlpha()
+      .png()
+      .toBuffer()
+    formData.append("mask", new Blob([rgbaMask], { type: "image/png" }), "mask.png")
   }
   if (options?.n) {
     formData.append("n", String(options.n))
@@ -190,8 +202,14 @@ export async function generateImageVariation(
 
   log("INFO", "Creating image variation", { size: options?.size })
 
+  // Convert image to RGBA PNG format (required by DALL-E 2 variations API)
+  const rgbaImage = await sharp(Buffer.from(image))
+    .ensureAlpha()
+    .png()
+    .toBuffer()
+
   const formData = new FormData()
-  formData.append("image", new Blob([image], { type: "image/png" }), "image.png")
+  formData.append("image", new Blob([rgbaImage], { type: "image/png" }), "image.png")
   formData.append("model", "dall-e-2")
 
   if (options?.n) {
