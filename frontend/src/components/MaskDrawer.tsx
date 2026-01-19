@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react"
+import { Stage, Layer, Image as KonvaImage, Line } from "react-konva"
+import Konva from "konva"
 import { RotateCcw, Check, X, Minus, Plus, Eraser, Paintbrush } from "lucide-react"
 import { Button } from "./ui/button"
-import { cn } from "../lib/utils"
 
 interface MaskDrawerProps {
   imageUrl: string
@@ -9,25 +10,29 @@ interface MaskDrawerProps {
   onCancel: () => void
 }
 
+interface LineData {
+  tool: "brush" | "eraser"
+  points: number[]
+  strokeWidth: number
+}
+
 export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const overlayRef = useRef<HTMLCanvasElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
+  const drawLayerRef = useRef<Konva.Layer>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(30)
   const [tool, setTool] = useState<"brush" | "eraser">("brush")
   const [imageLoaded, setImageLoaded] = useState(false)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
-  const imageRef = useRef<HTMLImageElement | null>(null)
-  const cursorRef = useRef<HTMLDivElement>(null)
+  const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [lines, setLines] = useState<LineData[]>([])
+  const [currentLine, setCurrentLine] = useState<LineData | null>(null)
 
-  // Load and display the image
+  // Load the image
   useEffect(() => {
-    const img = new Image()
+    const img = new window.Image()
     img.crossOrigin = "anonymous"
     img.onload = () => {
-      imageRef.current = img
-      
       // Calculate dimensions to fit in container while maintaining aspect ratio
       const maxWidth = Math.min(512, window.innerWidth - 48)
       const maxHeight = Math.min(512, window.innerHeight - 200)
@@ -45,6 +50,7 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
       }
       
       setDimensions({ width, height })
+      setImage(img)
       setImageLoaded(true)
     }
     img.onerror = () => {
@@ -53,208 +59,128 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     img.src = imageUrl
   }, [imageUrl])
 
-  // Initialize canvases when dimensions are set
-  useEffect(() => {
-    if (!imageLoaded || dimensions.width === 0) return
-
-    const canvas = canvasRef.current
-    const overlay = overlayRef.current
-    const img = imageRef.current
-    if (!canvas || !overlay || !img) return
-
-    // Set canvas dimensions
-    canvas.width = dimensions.width
-    canvas.height = dimensions.height
-    overlay.width = dimensions.width
-    overlay.height = dimensions.height
-
-    // Draw the image on main canvas
-    const ctx = canvas.getContext("2d")
-    if (ctx) {
-      ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height)
-    }
-
-    // Initialize overlay as transparent
-    const overlayCtx = overlay.getContext("2d")
-    if (overlayCtx) {
-      overlayCtx.clearRect(0, 0, dimensions.width, dimensions.height)
-    }
-  }, [imageLoaded, dimensions])
-
-  const getPosition = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = overlayRef.current
-    if (!canvas) return { x: 0, y: 0 }
-
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-
-    if ("touches" in e) {
-      const touch = e.touches[0]
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      }
-    }
-
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    }
+  const getPointerPosition = useCallback(() => {
+    const stage = stageRef.current
+    if (!stage) return { x: 0, y: 0 }
+    const pos = stage.getPointerPosition()
+    return pos || { x: 0, y: 0 }
   }, [])
 
-  const draw = useCallback((x: number, y: number) => {
-    const overlay = overlayRef.current
-    if (!overlay) return
-
-    const ctx = overlay.getContext("2d")
-    if (!ctx) return
-
-    if (tool === "brush") {
-      // Draw semi-transparent red to show marked areas
-      ctx.globalCompositeOperation = "source-over"
-      ctx.beginPath()
-      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-      ctx.fillStyle = "rgba(255, 0, 0, 0.5)"
-      ctx.fill()
-    } else {
-      // Erase
-      ctx.globalCompositeOperation = "destination-out"
-      ctx.beginPath()
-      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-      ctx.fillStyle = "white"
-      ctx.fill()
-      ctx.globalCompositeOperation = "source-over"
-    }
-  }, [brushSize, tool])
-
-  const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
+  const handleMouseDown = useCallback(() => {
     setIsDrawing(true)
-    const { x, y } = getPosition(e)
-    draw(x, y)
-
-    if (cursorRef.current) {
-      cursorRef.current.style.display = "block"
-      cursorRef.current.style.width = `${brushSize}px`
-      cursorRef.current.style.height = `${brushSize}px`
+    const pos = getPointerPosition()
+    const newLine: LineData = {
+      tool,
+      points: [pos.x, pos.y],
+      strokeWidth: brushSize,
     }
-  }, [getPosition, draw, brushSize])
+    setCurrentLine(newLine)
+  }, [tool, brushSize, getPointerPosition])
 
-  const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
-    const { x, y } = getPosition(e)
+  const handleMouseMove = useCallback(() => {
+    if (!isDrawing || !currentLine) return
+    
+    const pos = getPointerPosition()
+    const newPoints = [...currentLine.points, pos.x, pos.y]
+    setCurrentLine({ ...currentLine, points: newPoints })
+  }, [isDrawing, currentLine, getPointerPosition])
 
-    if (cursorRef.current) {
-      const rect = overlayRef.current?.getBoundingClientRect()
-      if (rect) {
-        const scaleX = (overlayRef.current?.width || 1) / rect.width
-        const displayX = x / scaleX
-        const displayY = y / (overlayRef.current?.height || 1) * rect.height
-        cursorRef.current.style.display = "block"
-        cursorRef.current.style.left = `${displayX - brushSize / 2}px`
-        cursorRef.current.style.top = `${displayY - brushSize / 2}px`
-        cursorRef.current.style.width = `${brushSize}px`
-        cursorRef.current.style.height = `${brushSize}px`
-      }
+  const handleMouseUp = useCallback(() => {
+    if (currentLine) {
+      setLines([...lines, currentLine])
+      setCurrentLine(null)
     }
-
-    if (isDrawing) {
-      draw(x, y)
-    }
-  }, [isDrawing, getPosition, draw, brushSize])
-
-  const handleUp = useCallback(() => {
     setIsDrawing(false)
-  }, [])
-
-  const handleLeave = useCallback(() => {
-    setIsDrawing(false)
-    if (cursorRef.current) {
-      cursorRef.current.style.display = "none"
-    }
-  }, [])
+  }, [currentLine, lines])
 
   const handleReset = () => {
-    const overlay = overlayRef.current
-    if (!overlay) return
-
-    const ctx = overlay.getContext("2d")
-    if (ctx) {
-      ctx.clearRect(0, 0, overlay.width, overlay.height)
-    }
+    setLines([])
+    setCurrentLine(null)
   }
 
-  const handleComplete = () => {
-    const overlay = overlayRef.current
-    const baseCanvas = canvasRef.current
-    const img = imageRef.current
-    if (!overlay || !baseCanvas || !img) return
+  const handleComplete = useCallback(() => {
+    const stage = stageRef.current
+    const drawLayer = drawLayerRef.current
+    if (!stage || !drawLayer || !image) return
 
-    // Create a mask canvas at original image size
+    // Create mask at original image size
     const maskCanvas = document.createElement("canvas")
-    maskCanvas.width = img.width
-    maskCanvas.height = img.height
+    maskCanvas.width = image.width
+    maskCanvas.height = image.height
     const maskCtx = maskCanvas.getContext("2d")
     if (!maskCtx) return
 
-    // Fill the entire mask with opaque white (areas to keep)
+    // Fill with white (areas to keep)
     maskCtx.fillStyle = "rgba(255, 255, 255, 1)"
-    maskCtx.fillRect(0, 0, img.width, img.height)
+    maskCtx.fillRect(0, 0, image.width, image.height)
 
-    // Scale and draw the overlay to a temp canvas at original image size
-    const tempCanvas = document.createElement("canvas")
-    tempCanvas.width = img.width
-    tempCanvas.height = img.height
-    const tempCtx = tempCanvas.getContext("2d")
-    if (!tempCtx) return
-    
-    tempCtx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, img.width, img.height)
-    
-    const tempData = tempCtx.getImageData(0, 0, img.width, img.height)
-    const maskData = maskCtx.getImageData(0, 0, img.width, img.height)
-    
-    // Make pixels transparent where user drew
-    for (let i = 0; i < tempData.data.length; i += 4) {
-      if (tempData.data[i + 3] > 0) {
-        maskData.data[i + 3] = 0
+    // Scale factor from display to original
+    const scaleX = image.width / dimensions.width
+    const scaleY = image.height / dimensions.height
+
+    // Draw the mask: transparent where user drew
+    // We need to track which areas were drawn (not erased)
+    const drawnCanvas = document.createElement("canvas")
+    drawnCanvas.width = image.width
+    drawnCanvas.height = image.height
+    const drawnCtx = drawnCanvas.getContext("2d")
+    if (!drawnCtx) return
+
+    // Replay all lines to build the drawn area
+    for (const line of lines) {
+      drawnCtx.globalCompositeOperation = line.tool === "brush" ? "source-over" : "destination-out"
+      drawnCtx.strokeStyle = "rgba(255, 0, 0, 1)"
+      drawnCtx.lineWidth = line.strokeWidth * scaleX
+      drawnCtx.lineCap = "round"
+      drawnCtx.lineJoin = "round"
+      
+      drawnCtx.beginPath()
+      const points = line.points
+      if (points.length >= 2) {
+        drawnCtx.moveTo(points[0] * scaleX, points[1] * scaleY)
+        for (let i = 2; i < points.length; i += 2) {
+          drawnCtx.lineTo(points[i] * scaleX, points[i + 1] * scaleY)
+        }
+        drawnCtx.stroke()
       }
     }
-    
+
+    // Get the drawn area data
+    const drawnData = drawnCtx.getImageData(0, 0, image.width, image.height)
+    const maskData = maskCtx.getImageData(0, 0, image.width, image.height)
+
+    // Make mask transparent where there's drawing
+    for (let i = 0; i < drawnData.data.length; i += 4) {
+      if (drawnData.data[i + 3] > 0) {
+        maskData.data[i + 3] = 0 // Make transparent
+      }
+    }
     maskCtx.putImageData(maskData, 0, 0)
 
-    // Create preview image (original + red overlay) for thumbnail display
-    const previewCanvas = document.createElement("canvas")
-    previewCanvas.width = dimensions.width
-    previewCanvas.height = dimensions.height
-    const previewCtx = previewCanvas.getContext("2d")
-    if (!previewCtx) return
-    
-    // Draw the base image
-    previewCtx.drawImage(baseCanvas, 0, 0)
-    // Draw the red overlay on top
-    previewCtx.drawImage(overlay, 0, 0)
-    
-    const previewDataUrl = previewCanvas.toDataURL("image/png")
+    // Create preview image (stage with all layers)
+    const previewDataUrl = stage.toDataURL({ pixelRatio: 1 })
 
     maskCanvas.toBlob((blob) => {
       if (blob) {
         onComplete(blob, previewDataUrl)
       }
     }, "image/png")
-  }
+  }, [image, dimensions, lines, onComplete])
 
   const adjustBrushSize = (delta: number) => {
     setBrushSize(prev => Math.max(10, Math.min(100, prev + delta)))
   }
 
-  if (!imageLoaded) {
+  if (!imageLoaded || !image) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
         <div className="text-muted-foreground">Loading image...</div>
       </div>
     )
   }
+
+  // Combine lines and current line for rendering
+  const allLines = currentLine ? [...lines, currentLine] : lines
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm p-4">
@@ -266,37 +192,54 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
         </p>
       </div>
 
-      {/* Canvas container */}
+      {/* Konva Stage */}
       <div 
-        ref={containerRef}
-        className="relative rounded-lg overflow-hidden border shadow-lg touch-none"
-        style={{ width: dimensions.width, height: dimensions.height }}
+        className="rounded-lg overflow-hidden border shadow-lg touch-none"
+        style={{ 
+          width: dimensions.width, 
+          height: dimensions.height,
+          cursor: tool === "brush" ? "crosshair" : "cell"
+        }}
       >
-        {/* Base image canvas */}
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0"
-          style={{ width: dimensions.width, height: dimensions.height }}
-        />
-        {/* Drawing overlay canvas */}
-        <canvas
-          ref={overlayRef}
-          className="absolute inset-0 cursor-crosshair"
-          style={{ width: dimensions.width, height: dimensions.height }}
-          onMouseDown={handleStart}
-          onMouseMove={handleMove}
-          onMouseUp={handleUp}
-          onMouseLeave={handleLeave}
-          onTouchStart={handleStart}
-          onTouchMove={handleMove}
-          onTouchEnd={handleUp}
-        />
-        {/* Custom cursor */}
-        <div
-          ref={cursorRef}
-          className="pointer-events-none absolute rounded-full border-2 border-white bg-red-500/30"
-          style={{ display: "none" }}
-        />
+        <Stage
+          ref={stageRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleMouseDown}
+          onTouchMove={handleMouseMove}
+          onTouchEnd={handleMouseUp}
+        >
+          {/* Background image layer */}
+          <Layer>
+            <KonvaImage
+              image={image}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          </Layer>
+          
+          {/* Drawing layer */}
+          <Layer ref={drawLayerRef}>
+            {allLines.map((line, i) => (
+              <Line
+                key={i}
+                points={line.points}
+                stroke="rgba(255, 0, 0, 0.5)"
+                strokeWidth={line.strokeWidth}
+                tension={0.5}
+                lineCap="round"
+                lineJoin="round"
+                globalCompositeOperation={
+                  line.tool === "eraser" ? "destination-out" : "source-over"
+                }
+              />
+            ))}
+          </Layer>
+        </Stage>
       </div>
 
       {/* Toolbar */}
