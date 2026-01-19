@@ -106,19 +106,20 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     const ctx = overlay.getContext("2d")
     if (!ctx) return
 
-    ctx.beginPath()
-    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-    
     if (tool === "brush") {
       // Draw semi-transparent red to show marked areas
+      ctx.beginPath()
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
       ctx.fillStyle = "rgba(255, 0, 0, 0.5)"
       ctx.fill()
     } else {
-      // Erase by clearing - need to set fillStyle for destination-out to work
-      ctx.globalCompositeOperation = "destination-out"
-      ctx.fillStyle = "rgba(0, 0, 0, 1)"
-      ctx.fill()
-      ctx.globalCompositeOperation = "source-over"
+      // Erase by clearing a circular area
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
+      ctx.clip()
+      ctx.clearRect(x - brushSize / 2, y - brushSize / 2, brushSize, brushSize)
+      ctx.restore()
     }
   }, [brushSize, tool])
 
