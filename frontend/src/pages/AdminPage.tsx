@@ -327,11 +327,11 @@ export function AdminPage() {
           if (event.lengthComputable) {
             const percent = Math.round((event.loaded / event.total) * 100)
             setProgress(percent)
-            setProgressStatus(`Downloading... ${Math.round(event.loaded / 1024)} KB / ${Math.round(event.total / 1024)} KB`)
+            setProgressStatus(`Downloading... ${(event.loaded / (1024 * 1024)).toFixed(2)} MB / ${(event.total / (1024 * 1024)).toFixed(2)} MB`)
           } else {
             // If length is not computable, show indeterminate progress
             setProgress(Math.min(90, progress + 5))
-            setProgressStatus(`Downloading... ${Math.round(event.loaded / 1024)} KB`)
+            setProgressStatus(`Downloading... ${(event.loaded / (1024 * 1024)).toFixed(2)} MB`)
           }
         }
         
@@ -424,7 +424,7 @@ export function AdminPage() {
           if (event.lengthComputable) {
             const percent = Math.round((event.loaded / event.total) * 90) // Reserve 10% for server processing
             setProgress(percent)
-            setProgressStatus(`Uploading... ${Math.round(event.loaded / 1024)} KB / ${Math.round(event.total / 1024)} KB`)
+            setProgressStatus(`Uploading... ${(event.loaded / (1024 * 1024)).toFixed(2)} MB / ${(event.total / (1024 * 1024)).toFixed(2)} MB`)
           }
         }
         
