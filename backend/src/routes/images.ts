@@ -82,9 +82,14 @@ export const imageRoutes = {
           n: body.n,
           size: body.size || "1024x1024",
           quality: body.quality,
-          style: body.style,
+          style: body.style || "vivid",
           response_format: body.response_format,
         }
+
+        // Store values for database with guaranteed non-null defaults
+        const dbModel = options.model || "dall-e-3"
+        const dbSize = options.size || "1024x1024"
+        const dbStyle = options.style || null
 
         const result = await generateImage(options)
 
@@ -117,11 +122,11 @@ export const imageRoutes = {
             const galleryImage = generatedImageQueries.create.get(
               user.id,
               result.data[0].url, // Temporary URL, will be replaced
-              body.prompt,
+              body.prompt || originalPrompt, // Ensure prompt is never null
               originalRevisedPrompt || null,
-              options.model || "dall-e-3",
-              options.size || "1024x1024",
-              options.style || null,
+              dbModel,
+              dbSize,
+              dbStyle,
               0, // is_edit
               null // parent_image_id
             )
