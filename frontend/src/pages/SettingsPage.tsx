@@ -201,35 +201,35 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="flex items-center justify-center p-4 pb-8">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl" />
-          </div>
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl" />
+        </div>
 
-          <div className="w-full max-w-md relative">
-            {/* Card */}
-            <div className="bg-card backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
-              {/* Header */}
-              <div className="flex flex-col items-center mb-8">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
-                  <Settings className="h-8 w-8 text-white" />
-                </div>
-                <h2 className="text-xl font-bold text-foreground">{t.subtitle}</h2>
+        <div className="w-full max-w-md relative">
+          {/* Card */}
+          <div className="bg-card backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-8">
+            {/* Header */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-teal-500/25">
+                <Settings className="h-8 w-8 text-white" />
               </div>
+              <h2 className="text-xl font-bold text-foreground">{t.subtitle}</h2>
+            </div>
 
-              {/* Message */}
-              {message && (
-                <div
-                  className={cn(
-                    "mb-6 p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
-                    message.type === "success"
-                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                      : "bg-red-500/10 border border-red-500/20 text-red-400"
-                  )}
-                >
-                  {message.text}
+            {/* Message */}
+            {message && (
+              <div
+                className={cn(
+                  "mb-6 p-3 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
+                  message.type === "success"
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                )}
+              >
+                {message.text}
               </div>
             )}
 
@@ -503,13 +503,14 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
               </Button>
             </form>
           </div>
-        </div>
+          </div>
 
-        {/* Footer */}
-        <p className="text-center text-muted-foreground text-xs mt-6 mb-4">
-          Powered by DALL-E 3 & TRMNL
-        </p>
-      </div>
+          {/* Footer */}
+          <p className="text-center text-muted-foreground text-xs mt-6 mb-4">
+            Powered by DALL-E 3 & TRMNL
+          </p>
+        </div>
+        </div>
       </div>
     </div>
   )
