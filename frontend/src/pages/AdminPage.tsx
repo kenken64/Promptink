@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown } from "lucide-react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -8,6 +8,24 @@ interface AdminStats {
   totalImages: number
   paidOrders: number
   activeSubscriptions: number
+}
+
+interface User {
+  id: number
+  email: string
+  name: string | null
+  subscription_status: string | null
+  created_at: string
+}
+
+interface UsersResponse {
+  users: User[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 // Retro flip counter digit component
@@ -141,6 +159,9 @@ export function AdminPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [usersData, setUsersData] = useState<UsersResponse | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
 
   // Check for existing token on mount
   useEffect(() => {
@@ -159,6 +180,7 @@ export function AdminPage() {
         setToken(tokenToVerify)
         setIsAuthenticated(true)
         fetchStats(tokenToVerify)
+        fetchUsers(tokenToVerify, 1)
       } else {
         localStorage.removeItem("admin_token")
       }
@@ -189,6 +211,7 @@ export function AdminPage() {
       setToken(data.token)
       setIsAuthenticated(true)
       fetchStats(data.token)
+      fetchUsers(data.token, 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
     } finally {
@@ -210,10 +233,35 @@ export function AdminPage() {
     }
   }
 
+  const fetchUsers = async (authToken: string, page: number) => {
+    setIsLoadingUsers(true)
+    try {
+      const response = await fetch(`/api/admin/users?page=${page}&limit=20`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUsersData(data)
+        setCurrentPage(page)
+      }
+    } catch (err) {
+      console.error("Failed to fetch users:", err)
+    } finally {
+      setIsLoadingUsers(false)
+    }
+  }
+
   const handleRefresh = () => {
     if (token) {
       setStats(null)
       setTimeout(() => fetchStats(token), 100)
+      fetchUsers(token, currentPage)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (token && newPage >= 1 && newPage <= (usersData?.pagination.totalPages || 1)) {
+      fetchUsers(token, newPage)
     }
   }
 
@@ -222,7 +270,29 @@ export function AdminPage() {
     setToken(null)
     setIsAuthenticated(false)
     setStats(null)
+    setUsersData(null)
     setPassword("")
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  const getSubscriptionBadge = (status: string | null) => {
+    switch (status) {
+      case "active":
+        return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-400">Active</span>
+      case "cancelled":
+        return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/20 text-red-400">Cancelled</span>
+      case "past_due":
+        return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400">Past Due</span>
+      default:
+        return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-700/50 text-zinc-400">None</span>
+    }
   }
 
   // Login screen
@@ -330,6 +400,101 @@ export function AdminPage() {
             label="Active Subscriptions"
             icon={Crown}
           />
+        </div>
+
+        {/* Users List */}
+        <div className="mt-8 bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-teal-500" />
+              Registered Users
+            </h2>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-900/50">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">ID</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Name</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Subscription</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Joined</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {isLoadingUsers ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Loading users...
+                    </td>
+                  </tr>
+                ) : usersData?.users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                      No users found
+                    </td>
+                  </tr>
+                ) : (
+                  usersData?.users.map((user) => (
+                    <tr key={user.id} className="hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-zinc-400 font-mono">#{user.id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-zinc-500" />
+                          <span className="text-sm text-white">{user.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-zinc-300">{user.name || "—"}</td>
+                      <td className="px-6 py-4">{getSubscriptionBadge(user.subscription_status)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-sm text-zinc-400">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate(user.created_at)}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {usersData && usersData.pagination.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-zinc-800 flex items-center justify-between">
+              <div className="text-sm text-zinc-500">
+                Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, usersData.pagination.total)} of {usersData.pagination.total} users
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || isLoadingUsers}
+                  className="border-zinc-700 text-zinc-400 hover:text-white disabled:opacity-50"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="px-3 py-1 bg-zinc-800 rounded text-sm text-white">
+                  Page {currentPage} of {usersData.pagination.totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === usersData.pagination.totalPages || isLoadingUsers}
+                  className="border-zinc-700 text-zinc-400 hover:text-white disabled:opacity-50"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* CSS for flip animations */}

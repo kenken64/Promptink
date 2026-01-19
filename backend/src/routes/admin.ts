@@ -99,6 +99,42 @@ function getAdminStats() {
   }
 }
 
+// Get paginated users list
+function getPaginatedUsers(page: number, limit: number) {
+  const offset = (page - 1) * limit
+  
+  const totalResult = db.query("SELECT COUNT(*) as count FROM users").get() as { count: number }
+  const total = totalResult?.count || 0
+  
+  const users = db.query(`
+    SELECT 
+      id, 
+      email, 
+      name, 
+      subscription_status,
+      created_at
+    FROM users 
+    ORDER BY created_at DESC 
+    LIMIT ? OFFSET ?
+  `).all(limit, offset) as Array<{
+    id: number
+    email: string
+    name: string | null
+    subscription_status: string | null
+    created_at: string
+  }>
+  
+  return {
+    users,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  }
+}
+
 export const adminRoutes = {
   // Admin login
   "/api/admin/login": {
@@ -150,6 +186,30 @@ export const adminRoutes = {
       if (authError) return authError
       
       return Response.json({ valid: true })
+    },
+  },
+
+  // Get paginated users list
+  "/api/admin/users": {
+    GET: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const url = new URL(req.url)
+        const page = parseInt(url.searchParams.get("page") || "1", 10)
+        const limit = parseInt(url.searchParams.get("limit") || "20", 10)
+        
+        // Validate page and limit
+        const validPage = Math.max(1, page)
+        const validLimit = Math.min(Math.max(1, limit), 100) // Max 100 per page
+        
+        const result = getPaginatedUsers(validPage, validLimit)
+        return Response.json(result)
+      } catch (error) {
+        log("ERROR", "Failed to get users list", error)
+        return Response.json({ error: "Failed to get users" }, { status: 500 })
+      }
     },
   },
 }
