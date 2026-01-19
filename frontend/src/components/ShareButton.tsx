@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Share2, Twitter, Facebook, Linkedin, Send, Link, Check, Loader2, X } from "lucide-react"
+import { Share2, Twitter, Facebook, Linkedin, Send, Link, Check, Loader2, X, MessageCircle } from "lucide-react"
 import { Button } from "./ui/button"
 import { cn } from "../lib/utils"
 
@@ -109,6 +109,7 @@ export function ShareButton({
     { icon: Twitter, label: "Twitter", url: shareData.socialLinks.twitter, color: "hover:bg-[#1DA1F2]/20 hover:text-[#1DA1F2]" },
     { icon: Facebook, label: "Facebook", url: shareData.socialLinks.facebook, color: "hover:bg-[#4267B2]/20 hover:text-[#4267B2]" },
     { icon: Linkedin, label: "LinkedIn", url: shareData.socialLinks.linkedin, color: "hover:bg-[#0077B5]/20 hover:text-[#0077B5]" },
+    { icon: MessageCircle, label: "WhatsApp", url: shareData.socialLinks.whatsapp, color: "hover:bg-[#25D366]/20 hover:text-[#25D366]" },
     { icon: Send, label: "Telegram", url: shareData.socialLinks.telegram, color: "hover:bg-[#0088cc]/20 hover:text-[#0088cc]" },
   ] : []
 
