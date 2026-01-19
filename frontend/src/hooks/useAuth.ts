@@ -343,9 +343,15 @@ export function useAuth() {
   // Fetch with automatic token refresh on 401
   const authFetch = useCallback(
     async (url: string, options: RequestInit = {}) => {
+      // Get current token from localStorage (more reliable than state)
+      const getCurrentAuthHeader = () => {
+        const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+        return token ? { Authorization: `Bearer ${token}` } : {}
+      }
+
       const headers = {
         ...options.headers,
-        ...getAuthHeader(),
+        ...getCurrentAuthHeader(),
       }
 
       let response = await fetch(url, { ...options, headers })
@@ -354,10 +360,10 @@ export function useAuth() {
       if (response.status === 401) {
         const refreshed = await refreshAccessToken()
         if (refreshed) {
-          // Retry with new token
+          // Retry with new token from localStorage (state may not be updated yet)
           const newHeaders = {
             ...options.headers,
-            ...getAuthHeader(),
+            ...getCurrentAuthHeader(),
           }
           response = await fetch(url, { ...options, headers: newHeaders })
           
@@ -372,7 +378,7 @@ export function useAuth() {
 
       return response
     },
-    [getAuthHeader, refreshAccessToken, clearAuth]
+    [refreshAccessToken, clearAuth]
   )
 
   return {
