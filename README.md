@@ -2,6 +2,7 @@
 
 AI-powered image generation app with TRMNL e-ink display sync. Generate stunning images using OpenAI's DALL-E 3 and display them on your TRMNL device.
 
+[![YouTube](https://img.shields.io/badge/YouTube-@promptinkAI-red?logo=youtube)](https://www.youtube.com/@promptinkAI-h4o)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Bun](https://img.shields.io/badge/Bun-1.0+-black.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg)
