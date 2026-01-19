@@ -5,7 +5,37 @@ import { initDatabase } from "./db"
 import { startScheduler } from "./services/scheduler-service"
 import { startBatchProcessor } from "./services/batch-service"
 import { join } from "path"
-import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync } from "fs"
+import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync, readdirSync } from "fs"
+
+// Calculate directory size recursively in bytes
+function getDirectorySizeBytes(dirPath: string): number {
+  if (!existsSync(dirPath)) return 0
+  
+  let totalSize = 0
+  try {
+    const entries = readdirSync(dirPath, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dirPath, entry.name)
+      if (entry.isDirectory()) {
+        totalSize += getDirectorySizeBytes(fullPath)
+      } else if (entry.isFile()) {
+        try {
+          totalSize += statSync(fullPath).size
+        } catch {
+          // Skip files we can't stat
+        }
+      }
+    }
+  } catch {
+    // Skip directories we can't read
+  }
+  return totalSize
+}
+
+// Format bytes to MB with 2 decimal places
+function bytesToMB(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(2)
+}
 
 // Verify volume persistence (critical for production data)
 function verifyVolumePersistence() {
@@ -68,6 +98,19 @@ function verifyVolumePersistence() {
   } catch (e) {
     log("ERROR", "❌ Volume is NOT writable! Images will NOT be saved!", e)
   }
+
+  // Calculate and log volume usage
+  const dataDirSize = getDirectorySizeBytes(dataDir)
+  const imagesDirSize = getDirectorySizeBytes(imagesDir)
+  const galleryDirSize = getDirectorySizeBytes(join(imagesDir, "gallery"))
+  const sharedDirSize = getDirectorySizeBytes(join(imagesDir, "shared"))
+  
+  log("INFO", "📊 Volume usage", {
+    totalDataDir: `${bytesToMB(dataDirSize)} MB`,
+    imagesDir: `${bytesToMB(imagesDirSize)} MB`,
+    galleryImages: `${bytesToMB(galleryDirSize)} MB`,
+    sharedImages: `${bytesToMB(sharedDirSize)} MB`
+  })
 }
 
 // Verify volume before initializing database
