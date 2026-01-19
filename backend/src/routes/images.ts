@@ -86,10 +86,10 @@ export const imageRoutes = {
           response_format: body.response_format,
         }
 
-        // Store values for database with guaranteed non-null defaults
-        const dbModel = options.model || "dall-e-3"
-        const dbSize = options.size || "1024x1024"
-        const dbStyle = options.style || null
+        // Store values for database with guaranteed non-null/non-undefined defaults
+        const dbModel = String(options.model || "dall-e-3")
+        const dbSize = String(options.size || "1024x1024")
+        const dbStyle = options.style ? String(options.style) : null
 
         const result = await generateImage(options)
 
@@ -118,17 +118,40 @@ export const imageRoutes = {
         // Auto-save to gallery if user is authenticated
         if (user && result.data?.[0]?.url) {
           try {
+            // Prepare values with guaranteed non-null for required fields
+            const galleryData = {
+              userId: user.id,
+              imageUrl: result.data[0].url,
+              originalPrompt: body.prompt || originalPrompt || "No prompt",
+              revisedPrompt: originalRevisedPrompt || null,
+              model: dbModel,
+              size: dbSize,
+              style: dbStyle,
+              isEdit: 0,
+              parentImageId: null
+            }
+            
+            log("DEBUG", "Saving to gallery", {
+              userId: galleryData.userId,
+              hasImageUrl: !!galleryData.imageUrl,
+              originalPrompt: galleryData.originalPrompt?.substring(0, 50),
+              hasRevisedPrompt: !!galleryData.revisedPrompt,
+              model: galleryData.model,
+              size: galleryData.size,
+              style: galleryData.style
+            })
+
             // Create gallery record first to get the ID
             const galleryImage = generatedImageQueries.create.get(
-              user.id,
-              result.data[0].url, // Temporary URL, will be replaced
-              body.prompt || originalPrompt, // Ensure prompt is never null
-              originalRevisedPrompt || null,
-              dbModel,
-              dbSize,
-              dbStyle,
-              0, // is_edit
-              null // parent_image_id
+              galleryData.userId,
+              galleryData.imageUrl,
+              galleryData.originalPrompt,
+              galleryData.revisedPrompt,
+              galleryData.model,
+              galleryData.size,
+              galleryData.style,
+              galleryData.isEdit,
+              galleryData.parentImageId
             )
 
             if (galleryImage) {
