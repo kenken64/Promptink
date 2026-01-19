@@ -19,6 +19,7 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
   const [imageLoaded, setImageLoaded] = useState(false)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const imageRef = useRef<HTMLImageElement | null>(null)
+  const cursorRef = useRef<HTMLDivElement>(null)
 
   // Load and display the image
   useEffect(() => {
@@ -129,17 +130,42 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     setIsDrawing(true)
     const { x, y } = getPosition(e)
     draw(x, y)
-  }, [getPosition, draw])
+
+    // Update cursor immediately
+    if (cursorRef.current) {
+      cursorRef.current.style.display = "block"
+      cursorRef.current.style.width = `${brushSize}px`
+      cursorRef.current.style.height = `${brushSize}px`
+      cursorRef.current.style.transform = `translate(${x - brushSize / 2}px, ${y - brushSize / 2}px)`
+    }
+  }, [getPosition, draw, brushSize])
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing) return
     e.preventDefault()
     const { x, y } = getPosition(e)
-    draw(x, y)
-  }, [isDrawing, getPosition, draw])
 
-  const handleEnd = useCallback(() => {
+    // Always update cursor position
+    if (cursorRef.current) {
+      cursorRef.current.style.display = "block"
+      cursorRef.current.style.width = `${brushSize}px`
+      cursorRef.current.style.height = `${brushSize}px`
+      cursorRef.current.style.transform = `translate(${x - brushSize / 2}px, ${y - brushSize / 2}px)`
+    }
+
+    if (isDrawing) {
+      draw(x, y)
+    }
+  }, [isDrawing, getPosition, draw, brushSize])
+
+  const handleUp = useCallback(() => {
     setIsDrawing(false)
+  }, [])
+
+  const handleLeave = useCallback(() => {
+    setIsDrawing(false)
+    if (cursorRef.current) {
+      cursorRef.current.style.display = "none"
+    }
   }, [])
 
   const handleReset = () => {
@@ -246,14 +272,23 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
         {/* Drawing overlay canvas */}
         <canvas
           ref={overlayRef}
-          className="absolute inset-0 cursor-crosshair"
+          className="absolute inset-0 cursor-none"
           onMouseDown={handleStart}
           onMouseMove={handleMove}
-          onMouseUp={handleEnd}
-          onMouseLeave={handleEnd}
+          onMouseUp={handleUp}
+          onMouseLeave={handleLeave}
           onTouchStart={handleStart}
           onTouchMove={handleMove}
-          onTouchEnd={handleEnd}
+          onTouchEnd={handleUp}
+        />
+        {/* Custom cursor */}
+        <div
+          ref={cursorRef}
+          className="pointer-events-none absolute left-0 top-0 rounded-full border-2 border-white bg-black/10 shadow-[0_0_2px_rgba(0,0,0,1)]"
+          style={{ 
+            display: "none",
+            zIndex: 50
+          }}
         />
       </div>
 

@@ -9,6 +9,10 @@ This is a monorepo with three main components:
 
 ---
 
+## General Guidelines
+
+- When running any command on the shell, **ALWAYS check what operating system the agent is running on** (Windows, Linux, macOS) to ensure correct syntax (e.g., path separators, environment variables).
+
 ## Backend (Bun API Server)
 
 **Always use Bun instead of Node.js.**
