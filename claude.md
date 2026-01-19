@@ -173,6 +173,24 @@ Backend requires these environment variables (in `backend/.env`):
 
 ---
 
+## Pre-Push Checklist
+
+Before pushing changes to GitHub:
+
+1. **Build the frontend** to catch TypeScript/syntax errors:
+   ```sh
+   cd frontend
+   bun run build
+   ```
+
+2. **Check for errors** in modified files using the IDE's error checker
+
+3. **Verify closing tags** - ensure all JSX elements have matching closing tags
+
+This is critical because the Docker build will fail if there are TypeScript errors.
+
+---
+
 ## Documentation Rules
 
 - **DO NOT** create markdown (`.md`) files in the project root or subdirectories
