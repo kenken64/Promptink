@@ -22,4 +22,8 @@ export const config = {
     senderName: process.env.SENDER_NAME || "Promptink",
     frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   },
+  admin: {
+    password: process.env.ADMIN_PASSWORD || "admin123",
+    jwtSecret: process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "admin-secret-key",
+  },
 }

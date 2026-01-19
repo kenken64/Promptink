@@ -14,6 +14,7 @@ import { suggestionsRoutes } from "./suggestions"
 import { scheduleRoutes } from "./schedule"
 import { batchRoutes } from "./batch"
 import { speechRoutes } from "./speech"
+import { adminRoutes } from "./admin"
 import { db } from "../db"
 import { config } from "../config"
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
@@ -338,6 +339,7 @@ const allRoutes = {
   ...scheduleRoutes,
   ...batchRoutes,
   ...speechRoutes,
+  ...adminRoutes,
 }
 
 // Export routes without rate limiting (rate limiting disabled)
