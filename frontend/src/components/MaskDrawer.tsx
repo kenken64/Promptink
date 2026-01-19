@@ -158,43 +158,49 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     if (!overlay || !img) return
 
     // Create a mask canvas at original image size
+    // DALL-E 2 mask: transparent (alpha=0) = areas to EDIT
+    //                opaque (any color, alpha=255) = areas to KEEP
     const maskCanvas = document.createElement("canvas")
     maskCanvas.width = img.width
     maskCanvas.height = img.height
     const maskCtx = maskCanvas.getContext("2d")
     if (!maskCtx) return
 
-    // Start with fully transparent (areas to keep)
-    maskCtx.clearRect(0, 0, img.width, img.height)
-
-    // Get the overlay data and scale it to original size
-    const overlayCtx = overlay.getContext("2d")
-    if (!overlayCtx) return
-
-    const overlayData = overlayCtx.getImageData(0, 0, overlay.width, overlay.height)
-    
-    // Create scaled mask - areas that were drawn become transparent (alpha=0)
-    // Areas that were not drawn become opaque (alpha=255)
     const scaleX = img.width / overlay.width
     const scaleY = img.height / overlay.height
 
-    // Fill the mask with white first (areas to keep)
-    maskCtx.fillStyle = "white"
+    // Fill the entire mask with opaque white (areas to keep)
+    maskCtx.fillStyle = "rgba(255, 255, 255, 1)"
     maskCtx.fillRect(0, 0, img.width, img.height)
 
-    // Now make drawn areas transparent
-    maskCtx.globalCompositeOperation = "destination-out"
-    
-    // Draw scaled version of overlay onto mask
+    // Get the overlay image data to find where user drew
+    const overlayCtx = overlay.getContext("2d")
+    if (!overlayCtx) return
+
+    // Scale and draw the overlay to a temp canvas at original image size
     const tempCanvas = document.createElement("canvas")
     tempCanvas.width = img.width
     tempCanvas.height = img.height
     const tempCtx = tempCanvas.getContext("2d")
-    if (tempCtx) {
-      tempCtx.scale(scaleX, scaleY)
-      tempCtx.drawImage(overlay, 0, 0)
-      maskCtx.drawImage(tempCanvas, 0, 0)
+    if (!tempCtx) return
+    
+    // Draw overlay scaled up to original image size
+    tempCtx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, img.width, img.height)
+    
+    // Get the scaled overlay image data
+    const tempData = tempCtx.getImageData(0, 0, img.width, img.height)
+    const maskData = maskCtx.getImageData(0, 0, img.width, img.height)
+    
+    // Make pixels transparent where user drew (where overlay has alpha > 0)
+    for (let i = 0; i < tempData.data.length; i += 4) {
+      // Check if this pixel in the overlay has any color (alpha > 0)
+      if (tempData.data[i + 3] > 0) {
+        // Set this pixel in mask to fully transparent (area to edit)
+        maskData.data[i + 3] = 0
+      }
     }
+    
+    maskCtx.putImageData(maskData, 0, 0)
 
     // Convert to PNG blob
     maskCanvas.toBlob((blob) => {
