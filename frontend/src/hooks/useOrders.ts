@@ -199,11 +199,7 @@ export function useOrders() {
   const getOrder = useCallback(
     async (orderId: number): Promise<{ success: boolean; order?: Order; error?: string }> => {
       try {
-        const response = await fetch(`/api/orders/${orderId}`, {
-          headers: {
-            ...getAuthHeader(),
-          },
-        })
+        const response = await authFetch(`/api/orders/${orderId}`)
 
         const data = await response.json()
 
@@ -216,7 +212,7 @@ export function useOrders() {
         return { success: false, error: "Failed to fetch order" }
       }
     },
-    [getAuthHeader]
+    [authFetch]
   )
 
   // Fetch orders on mount
