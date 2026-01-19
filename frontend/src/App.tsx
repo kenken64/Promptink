@@ -565,17 +565,6 @@ export default function App() {
       <main className="flex-1 overflow-x-hidden overflow-y-auto scroll-touch">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center px-3 sm:px-4 py-4">
-            {/* Logo with decorative lines */}
-            <div className="relative flex items-center justify-center w-full max-w-md mb-4 sm:mb-6">
-              {/* Left gradient line */}
-              <div className="hidden sm:block flex-1 h-1 rounded-full bg-gradient-to-r from-transparent via-amber-400 to-orange-500 mr-4" />
-              {/* Logo */}
-              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shrink-0">
-                <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              {/* Right gradient line */}
-              <div className="hidden sm:block flex-1 h-1 rounded-full bg-gradient-to-r from-rose-500 via-red-400 to-transparent ml-4" />
-            </div>
             <h1 className="text-xl sm:text-2xl font-semibold mb-2 text-center">{t.welcome}</h1>
             <p className="text-muted-foreground text-center text-sm sm:text-base max-w-md mb-6 sm:mb-8 px-2">
               {t.welcomeSubtitle}
