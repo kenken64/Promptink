@@ -39,12 +39,12 @@ export async function translateText(
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json() as { error?: { message?: string } }
     log("ERROR", "Translation API error", error)
     throw new Error(error.error?.message || "Failed to translate text")
   }
 
-  const result = await response.json()
+  const result = await response.json() as { choices?: { message?: { content?: string } }[] }
   const translatedText = result.choices?.[0]?.message?.content?.trim() || text
 
   log("INFO", "Translation completed", { originalLength: text.length, translatedLength: translatedText.length })
@@ -114,12 +114,12 @@ export async function generateImage(options: GenerateImageOptions): Promise<Imag
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json() as { error?: { message?: string } }
     log("ERROR", "OpenAI API error", error)
     throw new Error(error.error?.message || "Failed to generate image")
   }
 
-  const result = await response.json()
+  const result = await response.json() as ImageGenerationResponse
   log("INFO", "Image generated successfully", { created: result.created, count: result.data.length })
 
   return result
@@ -168,12 +168,12 @@ export async function generateImageEdit(
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json() as { error?: { message?: string } }
     log("ERROR", "OpenAI API error", error)
     throw new Error(error.error?.message || "Failed to edit image")
   }
 
-  return response.json()
+  return await response.json() as ImageGenerationResponse
 }
 
 export async function generateImageVariation(
@@ -213,12 +213,12 @@ export async function generateImageVariation(
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json() as { error?: { message?: string } }
     log("ERROR", "OpenAI API error", error)
     throw new Error(error.error?.message || "Failed to create image variation")
   }
 
-  return response.json()
+  return await response.json() as ImageGenerationResponse
 }
 
 /**
@@ -268,12 +268,12 @@ Output ONLY the image generation prompt, nothing else. Start directly with the v
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json() as { error?: { message?: string } }
     log("ERROR", "GPT API error for infographic", error)
     throw new Error(error.error?.message || "Failed to analyze content")
   }
 
-  const result = await response.json()
+  const result = await response.json() as { choices?: { message?: { content?: string } }[] }
   const infographicPrompt = result.choices?.[0]?.message?.content?.trim()
 
   if (!infographicPrompt) {

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, memo } from "react"
 import { Card } from "./ui/card"
 import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
@@ -34,7 +34,7 @@ interface GalleryCardProps {
   onDelete: (imageId: number) => Promise<boolean>
 }
 
-export function GalleryCard({
+export const GalleryCard = memo(function GalleryCard({
   image,
   onSelect,
   onToggleFavorite,
@@ -101,6 +101,9 @@ export function GalleryCard({
             alt={image.originalPrompt}
             className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
             loading="lazy"
+            decoding="async"
+            width={300}
+            height={300}
             onError={() => setImageError(true)}
           />
         )}
@@ -212,4 +215,4 @@ export function GalleryCard({
       </div>
     </Card>
   )
-}
+})

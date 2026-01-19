@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, lazy, Suspense } from "react"
 import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw, Calendar, Layers } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
@@ -11,14 +11,10 @@ import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
 import { ResetPasswordPage } from "./pages/ResetPasswordPage"
-import { SettingsPage } from "./pages/SettingsPage"
 import { PurchasePage } from "./pages/PurchasePage"
 import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
 import { OrdersPage } from "./pages/OrdersPage"
 import { SubscriptionPage } from "./pages/SubscriptionPage"
-import { GalleryPage } from "./pages/GalleryPage"
-import { SchedulePage } from "./pages/SchedulePage"
-import BatchPage from "./pages/BatchPage"
 import { useImageGeneration, type ImageStylePreset } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
 import { useLanguage } from "./hooks/useLanguage"
@@ -26,6 +22,19 @@ import { useTrmnlSync } from "./hooks/useTrmnlSync"
 import { useAuth } from "./hooks/useAuth"
 import { useSubscription } from "./hooks/useSubscription"
 import { useSuggestions } from "./hooks/useSuggestions"
+
+// Lazy load heavier pages for code splitting
+const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })))
+const GalleryPage = lazy(() => import("./pages/GalleryPage").then(m => ({ default: m.GalleryPage })))
+const SchedulePage = lazy(() => import("./pages/SchedulePage").then(m => ({ default: m.SchedulePage })))
+const BatchPage = lazy(() => import("./pages/BatchPage"))
+
+// Loading fallback for lazy-loaded pages
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-screen bg-background">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+)
 
 interface Message {
   id: string
@@ -718,13 +727,15 @@ export default function App() {
 
   // Settings page rendering
   const renderSettingsPage = () => (
-    <SettingsPage
-      userId={user?.id || 0}
-      authHeaders={getAuthHeader()}
-      onNavigate={(page) => setAppPage(page)}
-      onLogout={logout}
-      translations={t.settings}
-    />
+    <Suspense fallback={<PageLoader />}>
+      <SettingsPage
+        userId={user?.id || 0}
+        authHeaders={getAuthHeader()}
+        onNavigate={(page) => setAppPage(page)}
+        onLogout={logout}
+        translations={t.settings}
+      />
+    </Suspense>
   )
 
   // Purchase page rendering
@@ -785,17 +796,23 @@ export default function App() {
 
   // Gallery page rendering
   const renderGalleryPage = () => (
-    <GalleryPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    <Suspense fallback={<PageLoader />}>
+      <GalleryPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    </Suspense>
   )
 
   // Schedule page rendering
   const renderSchedulePage = () => (
-    <SchedulePage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    <Suspense fallback={<PageLoader />}>
+      <SchedulePage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    </Suspense>
   )
 
   // Batch page rendering
   const renderBatchPage = () => (
-    <BatchPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    <Suspense fallback={<PageLoader />}>
+      <BatchPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
+    </Suspense>
   )
 
   const renderCurrentPage = () => {

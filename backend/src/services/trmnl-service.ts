@@ -59,17 +59,17 @@ async function userRequest(
 
 export async function getCurrentScreen(): Promise<TRMNLDisplayResponse> {
   const response = await deviceRequest("/display")
-  return response.json()
+  return await response.json() as TRMNLDisplayResponse
 }
 
 export async function getCurrentScreenPreview(): Promise<TRMNLDisplayResponse> {
   const response = await deviceRequest("/display/current")
-  return response.json()
+  return await response.json() as TRMNLDisplayResponse
 }
 
 export async function getPluginSettings(): Promise<PluginSetting[]> {
   const response = await userRequest("/plugin_settings")
-  return response.json()
+  return await response.json() as PluginSetting[]
 }
 
 export async function updatePluginData(
@@ -91,7 +91,7 @@ export async function renderMarkup(
     method: "POST",
     body: JSON.stringify({ markup, merge_variables: variables }),
   })
-  const result = await response.json()
+  const result = await response.json() as { markup: string }
   return result.markup
 }
 

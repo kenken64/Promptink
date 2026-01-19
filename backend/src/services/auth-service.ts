@@ -228,6 +228,9 @@ export async function verifyToken(token: string, type: "access" | "refresh" = "a
     if (parts.length !== 3) return null
 
     const [headerB64, payloadB64, signature] = parts
+    
+    // Ensure all parts are defined
+    if (!headerB64 || !payloadB64 || !signature) return null
 
     // Decode and verify header
     const headerJson = base64urlDecode(headerB64)

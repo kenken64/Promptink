@@ -17,6 +17,13 @@ if (!existsSync(GALLERY_DIR)) {
   log("INFO", "Created gallery images directory", { path: GALLERY_DIR })
 }
 
+// Ensure thumbnails cache directory exists
+const THUMBNAILS_DIR = join(GALLERY_DIR, "thumbnails")
+if (!existsSync(THUMBNAILS_DIR)) {
+  mkdirSync(THUMBNAILS_DIR, { recursive: true })
+  log("INFO", "Created thumbnails cache directory", { path: THUMBNAILS_DIR })
+}
+
 // Get the file path for a gallery image
 export function getGalleryImagePath(userId: number, imageId: number): string {
   const userDir = join(GALLERY_DIR, `user_${userId}`)
@@ -24,6 +31,15 @@ export function getGalleryImagePath(userId: number, imageId: number): string {
     mkdirSync(userDir, { recursive: true })
   }
   return join(userDir, `${imageId}.png`)
+}
+
+// Get the cached thumbnail path for an image
+export function getThumbnailCachePath(userId: number, imageId: number): string {
+  const userDir = join(THUMBNAILS_DIR, `user_${userId}`)
+  if (!existsSync(userDir)) {
+    mkdirSync(userDir, { recursive: true })
+  }
+  return join(userDir, `${imageId}.webp`)
 }
 
 // Get the public URL for a gallery image
@@ -244,6 +260,7 @@ export const galleryRoutes = {
   },
 
   // Serve compressed thumbnail for gallery list view (faster loading on mobile)
+  // Uses disk caching to avoid re-generating thumbnails on every request
   "/api/gallery/thumbnail/:id": {
     GET: async (req: Request & { params: { id: string } }) => {
       try {
@@ -260,6 +277,21 @@ export const galleryRoutes = {
           return new Response("Image not found", { status: 404 })
         }
 
+        // Check for cached thumbnail first
+        const thumbnailPath = getThumbnailCachePath(image.user_id, imageId)
+        const cachedThumbnail = Bun.file(thumbnailPath)
+
+        if (await cachedThumbnail.exists()) {
+          // Serve from cache - no need to re-generate
+          return new Response(cachedThumbnail, {
+            headers: {
+              "Content-Type": "image/webp",
+              "Cache-Control": "public, max-age=31536000",
+            },
+          })
+        }
+
+        // No cached thumbnail, generate from original
         const filePath = getGalleryImagePath(image.user_id, imageId)
         const file = Bun.file(filePath)
 
@@ -276,6 +308,9 @@ export const galleryRoutes = {
           })
           .webp({ quality: 60 })
           .toBuffer()
+
+        // Cache the thumbnail to disk for future requests
+        await Bun.write(thumbnailPath, thumbnailBuffer)
 
         return new Response(thumbnailBuffer, {
           headers: {

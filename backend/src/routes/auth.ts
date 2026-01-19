@@ -6,7 +6,8 @@ import { sendPasswordResetEmail, sendPasswordChangeConfirmation } from "../servi
 
 // Helper to extract IP and User-Agent from request
 function getClientInfo(req: Request) {
-  const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+  const forwardedFor = req.headers.get("x-forwarded-for")
+  const ipAddress = (forwardedFor ? forwardedFor.split(",")[0]?.trim() : null) ||
                    req.headers.get("x-real-ip") ||
                    "unknown"
   const userAgent = req.headers.get("user-agent") || "unknown"

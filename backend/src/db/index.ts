@@ -38,7 +38,14 @@ console.log(`[DB] Database file existed before open: ${dbExisted}`)
 
 export const db = new Database(DB_PATH)
 
-console.log(`[DB] Database opened successfully`)
+// Enable WAL mode for better concurrent performance
+// WAL allows readers and writers to operate simultaneously
+db.exec("PRAGMA journal_mode = WAL")
+db.exec("PRAGMA synchronous = NORMAL") // Faster writes, still safe with WAL
+db.exec("PRAGMA cache_size = -64000") // 64MB cache
+db.exec("PRAGMA temp_store = MEMORY") // Store temp tables in memory
+
+console.log(`[DB] Database opened successfully with WAL mode`)
 
 // User type
 export interface User {
@@ -368,6 +375,10 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_is_favorite ON generated_images(is_favorite)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_is_deleted ON generated_images(is_deleted)`)
+  // Composite index for optimized gallery queries (user + deleted + created_at)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_user_deleted_created ON generated_images(user_id, is_deleted, created_at DESC)`)
+  // Composite index for favorites queries
+  db.run(`CREATE INDEX IF NOT EXISTS idx_generated_images_user_favorite_deleted ON generated_images(user_id, is_favorite, is_deleted)`)
 
   // Scheduled jobs table
   db.run(`
@@ -547,6 +558,7 @@ let _generatedImageQueries: {
   create: Statement<GeneratedImage, [number, string, string, string | null, string, string, string | null, number, number | null]>
   updateFavorite: Statement<void, [number, number, number]>
   softDelete: Statement<void, [number, number]>
+  updateImageUrl: Statement<void, [string, number]>
   search: Statement<GeneratedImage, [number, string, string, number, number]>
 }
 

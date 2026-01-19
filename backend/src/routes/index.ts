@@ -20,10 +20,60 @@ import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
 import { withAuth } from "../middleware/auth"
 import { authLimiter, generateLimiter, apiLimiter, speechLimiter, getRateLimitStats } from "../middleware/rate-limit"
+import { gzipSync } from "bun"
 
 type RouteHandler = (req: Request, ...args: any[]) => Promise<Response> | Response
 type RouteDefinition = { [method: string]: RouteHandler }
 type Routes = { [path: string]: RouteDefinition }
+
+// Minimum size to compress (1KB)
+const MIN_COMPRESS_SIZE = 1024
+
+/**
+ * Compress response with gzip if client supports it and content is compressible
+ */
+async function compressResponse(request: Request, response: Response): Promise<Response> {
+  const acceptEncoding = request.headers.get("Accept-Encoding") || ""
+  const contentType = response.headers.get("Content-Type") || ""
+  
+  // Check if content is compressible (text-based content)
+  const isCompressible = 
+    contentType.includes("application/json") ||
+    contentType.includes("text/") ||
+    contentType.includes("application/javascript")
+  
+  if (!acceptEncoding.includes("gzip") || !isCompressible) {
+    return response
+  }
+
+  try {
+    const body = await response.arrayBuffer()
+    
+    // Skip small responses
+    if (body.byteLength < MIN_COMPRESS_SIZE) {
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      })
+    }
+
+    const compressed = gzipSync(new Uint8Array(body))
+    const headers = new Headers(response.headers)
+    headers.set("Content-Encoding", "gzip")
+    headers.set("Content-Length", compressed.byteLength.toString())
+    headers.set("Vary", "Accept-Encoding")
+    
+    return new Response(compressed, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  } catch {
+    // If compression fails, return original response
+    return response
+  }
+}
 
 /**
  * Add security headers to all responses
@@ -70,6 +120,14 @@ function addSecurityHeaders(response: Response): Response {
 }
 
 /**
+ * Apply security headers and compression to a response
+ */
+async function processResponse(request: Request, response: Response): Promise<Response> {
+  const withHeaders = addSecurityHeaders(response)
+  return compressResponse(request, withHeaders)
+}
+
+/**
  * Apply rate limiting to routes based on path patterns
  */
 function applyRateLimiting(routes: Routes): Routes {
@@ -84,40 +142,40 @@ function applyRateLimiting(routes: Routes): Routes {
         // Auth endpoints: strict rate limiting (5 req / 15 min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await authLimiter(req)
-          if (limitResponse) return addSecurityHeaders(limitResponse)
+          if (limitResponse) return processResponse(req, limitResponse)
           const response = await handler(req, ...args)
-          return addSecurityHeaders(response)
+          return processResponse(req, response)
         }
       } else if (path === "/api/images/generate" || path === "/api/images/edit") {
         // Image generation: cost control (5 req / min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await generateLimiter(req)
-          if (limitResponse) return addSecurityHeaders(limitResponse)
+          if (limitResponse) return processResponse(req, limitResponse)
           const response = await handler(req, ...args)
-          return addSecurityHeaders(response)
+          return processResponse(req, response)
         }
       } else if (path === "/api/speech/transcribe") {
         // Speech transcription: Whisper API cost control (10 req / min)
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await speechLimiter(req)
-          if (limitResponse) return addSecurityHeaders(limitResponse)
+          if (limitResponse) return processResponse(req, limitResponse)
           const response = await handler(req, ...args)
-          return addSecurityHeaders(response)
+          return processResponse(req, response)
         }
       } else if (path.startsWith("/api/") && path !== "/api/health") {
         // General API endpoints: DDoS protection (100 req / min)
         // Skip health check for Railway uptime monitoring
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const limitResponse = await apiLimiter(req)
-          if (limitResponse) return addSecurityHeaders(limitResponse)
+          if (limitResponse) return processResponse(req, limitResponse)
           const response = await handler(req, ...args)
-          return addSecurityHeaders(response)
+          return processResponse(req, response)
         }
       } else {
-        // No rate limiting (health check, non-API routes) - still add security headers
+        // No rate limiting (health check, non-API routes) - still add security headers + compression
         rateLimitedMethods[method] = async (req: Request, ...args: any[]) => {
           const response = await handler(req, ...args)
-          return addSecurityHeaders(response)
+          return processResponse(req, response)
         }
       }
     }

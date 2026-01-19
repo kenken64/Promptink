@@ -6,6 +6,7 @@ import { startScheduler } from "./services/scheduler-service"
 import { startBatchProcessor } from "./services/batch-service"
 import { join } from "path"
 import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync, readdirSync } from "fs"
+import { gzipSync } from "bun"
 
 // Calculate directory size recursively in bytes
 function getDirectorySizeBytes(dirPath: string): number {
@@ -127,6 +128,52 @@ startBatchProcessor()
 
 const isDev = process.env.NODE_ENV !== "production"
 log("INFO", `Environment: ${process.env.NODE_ENV || "development"}, isDev: ${isDev}`)
+
+// Compress response with gzip if client supports it
+async function compressResponse(request: Request, response: Response): Promise<Response> {
+  const acceptEncoding = request.headers.get("Accept-Encoding") || ""
+  
+  // Skip compression for:
+  // - Responses that are already compressed (images, etc.)
+  // - Small responses (< 1KB)
+  // - Non-text content types
+  const contentType = response.headers.get("Content-Type") || ""
+  const isCompressible = 
+    contentType.includes("application/json") ||
+    contentType.includes("text/") ||
+    contentType.includes("application/javascript")
+  
+  if (!acceptEncoding.includes("gzip") || !isCompressible) {
+    return response
+  }
+
+  try {
+    const body = await response.arrayBuffer()
+    
+    // Skip small responses
+    if (body.byteLength < 1024) {
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      })
+    }
+
+    const compressed = gzipSync(new Uint8Array(body))
+    const headers = new Headers(response.headers)
+    headers.set("Content-Encoding", "gzip")
+    headers.set("Content-Length", compressed.byteLength.toString())
+    
+    return new Response(compressed, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  } catch {
+    // If compression fails, return original response
+    return response
+  }
+}
 
 // Security headers function
 function addSecurityHeaders(response: Response): Response {

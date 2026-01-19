@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "./useAuth"
 
 export interface GalleryImage {
@@ -48,6 +48,23 @@ export function useGallery() {
   })
   const [filter, setFilter] = useState<"all" | "favorites">("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounce search query
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [searchQuery])
 
   // Fetch gallery images
   const fetchImages = useCallback(async (page = 1, append = false) => {
@@ -65,8 +82,8 @@ export function useGallery() {
         params.set("favorites", "true")
       }
 
-      if (searchQuery) {
-        params.set("search", searchQuery)
+      if (debouncedSearchQuery) {
+        params.set("search", debouncedSearchQuery)
       }
 
       const response = await fetch(`/api/gallery?${params}`, {
@@ -239,7 +256,7 @@ export function useGallery() {
       fetchImages(1, false)
       fetchStats()
     }
-  }, [isAuthenticated, filter, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, filter, debouncedSearchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     images: state.images,
