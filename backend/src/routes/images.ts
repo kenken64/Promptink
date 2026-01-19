@@ -42,7 +42,7 @@ async function getUserFromRequest(req: Request): Promise<{ id: number } | null> 
   }
   const token = authHeader.slice(7)
   try {
-    const payload = verifyToken(token)
+    const payload = await verifyToken(token, "access")
     if (!payload) return null
     return { id: payload.userId }
   } catch {
@@ -118,12 +118,19 @@ export const imageRoutes = {
         // Auto-save to gallery if user is authenticated
         if (user && result.data?.[0]?.url) {
           try {
+            // Ensure userId is a valid number
+            const userId = typeof user.id === 'number' ? user.id : null
+            if (!userId) {
+              log("WARN", "Cannot save to gallery: invalid user ID", { userId: user.id, userIdType: typeof user.id })
+              throw new Error("Invalid user ID")
+            }
+
             // Prepare values with guaranteed non-null for required fields
             const galleryData = {
-              userId: user.id,
-              imageUrl: result.data[0].url,
-              originalPrompt: body.prompt || originalPrompt || "No prompt",
-              revisedPrompt: originalRevisedPrompt || null,
+              userId: userId,
+              imageUrl: String(result.data[0].url),
+              originalPrompt: String(body.prompt || originalPrompt || "No prompt"),
+              revisedPrompt: originalRevisedPrompt ? String(originalRevisedPrompt) : null,
               model: dbModel,
               size: dbSize,
               style: dbStyle,
@@ -133,6 +140,7 @@ export const imageRoutes = {
             
             log("DEBUG", "Saving to gallery", {
               userId: galleryData.userId,
+              userIdType: typeof galleryData.userId,
               hasImageUrl: !!galleryData.imageUrl,
               originalPrompt: galleryData.originalPrompt?.substring(0, 50),
               hasRevisedPrompt: !!galleryData.revisedPrompt,
