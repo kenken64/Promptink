@@ -165,7 +165,12 @@ export function AdminPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [backupMessage, setBackupMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [progressStatus, setProgressStatus] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Check if any blocking operation is in progress
+  const isBlocking = isExporting || isImporting
 
   // Check for existing token on mount
   useEffect(() => {
@@ -304,31 +309,56 @@ export function AdminPage() {
     
     setIsExporting(true)
     setBackupMessage(null)
+    setProgress(0)
+    setProgressStatus("Preparing export...")
     
     try {
-      const response = await fetch("/api/admin/export", {
-        headers: { Authorization: `Bearer ${token}` },
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest()
+      
+      const result = await new Promise<{ blob: Blob; filename: string }>((resolve, reject) => {
+        xhr.open("GET", "/api/admin/export", true)
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+        xhr.responseType = "blob"
+        
+        xhr.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100)
+            setProgress(percent)
+            setProgressStatus(`Downloading... ${Math.round(event.loaded / 1024)} KB / ${Math.round(event.total / 1024)} KB`)
+          } else {
+            // If length is not computable, show indeterminate progress
+            setProgress(Math.min(90, progress + 5))
+            setProgressStatus(`Downloading... ${Math.round(event.loaded / 1024)} KB`)
+          }
+        }
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const contentDisposition = xhr.getResponseHeader("Content-Disposition")
+            let filename = "promptink-backup.zip"
+            if (contentDisposition) {
+              const match = contentDisposition.match(/filename="(.+)"/)
+              if (match) filename = match[1]
+            }
+            resolve({ blob: xhr.response as Blob, filename })
+          } else {
+            reject(new Error("Export failed"))
+          }
+        }
+        
+        xhr.onerror = () => reject(new Error("Network error"))
+        xhr.send()
       })
       
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Export failed")
-      }
-      
-      // Get filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get("Content-Disposition")
-      let filename = "promptink-backup.zip"
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/)
-        if (match) filename = match[1]
-      }
+      setProgress(100)
+      setProgressStatus("Download complete!")
       
       // Download the file
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(result.blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = filename
+      a.download = result.filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -339,6 +369,8 @@ export function AdminPage() {
       setBackupMessage({ type: "error", text: err instanceof Error ? err.message : "Export failed" })
     } finally {
       setIsExporting(false)
+      setProgress(0)
+      setProgressStatus("")
     }
   }
 
@@ -367,24 +399,51 @@ export function AdminPage() {
     
     setIsImporting(true)
     setBackupMessage(null)
+    setProgress(0)
+    setProgressStatus("Preparing upload...")
     
     try {
       const formData = new FormData()
       formData.append("file", file)
       
-      const response = await fetch("/api/admin/import", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      // Use XMLHttpRequest for upload progress tracking
+      const result = await new Promise<{ success: boolean; message: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 90) // Reserve 10% for server processing
+            setProgress(percent)
+            setProgressStatus(`Uploading... ${Math.round(event.loaded / 1024)} KB / ${Math.round(event.total / 1024)} KB`)
+          }
+        }
+        
+        xhr.onload = () => {
+          setProgress(95)
+          setProgressStatus("Processing on server...")
+          
+          try {
+            const data = JSON.parse(xhr.responseText)
+            if (xhr.status === 200) {
+              setProgress(100)
+              setProgressStatus("Import complete!")
+              resolve({ success: true, message: data.message || "Backup restored successfully!" })
+            } else {
+              reject(new Error(data.error || "Import failed"))
+            }
+          } catch {
+            reject(new Error("Invalid server response"))
+          }
+        }
+        
+        xhr.onerror = () => reject(new Error("Network error"))
+        
+        xhr.open("POST", "/api/admin/import", true)
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+        xhr.send(formData)
       })
       
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Import failed")
-      }
-      
-      setBackupMessage({ type: "success", text: data.message || "Backup restored successfully!" })
+      setBackupMessage({ type: "success", text: result.message })
       
       // Refresh data
       fetchStats(token)
@@ -393,6 +452,8 @@ export function AdminPage() {
       setBackupMessage({ type: "error", text: err instanceof Error ? err.message : "Import failed" })
     } finally {
       setIsImporting(false)
+      setProgress(0)
+      setProgressStatus("")
       e.target.value = ""
     }
   }
@@ -452,6 +513,44 @@ export function AdminPage() {
   // Admin dashboard
   return (
     <div className="min-h-screen bg-zinc-950 p-4 sm:p-8">
+      {/* Blocking overlay with progress bar */}
+      {isBlocking && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/20 mb-4">
+                {isExporting ? (
+                  <Download className="h-8 w-8 text-teal-500 animate-bounce" />
+                ) : (
+                  <Upload className="h-8 w-8 text-teal-500 animate-bounce" />
+                )}
+              </div>
+              <h3 className="text-xl font-semibold text-white">
+                {isExporting ? "Exporting Data" : "Importing Data"}
+              </h3>
+              <p className="text-zinc-400 mt-2">
+                {progressStatus || "Please wait..."}
+              </p>
+            </div>
+            
+            {/* Progress bar */}
+            <div className="w-full bg-zinc-800 rounded-full h-4 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-500 to-teal-400 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-center mt-3">
+              <span className="text-2xl font-bold text-white">{progress}%</span>
+            </div>
+            
+            <p className="text-zinc-500 text-sm text-center mt-4">
+              Please do not close this page or navigate away.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
