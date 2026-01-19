@@ -51,7 +51,7 @@ export default function App() {
   const [selectedStyle, setSelectedStyle] = useState<ImageStylePreset>("none")
   const [resetToken, setResetToken] = useState<string>("")
   const { generateImage, isLoading } = useImageGeneration()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
   const { syncToTrmnl } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader } = useAuth()
@@ -322,7 +322,7 @@ export default function App() {
             </span>
           )}
           <LanguageToggle language={language} onToggle={toggleLanguage} />
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <ThemeToggle theme={theme} themeMode={themeMode} onToggle={toggleTheme} />
 
           {/* Desktop nav icons */}
           <div className="hidden sm:flex items-center gap-0.5">
