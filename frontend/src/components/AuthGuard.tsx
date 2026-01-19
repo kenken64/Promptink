@@ -6,9 +6,10 @@ interface AuthGuardProps {
   isLoading: boolean
   children: ReactNode
   fallback: ReactNode
+  forceShowFallback?: boolean
 }
 
-export function AuthGuard({ isAuthenticated, isLoading, children, fallback }: AuthGuardProps) {
+export function AuthGuard({ isAuthenticated, isLoading, children, fallback, forceShowFallback }: AuthGuardProps) {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
@@ -30,6 +31,11 @@ export function AuthGuard({ isAuthenticated, isLoading, children, fallback }: Au
         </div>
       </div>
     )
+  }
+
+  // Force show fallback (e.g., for password reset even when authenticated)
+  if (forceShowFallback) {
+    return <>{fallback}</>
   }
 
   // Show protected content if authenticated

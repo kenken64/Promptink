@@ -96,7 +96,8 @@ export default function App() {
     const token = urlParams.get('token')
     const path = window.location.pathname
 
-    if (path === '/reset-password' && token) {
+    // Handle reset-password path (with or without leading slashes)
+    if (path.includes('reset-password') && token) {
       setResetToken(token)
       setAuthPage('reset-password')
       // Clean up URL
@@ -756,6 +757,7 @@ export default function App() {
       isAuthenticated={isAuthenticated}
       isLoading={authLoading}
       fallback={renderAuthPage()}
+      forceShowFallback={authPage === 'reset-password' || authPage === 'forgot-password'}
     >
       {renderCurrentPage()}
     </AuthGuard>
