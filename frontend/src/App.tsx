@@ -63,7 +63,7 @@ export default function App() {
   const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
   const { syncToTrmnl } = useTrmnlSync()
-  const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader } = useAuth()
+  const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader, authFetch } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -179,9 +179,8 @@ export default function App() {
           formData.append("mask", maskFile)
         }
 
-        const response = await fetch("/api/images/edit", {
+        const response = await authFetch("/api/images/edit", {
           method: "POST",
-          headers: getAuthHeader(),
           body: formData,
         })
 
@@ -201,11 +200,10 @@ export default function App() {
           body.content = prompt.replace(/(?:create\s+)?infographic(?:\s+(?:from|for|of))?/gi, "").trim()
         }
 
-        const response = await fetch("/api/images/infographic", {
+        const response = await authFetch("/api/images/infographic", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...getAuthHeader(),
           },
           body: JSON.stringify(body),
         })
@@ -238,12 +236,22 @@ export default function App() {
         )
       )
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate image"
+      
+      // Check if this is a token error - logout and show login page
+      if (errorMessage.toLowerCase().includes("invalid") && errorMessage.toLowerCase().includes("token") ||
+          errorMessage.toLowerCase().includes("expired") && errorMessage.toLowerCase().includes("token") ||
+          errorMessage.toLowerCase().includes("unauthorized")) {
+        logout()
+        return
+      }
+      
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessageId
             ? {
                 ...msg,
-                content: `${t.errorPrefix} ${error instanceof Error ? error.message : "Failed to generate image"}`,
+                content: `${t.errorPrefix} ${errorMessage}`,
                 isLoading: false,
               }
             : msg

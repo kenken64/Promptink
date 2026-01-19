@@ -360,12 +360,19 @@ export function useAuth() {
             ...getAuthHeader(),
           }
           response = await fetch(url, { ...options, headers: newHeaders })
+          
+          // If still 401 after refresh, logout
+          if (response.status === 401) {
+            clearAuth()
+          }
+        } else {
+          // Refresh failed, already logged out by refreshAccessToken
         }
       }
 
       return response
     },
-    [getAuthHeader, refreshAccessToken]
+    [getAuthHeader, refreshAccessToken, clearAuth]
   )
 
   return {
