@@ -140,7 +140,7 @@ export async function generateImageEdit(
     throw new Error("OPENAI_API_KEY not configured")
   }
 
-  log("INFO", "Editing image", { prompt, size: options?.size })
+  log("INFO", "Editing image", { prompt, size: options?.size, hasMask: !!options?.mask })
 
   // Convert image to RGBA PNG format (required by DALL-E 2 edit API)
   const rgbaImage = await sharp(Buffer.from(image))
@@ -154,11 +154,25 @@ export async function generateImageEdit(
   formData.append("model", "dall-e-2")
 
   if (options?.mask) {
-    // Convert mask to RGBA PNG format as well
-    const rgbaMask = await sharp(Buffer.from(options.mask))
+    // Mask must preserve transparency - don't modify alpha channel
+    // Just ensure it's a valid PNG format
+    const maskBuffer = Buffer.from(options.mask)
+    
+    // Log mask info for debugging
+    const maskMetadata = await sharp(maskBuffer).metadata()
+    log("INFO", "Mask metadata", { 
+      width: maskMetadata.width, 
+      height: maskMetadata.height, 
+      channels: maskMetadata.channels,
+      hasAlpha: maskMetadata.hasAlpha 
+    })
+    
+    // Convert to PNG but preserve alpha channel
+    const rgbaMask = await sharp(maskBuffer)
       .ensureAlpha()
       .png()
       .toBuffer()
+    
     formData.append("mask", new Blob([rgbaMask], { type: "image/png" }), "mask.png")
   }
   if (options?.n) {

@@ -211,6 +211,15 @@ export const imageRoutes = {
           return Response.json({ error: "prompt is required" }, { status: 400 })
         }
 
+        log("INFO", "Image edit request", { 
+          imageSize: image.size, 
+          imageName: image.name,
+          hasMask: !!mask, 
+          maskSize: mask?.size,
+          prompt,
+          size 
+        })
+
         const sizeValue = size || "1024x1024"
         const result = await generateImageEdit(
           await image.arrayBuffer(),
