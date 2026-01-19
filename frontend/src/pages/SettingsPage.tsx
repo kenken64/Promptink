@@ -510,3 +510,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
           Powered by DALL-E 3 & TRMNL
         </p>
       </div>
+      </div>
+    </div>
+  )
+}
