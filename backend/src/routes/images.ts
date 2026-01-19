@@ -299,13 +299,17 @@ export const imageRoutes = {
         // Save to gallery if user is authenticated
         if (user && result.data?.[0]?.url) {
           try {
-            const galleryImage = generatedImageQueries.createImage.get(
+            const originalPrompt = `[Infographic] ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`
+            const galleryImage = generatedImageQueries.create.get(
               user.id,
-              `[Infographic] ${content.substring(0, 100)}...`,
-              result.data[0].url,
+              result.data[0].url, // Temporary URL, will be replaced
+              originalPrompt,
+              result.data[0].revised_prompt || styledPrompt,
+              options.model || "dall-e-3",
               options.size || "1792x1024",
-              "infographic",
-              null
+              options.style || null,
+              0, // is_edit
+              null // parent_image_id
             )
 
             if (galleryImage) {
