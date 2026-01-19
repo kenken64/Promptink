@@ -142,11 +142,24 @@ export async function generateImageEdit(
 
   log("INFO", "Editing image", { prompt, size: options?.size, hasMask: !!options?.mask })
 
-  // Convert image to RGBA PNG format (required by DALL-E 2 edit API)
+  // Get original image dimensions
+  const originalMeta = await sharp(Buffer.from(image)).metadata()
+  log("INFO", "Original image dimensions", { 
+    width: originalMeta.width, 
+    height: originalMeta.height,
+    size: Buffer.from(image).length 
+  })
+
+  // DALL-E 2 edit API requires square images, max 1024x1024, under 4MB
+  // Resize to 1024x1024 to ensure we meet the requirements
+  const targetSize = 1024
   const rgbaImage = await sharp(Buffer.from(image))
+    .resize(targetSize, targetSize, { fit: "cover" })
     .ensureAlpha()
-    .png()
+    .png({ compressionLevel: 9 })
     .toBuffer()
+
+  log("INFO", "Resized image size", { bytes: rgbaImage.length, mb: (rgbaImage.length / 1024 / 1024).toFixed(2) })
 
   const formData = new FormData()
   formData.append("image", new Blob([rgbaImage], { type: "image/png" }), "image.png")
@@ -154,24 +167,26 @@ export async function generateImageEdit(
   formData.append("model", "dall-e-2")
 
   if (options?.mask) {
-    // Mask must preserve transparency - don't modify alpha channel
-    // Just ensure it's a valid PNG format
+    // Mask must preserve transparency and match image size
     const maskBuffer = Buffer.from(options.mask)
     
     // Log mask info for debugging
     const maskMetadata = await sharp(maskBuffer).metadata()
-    log("INFO", "Mask metadata", { 
+    log("INFO", "Original mask metadata", { 
       width: maskMetadata.width, 
       height: maskMetadata.height, 
       channels: maskMetadata.channels,
       hasAlpha: maskMetadata.hasAlpha 
     })
     
-    // Convert to PNG but preserve alpha channel
+    // Resize mask to match the image size (1024x1024) and preserve alpha channel
     const rgbaMask = await sharp(maskBuffer)
+      .resize(targetSize, targetSize, { fit: "cover" })
       .ensureAlpha()
-      .png()
+      .png({ compressionLevel: 9 })
       .toBuffer()
+    
+    log("INFO", "Resized mask size", { bytes: rgbaMask.length, mb: (rgbaMask.length / 1024 / 1024).toFixed(2) })
     
     formData.append("mask", new Blob([rgbaMask], { type: "image/png" }), "mask.png")
   }
