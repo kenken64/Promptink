@@ -28,6 +28,7 @@ export function ChatInput({
   const [attachedImage, setAttachedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [maskFile, setMaskFile] = useState<File | null>(null)
+  const [maskPreview, setMaskPreview] = useState<string | null>(null)
   const [showMaskDrawer, setShowMaskDrawer] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -71,6 +72,7 @@ export function ChatInput({
       setAttachedImage(null)
       setImagePreview(null)
       setMaskFile(null)
+      setMaskPreview(null)
       baseInputRef.current = ""
       resetTranscript()
       if (textareaRef.current) {
@@ -139,15 +141,17 @@ export function ChatInput({
     setAttachedImage(null)
     setImagePreview(null)
     setMaskFile(null)
+    setMaskPreview(null)
   }
 
   const handleOpenMaskDrawer = () => {
     setShowMaskDrawer(true)
   }
 
-  const handleMaskComplete = (maskBlob: Blob) => {
+  const handleMaskComplete = (maskBlob: Blob, previewDataUrl: string) => {
     const mask = new File([maskBlob], "mask.png", { type: "image/png" })
     setMaskFile(mask)
+    setMaskPreview(previewDataUrl)
     setShowMaskDrawer(false)
   }
 
@@ -199,7 +203,7 @@ export function ChatInput({
         <div className="mb-2 flex items-end gap-2">
           <div className="relative inline-block">
             <img
-              src={imagePreview}
+              src={maskPreview || imagePreview}
               alt="Attached"
               className={cn(
                 "h-20 w-20 object-cover rounded-lg border",

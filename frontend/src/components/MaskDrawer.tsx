@@ -5,7 +5,7 @@ import { cn } from "../lib/utils"
 
 interface MaskDrawerProps {
   imageUrl: string
-  onComplete: (maskBlob: Blob) => void
+  onComplete: (maskBlob: Blob, previewDataUrl: string) => void
   onCancel: () => void
 }
 
@@ -187,8 +187,9 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
 
   const handleComplete = () => {
     const overlay = overlayRef.current
+    const baseCanvas = canvasRef.current
     const img = imageRef.current
-    if (!overlay || !img) return
+    if (!overlay || !baseCanvas || !img) return
 
     // Create a mask canvas at original image size
     const maskCanvas = document.createElement("canvas")
@@ -222,9 +223,23 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
     
     maskCtx.putImageData(maskData, 0, 0)
 
+    // Create preview image (original + red overlay) for thumbnail display
+    const previewCanvas = document.createElement("canvas")
+    previewCanvas.width = dimensions.width
+    previewCanvas.height = dimensions.height
+    const previewCtx = previewCanvas.getContext("2d")
+    if (!previewCtx) return
+    
+    // Draw the base image
+    previewCtx.drawImage(baseCanvas, 0, 0)
+    // Draw the red overlay on top
+    previewCtx.drawImage(overlay, 0, 0)
+    
+    const previewDataUrl = previewCanvas.toDataURL("image/png")
+
     maskCanvas.toBlob((blob) => {
       if (blob) {
-        onComplete(blob)
+        onComplete(blob, previewDataUrl)
       }
     }, "image/png")
   }
