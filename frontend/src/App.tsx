@@ -48,10 +48,22 @@ type AuthPage = "login" | "register" | "forgot-password" | "reset-password"
 type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery" | "schedule" | "batch"
 type ImageSize = "1024x1024" | "1792x1024" | "1024x1792"
 
+// Valid app pages that can be restored from URL hash
+const validAppPages: AppPage[] = ["chat", "settings", "orders", "subscription", "gallery", "schedule", "batch"]
+
+// Get initial page from URL hash
+const getInitialPage = (): AppPage => {
+  const hash = window.location.hash.replace("#", "")
+  if (hash && validAppPages.includes(hash as AppPage)) {
+    return hash as AppPage
+  }
+  return "chat"
+}
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [authPage, setAuthPage] = useState<AuthPage>("login")
-  const [appPage, setAppPage] = useState<AppPage>("chat")
+  const [appPage, setAppPage] = useState<AppPage>(getInitialPage)
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
   const [isFirstOrder, setIsFirstOrder] = useState(false)
   const [hasSkippedPurchase, setHasSkippedPurchase] = useState(false)
@@ -78,6 +90,32 @@ export default function App() {
       // If user needs to reactivate, they can still view the chat but will see a banner
     }
   }, [isAuthenticated, subscriptionLoading, subscription, needsToPurchase, appPage, hasSkippedPurchase])
+
+  // Sync appPage with URL hash for browser refresh persistence
+  useEffect(() => {
+    // Update URL hash when page changes (only for valid persistable pages)
+    if (validAppPages.includes(appPage)) {
+      const newHash = appPage === "chat" ? "" : `#${appPage}`
+      if (window.location.hash !== newHash && window.location.hash !== `#${appPage}`) {
+        window.history.pushState(null, "", newHash || window.location.pathname)
+      }
+    }
+  }, [appPage])
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash.replace("#", "")
+      if (hash && validAppPages.includes(hash as AppPage)) {
+        setAppPage(hash as AppPage)
+      } else {
+        setAppPage("chat")
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
