@@ -575,6 +575,28 @@ export default function App() {
                   </button>
                 ))}
               </div>
+
+              {/* Infographic Guide */}
+              <div className="mt-6 p-4 rounded-xl border border-border/50 bg-secondary/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">📊</span>
+                  <h3 className="font-medium text-sm text-foreground">{t.infographicGuide?.title || "Create Infographics"}</h3>
+                </div>
+                <ul className="space-y-2 text-xs text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-500">•</span>
+                    <span>{t.infographicGuide?.tip1 || 'Paste a GitHub .md URL to auto-generate'}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-500">•</span>
+                    <span>{t.infographicGuide?.tip2 || 'Type "infographic about..." + your topic'}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-500">•</span>
+                    <span>{t.infographicGuide?.tip3 || 'Works with bullet points, lists, or paragraphs'}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         ) : (
