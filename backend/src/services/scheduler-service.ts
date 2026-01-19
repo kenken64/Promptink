@@ -63,8 +63,16 @@ function localDatetimeToUTC(localDatetime: string, timezone: string): string {
   
   // Parse the local datetime
   const [datePart, timePart] = localDatetime.split('T')
-  const [year, month, day] = datePart.split('-').map(Number)
-  const [hours, minutes] = timePart.split(':').map(Number)
+  if (!datePart || !timePart) {
+    return new Date().toISOString()
+  }
+  const dateParts = datePart.split('-').map(Number)
+  const timeParts = timePart.split(':').map(Number)
+  const year = dateParts[0] ?? 0
+  const month = dateParts[1] ?? 1
+  const day = dateParts[2] ?? 1
+  const hours = timeParts[0] ?? 0
+  const minutes = timeParts[1] ?? 0
   
   // Create a formatter to find the UTC offset for this datetime in the target timezone
   const testDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
@@ -109,11 +117,11 @@ function localDatetimeToUTC(localDatetime: string, timezone: string): string {
     return utcDate.toISOString()
   }
   
-  const tzMonth = parseInt(localParts[1])
-  const tzDay = parseInt(localParts[2])
-  const tzYear = parseInt(localParts[3])
-  const tzHour = parseInt(localParts[4])
-  const tzMinute = parseInt(localParts[5])
+  const tzMonth = parseInt(localParts[1] ?? '1', 10)
+  const tzDay = parseInt(localParts[2] ?? '1', 10)
+  const tzYear = parseInt(localParts[3] ?? '2000', 10)
+  const tzHour = parseInt(localParts[4] ?? '0', 10)
+  const tzMinute = parseInt(localParts[5] ?? '0', 10)
   
   // Calculate difference
   const diffMinutes = (hours - tzHour) * 60 + (minutes - tzMinute) + 

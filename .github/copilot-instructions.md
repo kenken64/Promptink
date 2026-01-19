@@ -65,17 +65,23 @@ This is a monorepo with three main components:
 
 Before ANY push to GitHub, you MUST:
 
-1. **Build the frontend** to catch TypeScript/syntax errors:
+1. **Check for TypeScript errors** using the IDE's `get_errors` tool or error panel on ALL modified files
+
+2. **Build the frontend** to catch TypeScript/syntax errors:
    ```sh
    cd frontend
    bun run build
    ```
 
-2. **Check for errors** in modified files using IDE error checker
+3. **Type-check the backend** (if backend files were modified):
+   ```sh
+   cd backend
+   bunx tsc --noEmit
+   ```
 
-3. **Verify closing tags** - ensure all JSX elements have matching closing tags
+4. **Verify closing tags** - ensure all JSX elements have matching closing tags
 
-**The Docker build WILL FAIL if there are TypeScript errors.**
+**The Docker build WILL FAIL if there are TypeScript errors. ALWAYS run these checks before pushing.**
 
 ---
 
