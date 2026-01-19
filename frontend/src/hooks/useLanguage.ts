@@ -757,6 +757,9 @@ export const translations = {
   },
 }
 
+// Custom event for same-window language sync (storage event only fires cross-tab)
+const LANGUAGE_CHANGE_EVENT = "promptink-language-change"
+
 export function useLanguage() {
   const [language, setLanguage] = useState<Language>(() => {
     if (typeof window !== "undefined") {
@@ -769,12 +772,45 @@ export function useLanguage() {
     return "en"
   })
 
+  // Sync language state when changed in other components (same window)
+  useEffect(() => {
+    const handleLanguageChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Language>
+      if (customEvent.detail && customEvent.detail !== language) {
+        setLanguage(customEvent.detail)
+      }
+    }
+
+    window.addEventListener(LANGUAGE_CHANGE_EVENT, handleLanguageChange)
+    return () => {
+      window.removeEventListener(LANGUAGE_CHANGE_EVENT, handleLanguageChange)
+    }
+  }, [language])
+
+  // Sync language state when changed in other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "language" && e.newValue) {
+        setLanguage(e.newValue as Language)
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
+  }, [])
+
   useEffect(() => {
     localStorage.setItem("language", language)
   }, [language])
 
   const toggleLanguage = () => {
-    setLanguage((prev) => (prev === "en" ? "zh" : "en"))
+    const newLanguage = language === "en" ? "zh" : "en"
+    setLanguage(newLanguage)
+    localStorage.setItem("language", newLanguage)
+    // Dispatch custom event to sync other components in same window
+    window.dispatchEvent(new CustomEvent(LANGUAGE_CHANGE_EVENT, { detail: newLanguage }))
   }
 
   const t = translations[language]
