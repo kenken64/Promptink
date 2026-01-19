@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle } from "lucide-react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -167,6 +167,8 @@ export function AdminPage() {
   const [backupMessage, setBackupMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [progress, setProgress] = useState(0)
   const [progressStatus, setProgressStatus] = useState("")
+  const [oldUrl, setOldUrl] = useState("")
+  const [newUrl, setNewUrl] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Check if any blocking operation is in progress
@@ -406,6 +408,14 @@ export function AdminPage() {
       const formData = new FormData()
       formData.append("file", file)
       
+      // Add URL migration fields if provided
+      if (oldUrl.trim()) {
+        formData.append("oldUrl", oldUrl.trim())
+      }
+      if (newUrl.trim()) {
+        formData.append("newUrl", newUrl.trim())
+      }
+      
       // Use XMLHttpRequest for upload progress tracking
       const result = await new Promise<{ success: boolean; message: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
@@ -420,7 +430,7 @@ export function AdminPage() {
         
         xhr.onload = () => {
           setProgress(95)
-          setProgressStatus("Processing on server...")
+          setProgressStatus(oldUrl.trim() && newUrl.trim() ? "Processing and migrating URLs..." : "Processing on server...")
           
           try {
             const data = JSON.parse(xhr.responseText)
@@ -444,6 +454,10 @@ export function AdminPage() {
       })
       
       setBackupMessage({ type: "success", text: result.message })
+      
+      // Clear URL fields after successful import
+      setOldUrl("")
+      setNewUrl("")
       
       // Refresh data
       fetchStats(token)
@@ -676,6 +690,44 @@ export function AdminPage() {
                 accept=".zip"
                 className="hidden"
               />
+            </div>
+            
+            {/* URL Migration Section */}
+            <div className="mt-6 pt-6 border-t border-zinc-800">
+              <h3 className="text-sm font-medium text-white mb-2">URL Migration (Optional)</h3>
+              <p className="text-zinc-500 text-xs mb-4">
+                If you're migrating from another server, enter the old URL and new URL to update all image references in the database.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs text-zinc-500 mb-1">Old Server URL</label>
+                  <Input
+                    type="url"
+                    placeholder="https://old-server.example.com"
+                    value={oldUrl}
+                    onChange={(e) => setOldUrl(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600 text-sm"
+                    disabled={isExporting || isImporting}
+                  />
+                </div>
+                <ArrowRight className="h-4 w-4 text-zinc-600 mt-5 hidden sm:block" />
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs text-zinc-500 mb-1">New Server URL</label>
+                  <Input
+                    type="url"
+                    placeholder="https://new-server.example.com"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600 text-sm"
+                    disabled={isExporting || isImporting}
+                  />
+                </div>
+              </div>
+              {oldUrl && newUrl && (
+                <p className="text-teal-400 text-xs mt-2">
+                  ✓ URLs will be migrated during import: {oldUrl} → {newUrl}
+                </p>
+              )}
             </div>
           </div>
         </div>

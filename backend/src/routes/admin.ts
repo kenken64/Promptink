@@ -293,6 +293,8 @@ export const adminRoutes = {
       try {
         const formData = await req.formData()
         const file = formData.get("file") as File | null
+        const oldUrl = formData.get("oldUrl") as string | null
+        const newUrl = formData.get("newUrl") as string | null
         
         if (!file) {
           return Response.json({ error: "No file provided" }, { status: 400 })
@@ -303,6 +305,9 @@ export const adminRoutes = {
         }
 
         log("INFO", `Starting data import: ${file.name}`)
+        if (oldUrl && newUrl) {
+          log("INFO", `URL migration: ${oldUrl} -> ${newUrl}`)
+        }
         
         const zipBuffer = await file.arrayBuffer()
         const entries = parseZipBuffer(new Uint8Array(zipBuffer))
@@ -328,10 +333,18 @@ export const adminRoutes = {
         
         log("INFO", `Data import completed: ${filesRestored} files restored`)
         
+        // Perform URL migration if both old and new URLs are provided
+        let urlsUpdated = 0
+        if (oldUrl && newUrl && oldUrl.trim() && newUrl.trim()) {
+          urlsUpdated = migrateUrls(oldUrl.trim(), newUrl.trim())
+          log("INFO", `URL migration completed: ${urlsUpdated} URLs updated`)
+        }
+        
         return Response.json({ 
           success: true, 
-          message: `Successfully restored ${filesRestored} files`,
+          message: `Successfully restored ${filesRestored} files${urlsUpdated > 0 ? ` and updated ${urlsUpdated} URLs` : ""}`,
           filesRestored,
+          urlsUpdated,
         })
       } catch (error) {
         log("ERROR", "Failed to import data", error)
@@ -339,6 +352,38 @@ export const adminRoutes = {
       }
     },
   },
+}
+
+// Migrate URLs in database tables
+function migrateUrls(oldUrl: string, newUrl: string): number {
+  let totalUpdated = 0
+  
+  // Update generated_images table
+  const generatedImagesResult = db.run(
+    "UPDATE generated_images SET image_url = REPLACE(image_url, ?, ?) WHERE image_url LIKE ?",
+    [oldUrl, newUrl, `%${oldUrl}%`]
+  )
+  totalUpdated += generatedImagesResult.changes
+  
+  // Update synced_images table
+  const syncedImagesResult = db.run(
+    "UPDATE synced_images SET image_url = REPLACE(image_url, ?, ?) WHERE image_url LIKE ?",
+    [oldUrl, newUrl, `%${oldUrl}%`]
+  )
+  totalUpdated += syncedImagesResult.changes
+  
+  // Update orders table tracking_url if exists
+  try {
+    const ordersResult = db.run(
+      "UPDATE orders SET tracking_url = REPLACE(tracking_url, ?, ?) WHERE tracking_url LIKE ?",
+      [oldUrl, newUrl, `%${oldUrl}%`]
+    )
+    totalUpdated += ordersResult.changes
+  } catch {
+    // Table might not have tracking_url column
+  }
+  
+  return totalUpdated
 }
 
 // Simple ZIP file creation (no external dependencies)
