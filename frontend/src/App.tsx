@@ -167,7 +167,7 @@ export default function App() {
     return { isUrl: false }
   }
 
-  const handleSend = async (prompt: string, imageFile?: File, maskFile?: File) => {
+  const handleSend = async (prompt: string, imageFile?: File, maskFile?: File, maskPreviewUrl?: string) => {
     const userMessageId = Date.now().toString()
     const assistantMessageId = (Date.now() + 1).toString()
 
@@ -180,7 +180,8 @@ export default function App() {
     let userImageUrl: string | undefined
 
     if (imageFile) {
-      userImageUrl = URL.createObjectURL(imageFile)
+      // If mask was drawn, show the mask preview (with red overlay), otherwise show original
+      userImageUrl = maskPreviewUrl || URL.createObjectURL(imageFile)
       userContent = `[Image attached] ${prompt}`
     }
 

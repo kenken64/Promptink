@@ -8,7 +8,7 @@ import { MaskDrawer } from "./MaskDrawer"
 import type { Language } from "../hooks/useLanguage"
 
 interface ChatInputProps {
-  onSend: (message: string, imageFile?: File, maskFile?: File) => void
+  onSend: (message: string, imageFile?: File, maskFile?: File, maskPreviewUrl?: string) => void
   disabled?: boolean
   language: Language
   placeholder: string
@@ -67,7 +67,7 @@ export function ChatInput({
   const handleSubmit = () => {
     const textToSend = input.trim()
     if (textToSend && !disabled) {
-      onSend(textToSend, attachedImage || undefined, maskFile || undefined)
+      onSend(textToSend, attachedImage || undefined, maskFile || undefined, maskPreview || undefined)
       setInput("")
       setAttachedImage(null)
       setImagePreview(null)
