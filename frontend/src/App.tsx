@@ -63,7 +63,7 @@ export default function App() {
   const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
   const { syncToTrmnl } = useTrmnlSync()
-  const { user, isLoading: authLoading, isAuthenticated, login, register, logout, getAuthHeader, authFetch } = useAuth()
+  const { user, isLoading: authLoading, isAuthenticated, login, register, logout, authFetch } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -217,7 +217,7 @@ export default function App() {
       } else {
         // Use regular image generation
         console.log("Generating image with size:", selectedSize, "style:", selectedStyle)
-        result = await generateImage({ prompt, language, authHeaders: getAuthHeader(), size: selectedSize, stylePreset: selectedStyle })
+        result = await generateImage({ prompt, language, size: selectedSize, stylePreset: selectedStyle })
       }
 
       const imageUrl = result.data[0]?.url
@@ -309,7 +309,7 @@ export default function App() {
   }
 
   const handleSyncWithAuth = async (imageUrl: string, prompt?: string) => {
-    return await syncToTrmnl(imageUrl, prompt, getAuthHeader())
+    return await syncToTrmnl(imageUrl, prompt)
   }
 
   const handleOrderSuccess = (orderId: number, isFirst: boolean) => {
@@ -641,7 +641,6 @@ export default function App() {
                   copyLinkText={t.copyLink}
                   copiedText={t.copied}
                   closeText={t.close}
-                  authHeaders={getAuthHeader()}
                   onSync={handleSyncWithAuth}
                 />
               ))}
@@ -740,7 +739,6 @@ export default function App() {
     <Suspense fallback={<PageLoader />}>
       <SettingsPage
         userId={user?.id || 0}
-        authHeaders={getAuthHeader()}
         onNavigate={(page) => setAppPage(page)}
         onLogout={logout}
         translations={t.settings}
@@ -751,7 +749,6 @@ export default function App() {
   // Purchase page rendering
   const renderPurchasePage = () => (
     <PurchasePage
-      authHeaders={getAuthHeader()}
       onSuccess={handleOrderSuccess}
       onNavigate={hasFullAccess() ? (page) => setAppPage(page) : undefined}
       onSkip={() => {
@@ -773,7 +770,6 @@ export default function App() {
     return (
       <OrderConfirmationPage
         orderId={confirmationOrderId}
-        authHeaders={getAuthHeader()}
         onViewOrders={() => setAppPage("orders")}
         onStartCreating={() => {
           setConfirmationOrderId(null)
@@ -788,7 +784,6 @@ export default function App() {
   // Orders page rendering
   const renderOrdersPage = () => (
     <OrdersPage
-      authHeaders={getAuthHeader()}
       onNavigate={(page) => setAppPage(page)}
       onOrderMore={() => setAppPage("purchase")}
       onLogout={logout}
@@ -798,7 +793,6 @@ export default function App() {
   // Subscription page rendering
   const renderSubscriptionPage = () => (
     <SubscriptionPage
-      authHeaders={getAuthHeader()}
       onNavigate={(page) => setAppPage(page)}
       onLogout={logout}
     />

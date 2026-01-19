@@ -17,7 +17,6 @@ import { useSubscription, useLanguage, useAuth, type SubscriptionStatus } from "
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface SubscriptionPageProps {
-  authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
   onLogout: () => void
 }
@@ -76,9 +75,9 @@ const statusColors: Record<SubscriptionStatus, { color: string; bgColor: string 
   past_due: { color: "text-orange-400", bgColor: "bg-orange-400/10" },
 }
 
-export function SubscriptionPage({ authHeaders, onNavigate, onLogout }: SubscriptionPageProps) {
+export function SubscriptionPage({ onNavigate, onLogout }: SubscriptionPageProps) {
   const { t, language } = useLanguage()
-  const { user } = useAuth()
+  const { user, authFetch } = useAuth()
   const {
     subscription,
     isLoading,
@@ -190,11 +189,10 @@ export function SubscriptionPage({ authHeaders, onNavigate, onLogout }: Subscrip
 
     try {
       // Verify the subscription payment
-      const verifyResponse = await fetch("/api/subscription/verify", {
+      const verifyResponse = await authFetch("/api/subscription/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({
           razorpay_payment_id: response.razorpay_payment_id,

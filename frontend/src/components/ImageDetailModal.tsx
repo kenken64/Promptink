@@ -483,8 +483,7 @@ export function ImageDetailModal({
                 try {
                   await syncToTrmnl(
                     image.imageUrl,
-                    image.originalPrompt,
-                    token ? { Authorization: `Bearer ${token}` } : {}
+                    image.originalPrompt
                   )
                   setSyncSuccess(true)
                   setTimeout(() => setSyncSuccess(false), 2000)
@@ -557,7 +556,6 @@ export function ImageDetailModal({
               <ShareButton
                 imageUrl={image.imageUrl}
                 prompt={image.originalPrompt}
-                authHeaders={token ? { Authorization: `Bearer ${token}` } : {}}
                 shareText={t.share}
                 sharingText={t.sharing}
                 shareSuccessText={t.shareSuccess}

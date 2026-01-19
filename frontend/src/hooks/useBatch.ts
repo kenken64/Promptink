@@ -68,8 +68,8 @@ export function useBatch(): UseBatchReturn {
   const [currentBatch, setCurrentBatch] = useState<BatchJobWithItems | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader, logout, isAuthenticated, isLoading: authLoading } = useAuth()
-  const pollIntervalRef = useRef<NodeJS.Timer | null>(null)
+  const { authFetch, isAuthenticated, isLoading: authLoading } = useAuth()
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchBatches = useCallback(async () => {
     // Don't fetch if not authenticated
@@ -79,14 +79,7 @@ export function useBatch(): UseBatchReturn {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/batch", {
-        headers: getAuthHeader(),
-      })
-
-      if (response.status === 401) {
-        logout()
-        return
-      }
+      const response = await authFetch("/api/batch")
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch jobs")
@@ -99,19 +92,12 @@ export function useBatch(): UseBatchReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader, logout, isAuthenticated])
+  }, [authFetch, isAuthenticated])
 
   const fetchBatch = useCallback(async (id: number): Promise<BatchJobWithItems | null> => {
     setError(null)
     try {
-      const response = await fetch(`/api/batch/${id}`, {
-        headers: getAuthHeader(),
-      })
-
-      if (response.status === 401) {
-        logout()
-        return null
-      }
+      const response = await authFetch(`/api/batch/${id}`)
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch job")
@@ -124,24 +110,18 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const createBatch = useCallback(async (input: CreateBatchJobInput): Promise<BatchJob | null> => {
     setError(null)
     try {
-      const response = await fetch("/api/batch", {
+      const response = await authFetch("/api/batch", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify(input),
       })
-
-      if (response.status === 401) {
-        logout()
-        return null
-      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -155,24 +135,18 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const cancelBatch = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
     try {
-      const response = await fetch(`/api/batch/${id}`, {
+      const response = await authFetch(`/api/batch/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify({ action: "cancel" }),
       })
-
-      if (response.status === 401) {
-        logout()
-        return false
-      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -187,24 +161,17 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const deleteBatch = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
     try {
-      const response = await fetch(`/api/batch/${id}`, {
+      const response = await authFetch(`/api/batch/${id}`, {
         method: "DELETE",
-        headers: getAuthHeader(),
       })
 
-      if (response.status === 401) {
-        logout()
-        return false
-      }
-
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete batch job")
+        throw new Error("Failed to delete batch job")
       }
 
       setBatches(prev => prev.filter(b => b.id !== id))
@@ -213,7 +180,7 @@ export function useBatch(): UseBatchReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -228,15 +195,7 @@ export function useBatch(): UseBatchReturn {
 
     const poll = async () => {
       try {
-        const response = await fetch(`/api/batch/${id}/status`, {
-          headers: getAuthHeader(),
-        })
-
-        if (response.status === 401) {
-          logout()
-          stopPolling()
-          return
-        }
+        const response = await authFetch(`/api/batch/${id}/status`)
 
         if (!response.ok) {
           stopPolling()
@@ -273,7 +232,7 @@ export function useBatch(): UseBatchReturn {
     // Poll immediately and then every 3 seconds
     poll()
     pollIntervalRef.current = setInterval(poll, 3000)
-  }, [getAuthHeader, logout, stopPolling, fetchBatch])
+  }, [authFetch, stopPolling, fetchBatch])
 
   // Cleanup on unmount
   useEffect(() => {

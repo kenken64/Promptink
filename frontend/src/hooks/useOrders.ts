@@ -95,7 +95,7 @@ interface OrdersState {
 }
 
 export function useOrders() {
-  const { getAuthHeader, isAuthenticated } = useAuth()
+  const { authFetch, isAuthenticated } = useAuth()
   const [state, setState] = useState<OrdersState>({
     orders: [],
     isLoading: false,
@@ -109,11 +109,7 @@ export function useOrders() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await fetch("/api/orders", {
-        headers: {
-          ...getAuthHeader(),
-        },
-      })
+      const response = await authFetch("/api/orders")
 
       const data = await response.json()
 
@@ -138,7 +134,7 @@ export function useOrders() {
         error: "Failed to fetch orders",
       }))
     }
-  }, [isAuthenticated, getAuthHeader])
+  }, [isAuthenticated, authFetch])
 
   // Create a new order
   const createOrder = useCallback(
@@ -146,11 +142,10 @@ export function useOrders() {
       input: CreateOrderInput
     ): Promise<{ success: boolean; data?: CreateOrderResponse; error?: string }> => {
       try {
-        const response = await fetch("/api/orders", {
+        const response = await authFetch("/api/orders", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...getAuthHeader(),
           },
           body: JSON.stringify(input),
         })
@@ -166,7 +161,7 @@ export function useOrders() {
         return { success: false, error: "Failed to create order" }
       }
     },
-    [getAuthHeader]
+    [authFetch]
   )
 
   // Verify payment
@@ -175,11 +170,10 @@ export function useOrders() {
       input: VerifyPaymentInput
     ): Promise<{ success: boolean; data?: VerifyPaymentResponse; error?: string }> => {
       try {
-        const response = await fetch("/api/orders/verify", {
+        const response = await authFetch("/api/orders/verify", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...getAuthHeader(),
           },
           body: JSON.stringify(input),
         })
@@ -198,8 +192,8 @@ export function useOrders() {
         return { success: false, error: "Payment verification failed" }
       }
     },
-    [getAuthHeader, fetchOrders]
-  )
+    [authFetch, fetchOrders]
+  ) // Added fetchOrders to dependency as it is used inside
 
   // Get a single order
   const getOrder = useCallback(

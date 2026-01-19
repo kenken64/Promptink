@@ -3,12 +3,12 @@ import { Settings, Key, Wifi, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, M
 import { Button } from "../components/ui/button"
 import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
+import { useAuth } from "../hooks/useAuth"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface SettingsPageProps {
   userId: number
-  authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
   onLogout: () => void
   translations: {
@@ -53,7 +53,7 @@ interface UserSettings {
   trmnl_background_color: "black" | "white"
 }
 
-export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, translations: t }: SettingsPageProps) {
+export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: SettingsPageProps) {
   const [deviceApiKey, setDeviceApiKey] = useState("")
   const [macAddress, setMacAddress] = useState("")
   const [backgroundColor, setBackgroundColor] = useState<"black" | "white">("black")
@@ -62,6 +62,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const { authFetch } = useAuth()
 
   // Change password state
   const [currentPassword, setCurrentPassword] = useState("")
@@ -78,9 +79,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch("/api/settings", {
-          headers: authHeaders,
-        })
+        const response = await authFetch("/api/settings")
         if (response.ok) {
           const data: UserSettings = await response.json()
           setDeviceApiKey(data.trmnl_device_api_key || "")
@@ -94,7 +93,7 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
       }
     }
     fetchSettings()
-  }, [authHeaders])
+  }, [authFetch])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -102,11 +101,10 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
     setMessage(null)
 
     try {
-      const response = await fetch("/api/settings", {
+      const response = await authFetch("/api/settings", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({
           trmnl_device_api_key: deviceApiKey || null,
@@ -152,11 +150,10 @@ export function SettingsPage({ userId, authHeaders, onNavigate, onLogout, transl
     setIsChangingPassword(true)
 
     try {
-      const response = await fetch("/api/auth/change-password", {
+      const response = await authFetch("/api/auth/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({
           currentPassword,

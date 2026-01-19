@@ -26,7 +26,7 @@ interface SubscriptionState {
 }
 
 export function useSubscription() {
-  const { getAuthHeader, isAuthenticated } = useAuth()
+  const { authFetch, isAuthenticated } = useAuth()
   const [state, setState] = useState<SubscriptionState>({
     subscription: null,
     accessStatus: null,
@@ -44,11 +44,7 @@ export function useSubscription() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await fetch("/api/subscription/status", {
-        headers: {
-          ...getAuthHeader(),
-        },
-      })
+      const response = await authFetch("/api/subscription/status")
 
       const data = await response.json()
 
@@ -74,18 +70,14 @@ export function useSubscription() {
         error: "Failed to fetch subscription status",
       }))
     }
-  }, [isAuthenticated, getAuthHeader])
+  }, [isAuthenticated, authFetch])
 
   // Fetch access status (for routing)
   const fetchAccessStatus = useCallback(async () => {
     if (!isAuthenticated) return
 
     try {
-      const response = await fetch("/api/subscription/access", {
-        headers: {
-          ...getAuthHeader(),
-        },
-      })
+      const response = await authFetch("/api/subscription/access")
 
       const data = await response.json()
 
@@ -102,7 +94,7 @@ export function useSubscription() {
     } catch (error) {
       // Silent fail for access check
     }
-  }, [isAuthenticated, getAuthHeader])
+  }, [isAuthenticated, authFetch])
 
   // Cancel subscription
   const cancelSubscription = useCallback(async (): Promise<{
@@ -110,11 +102,8 @@ export function useSubscription() {
     error?: string
   }> => {
     try {
-      const response = await fetch("/api/subscription/cancel", {
+      const response = await authFetch("/api/subscription/cancel", {
         method: "POST",
-        headers: {
-          ...getAuthHeader(),
-        },
       })
 
       const data = await response.json()
@@ -130,7 +119,7 @@ export function useSubscription() {
     } catch (error) {
       return { success: false, error: "Failed to cancel subscription" }
     }
-  }, [getAuthHeader, fetchStatus])
+  }, [authFetch, fetchStatus])
 
   // Reactivate subscription
   const reactivateSubscription = useCallback(async (): Promise<{
@@ -142,11 +131,8 @@ export function useSubscription() {
     error?: string
   }> => {
     try {
-      const response = await fetch("/api/subscription/reactivate", {
+      const response = await authFetch("/api/subscription/reactivate", {
         method: "POST",
-        headers: {
-          ...getAuthHeader(),
-        },
       })
 
       const data = await response.json()
@@ -159,7 +145,7 @@ export function useSubscription() {
     } catch (error) {
       return { success: false, error: "Failed to reactivate subscription" }
     }
-  }, [getAuthHeader])
+  }, [authFetch])
 
   // Create subscription directly (for users who already own a TRMNL device)
   const createDirectSubscription = useCallback(async (): Promise<{
@@ -171,11 +157,8 @@ export function useSubscription() {
     error?: string
   }> => {
     try {
-      const response = await fetch("/api/subscription/create", {
+      const response = await authFetch("/api/subscription/create", {
         method: "POST",
-        headers: {
-          ...getAuthHeader(),
-        },
       })
 
       const data = await response.json()
@@ -188,7 +171,7 @@ export function useSubscription() {
     } catch (error) {
       return { success: false, error: "Failed to create subscription" }
     }
-  }, [getAuthHeader])
+  }, [authFetch])
 
   // Helper to check if user has full access
   const hasFullAccess = useCallback((): boolean => {

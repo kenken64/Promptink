@@ -20,7 +20,6 @@ import { useOrders, useLanguage, type Order } from "../hooks"
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface OrdersPageProps {
-  authHeaders: { Authorization?: string }
   onNavigate: (page: AppPage) => void
   onOrderMore: () => void
   onLogout: () => void
@@ -196,7 +195,7 @@ function OrderCard({ order, t, language }: OrderCardProps) {
   )
 }
 
-export function OrdersPage({ authHeaders, onNavigate, onOrderMore, onLogout }: OrdersPageProps) {
+export function OrdersPage({ onNavigate, onOrderMore, onLogout }: OrdersPageProps) {
   const { orders, isLoading, error } = useOrders()
   const { t, language } = useLanguage()
 

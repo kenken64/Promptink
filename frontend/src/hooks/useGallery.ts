@@ -38,7 +38,7 @@ interface GalleryState {
 }
 
 export function useGallery() {
-  const { getAuthHeader, isAuthenticated } = useAuth()
+  const { authFetch, isAuthenticated } = useAuth()
   const [state, setState] = useState<GalleryState>({
     images: [],
     pagination: null,
@@ -86,9 +86,7 @@ export function useGallery() {
         params.set("search", debouncedSearchQuery)
       }
 
-      const response = await fetch(`/api/gallery?${params}`, {
-        headers: getAuthHeader(),
-      })
+      const response = await authFetch(`/api/gallery?${params}`)
 
       const data = await response.json()
 
@@ -109,16 +107,14 @@ export function useGallery() {
         error: err instanceof Error ? err.message : "Failed to fetch gallery",
       }))
     }
-  }, [isAuthenticated, getAuthHeader, filter, searchQuery])
+  }, [isAuthenticated, authFetch, filter, searchQuery])
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
     if (!isAuthenticated) return
 
     try {
-      const response = await fetch("/api/gallery/stats", {
-        headers: getAuthHeader(),
-      })
+      const response = await authFetch("/api/gallery/stats")
 
       const data = await response.json()
 
@@ -128,14 +124,13 @@ export function useGallery() {
     } catch (err) {
       console.error("Failed to fetch gallery stats:", err)
     }
-  }, [isAuthenticated, getAuthHeader])
+  }, [isAuthenticated, authFetch])
 
   // Toggle favorite
   const toggleFavorite = useCallback(async (imageId: number) => {
     try {
-      const response = await fetch(`/api/gallery/${imageId}/favorite`, {
+      const response = await authFetch(`/api/gallery/${imageId}/favorite`, {
         method: "POST",
-        headers: getAuthHeader(),
       })
 
       const data = await response.json()
@@ -165,14 +160,13 @@ export function useGallery() {
       console.error("Failed to toggle favorite:", err)
       throw err
     }
-  }, [getAuthHeader])
+  }, [authFetch])
 
   // Delete image
   const deleteImage = useCallback(async (imageId: number) => {
     try {
-      const response = await fetch(`/api/gallery/${imageId}`, {
+      const response = await authFetch(`/api/gallery/${imageId}`, {
         method: "DELETE",
-        headers: getAuthHeader(),
       })
 
       const data = await response.json()
@@ -198,7 +192,7 @@ export function useGallery() {
       console.error("Failed to delete image:", err)
       throw err
     }
-  }, [getAuthHeader])
+  }, [authFetch])
 
   // Upload image
   const uploadImage = useCallback(async (file: File, description?: string) => {
@@ -208,11 +202,8 @@ export function useGallery() {
       formData.append("description", description)
     }
 
-    const response = await fetch("/api/gallery/upload", {
+    const response = await authFetch("/api/gallery/upload", {
       method: "POST",
-      headers: {
-        ...getAuthHeader(),
-      },
       body: formData,
     })
 
@@ -235,7 +226,7 @@ export function useGallery() {
     }))
 
     return data.image as GalleryImage
-  }, [getAuthHeader])
+  }, [authFetch])
 
   // Load more images
   const loadMore = useCallback(() => {

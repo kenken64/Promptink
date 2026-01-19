@@ -20,7 +20,6 @@ import photoFrameImage from "../assets/1000091170.png"
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
 interface PurchasePageProps {
-  authHeaders: { Authorization?: string }
   onSuccess: (orderId: number, isFirstOrder: boolean) => void
   onNavigate?: (page: AppPage) => void
   onSkip?: () => void
@@ -72,7 +71,7 @@ const GST_RATE = 0.09 // Singapore GST 9%
 const SUBSCRIPTION_GST = SUBSCRIPTION_FEE * GST_RATE
 const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST
 
-export function PurchasePage({ authHeaders, onSuccess, onNavigate, onSkip, onLogout }: PurchasePageProps) {
+export function PurchasePage({ onSuccess, onNavigate, onSkip, onLogout }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
   const { subscription } = useSubscription()
   const { t } = useLanguage()

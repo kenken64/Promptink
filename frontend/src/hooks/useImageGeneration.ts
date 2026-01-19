@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { Language } from "./useLanguage"
+import { useAuth } from "./useAuth"
 
 interface GeneratedImage {
   url?: string
@@ -33,7 +34,6 @@ export type ImageStylePreset =
 interface GenerateImageOptions {
   prompt: string
   language?: Language
-  authHeaders?: AuthHeaders
   size?: "1024x1024" | "1792x1024" | "1024x1792"
   stylePreset?: ImageStylePreset
 }
@@ -47,17 +47,17 @@ interface UseImageGenerationReturn {
 export function useImageGeneration(): UseImageGenerationReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { authFetch } = useAuth()
 
-  const generateImage = async ({ prompt, language, authHeaders, size = "1024x1024", stylePreset = "none" }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
+  const generateImage = async ({ prompt, language, size = "1024x1024", stylePreset = "none" }: GenerateImageOptions): Promise<ImageGenerationResponse> => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch("/api/images/generate", {
+      const response = await authFetch("/api/images/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({
           prompt,

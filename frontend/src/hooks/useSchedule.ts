@@ -53,7 +53,7 @@ export function useSchedule(): UseScheduleReturn {
   const [limit, setLimit] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getAuthHeader, logout, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { authFetch, isAuthenticated, isLoading: authLoading } = useAuth()
 
   const fetchJobs = useCallback(async () => {
     // Don't fetch if not authenticated
@@ -63,14 +63,7 @@ export function useSchedule(): UseScheduleReturn {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/schedule", {
-        headers: getAuthHeader(),
-      })
-
-      if (response.status === 401) {
-        logout()
-        return
-      }
+      const response = await authFetch("/api/schedule")
 
       if (!response.ok) {
         throw new Error("Failed to fetch scheduled jobs")
@@ -85,24 +78,18 @@ export function useSchedule(): UseScheduleReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [getAuthHeader, logout, isAuthenticated])
+  }, [authFetch, isAuthenticated])
 
   const createJob = useCallback(async (input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
     try {
-      const response = await fetch("/api/schedule", {
+      const response = await authFetch("/api/schedule", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify(input),
       })
-
-      if (response.status === 401) {
-        logout()
-        return null
-      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -117,24 +104,18 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const updateJob = useCallback(async (id: number, input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
     try {
-      const response = await fetch(`/api/schedule/${id}`, {
+      const response = await authFetch(`/api/schedule/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify(input),
       })
-
-      if (response.status === 401) {
-        logout()
-        return null
-      }
 
       if (!response.ok) {
         const data = await response.json()
@@ -148,20 +129,14 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const deleteJob = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
     try {
-      const response = await fetch(`/api/schedule/${id}`, {
+      const response = await authFetch(`/api/schedule/${id}`, {
         method: "DELETE",
-        headers: getAuthHeader(),
       })
-
-      if (response.status === 401) {
-        logout()
-        return false
-      }
 
       if (!response.ok) {
         throw new Error("Failed to delete scheduled job")
@@ -174,20 +149,14 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   const toggleJob = useCallback(async (id: number): Promise<ScheduledJob | null> => {
     setError(null)
     try {
-      const response = await fetch(`/api/schedule/${id}/toggle`, {
+      const response = await authFetch(`/api/schedule/${id}/toggle`, {
         method: "POST",
-        headers: getAuthHeader(),
       })
-
-      if (response.status === 401) {
-        logout()
-        return null
-      }
 
       if (!response.ok) {
         throw new Error("Failed to toggle scheduled job")
@@ -200,7 +169,7 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [getAuthHeader, logout])
+  }, [authFetch])
 
   // Fetch jobs on mount (only after auth is loaded)
   useEffect(() => {

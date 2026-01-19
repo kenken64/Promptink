@@ -2,11 +2,11 @@ import { useState } from "react"
 import { Share2, Twitter, Facebook, Linkedin, Send, Link, Check, Loader2, X, MessageCircle } from "lucide-react"
 import { Button } from "./ui/button"
 import { cn } from "../lib/utils"
+import { useAuth } from "../hooks/useAuth"
 
 interface ShareButtonProps {
   imageUrl: string
   prompt?: string
-  authHeaders: { Authorization?: string }
   shareText: string
   sharingText: string
   shareSuccessText: string
@@ -36,7 +36,6 @@ interface ShareResponse {
 export function ShareButton({
   imageUrl,
   prompt,
-  authHeaders,
   shareText,
   sharingText,
   shareSuccessText,
@@ -50,6 +49,7 @@ export function ShareButton({
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { authFetch } = useAuth()
 
   const handleShare = async () => {
     if (shareData) {
@@ -61,11 +61,10 @@ export function ShareButton({
     setError(null)
 
     try {
-      const response = await fetch("/api/share/create", {
+      const response = await authFetch("/api/share/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({
           imageUrl,

@@ -23,7 +23,6 @@ interface ChatMessageProps {
   copyLinkText: string
   copiedText: string
   closeText: string
-  authHeaders?: { Authorization?: string }
   onSync?: (imageUrl: string, prompt?: string) => Promise<void>
 }
 
@@ -45,7 +44,6 @@ export function ChatMessage({
   copyLinkText,
   copiedText,
   closeText,
-  authHeaders,
   onSync,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
@@ -160,19 +158,16 @@ export function ChatMessage({
                       </span>
                     </Button>
                   )}
-                  {authHeaders && (
-                    <ShareButton
-                      imageUrl={imageUrl}
-                      prompt={content}
-                      authHeaders={authHeaders}
-                      shareText={shareText}
-                      sharingText={sharingText}
-                      shareSuccessText={shareSuccessText}
-                      copyLinkText={copyLinkText}
-                      copiedText={copiedText}
-                      closeText={closeText}
-                    />
-                  )}
+                  <ShareButton
+                    imageUrl={imageUrl}
+                    prompt={content}
+                    shareText={shareText}
+                    sharingText={sharingText}
+                    shareSuccessText={shareSuccessText}
+                    copyLinkText={copyLinkText}
+                    copiedText={copiedText}
+                    closeText={closeText}
+                  />
                 </div>
               </div>
             </div>

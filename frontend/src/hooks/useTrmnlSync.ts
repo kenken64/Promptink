@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useAuth } from "./useAuth"
 
 interface SyncResult {
   success: boolean
@@ -7,12 +8,8 @@ interface SyncResult {
   webhookUrl?: string
 }
 
-interface AuthHeaders {
-  Authorization?: string
-}
-
 interface UseTrmnlSyncReturn {
-  syncToTrmnl: (imageUrl: string, prompt?: string, authHeaders?: AuthHeaders) => Promise<SyncResult>
+  syncToTrmnl: (imageUrl: string, prompt?: string) => Promise<SyncResult>
   isSyncing: boolean
   error: string | null
 }
@@ -20,17 +17,17 @@ interface UseTrmnlSyncReturn {
 export function useTrmnlSync(): UseTrmnlSyncReturn {
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { authFetch } = useAuth()
 
-  const syncToTrmnl = async (imageUrl: string, prompt?: string, authHeaders?: AuthHeaders): Promise<SyncResult> => {
+  const syncToTrmnl = async (imageUrl: string, prompt?: string): Promise<SyncResult> => {
     setIsSyncing(true)
     setError(null)
 
     try {
-      const response = await fetch("/api/sync/trmnl", {
+      const response = await authFetch("/api/sync/trmnl", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
         },
         body: JSON.stringify({ imageUrl, prompt }),
       })
