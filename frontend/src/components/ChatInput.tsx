@@ -12,6 +12,7 @@ interface ChatInputProps {
   disabled?: boolean
   language: Language
   placeholder: string
+  placeholderEdit: string
   placeholderListening: string
   footer: string
 }
@@ -21,6 +22,7 @@ export function ChatInput({
   disabled,
   language,
   placeholder,
+  placeholderEdit,
   placeholderListening,
   footer,
 }: ChatInputProps) {
@@ -248,7 +250,7 @@ export function ChatInput({
           value={displayValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder={isListening ? placeholderListening : placeholder}
+          placeholder={isListening ? placeholderListening : (maskFile ? placeholderEdit : placeholder)}
           disabled={disabled}
           rows={1}
           className={cn(

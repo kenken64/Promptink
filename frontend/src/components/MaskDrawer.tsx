@@ -186,7 +186,10 @@ export function MaskDrawer({ imageUrl, onComplete, onCancel }: MaskDrawerProps) 
       <div className="mb-4 text-center">
         <h3 className="text-lg font-semibold">Mark areas to edit</h3>
         <p className="text-sm text-muted-foreground">
-          Draw over the parts you want to modify
+          Draw over the parts you want to replace
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          💡 Tip: Describe what should appear in the marked area (e.g., "cobblestone pavement")
         </p>
       </div>
 

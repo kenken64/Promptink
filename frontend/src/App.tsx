@@ -766,6 +766,7 @@ export default function App() {
           disabled={isLoading}
           language={language}
           placeholder={t.placeholder}
+          placeholderEdit={t.placeholderEdit}
           placeholderListening={t.placeholderListening}
           footer={t.footer}
         />
