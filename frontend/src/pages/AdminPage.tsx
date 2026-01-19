@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -162,6 +162,10 @@ export function AdminPage() {
   const [usersData, setUsersData] = useState<UsersResponse | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [backupMessage, setBackupMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Check for existing token on mount
   useEffect(() => {
@@ -295,6 +299,104 @@ export function AdminPage() {
     }
   }
 
+  const handleExport = async () => {
+    if (!token) return
+    
+    setIsExporting(true)
+    setBackupMessage(null)
+    
+    try {
+      const response = await fetch("/api/admin/export", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Export failed")
+      }
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get("Content-Disposition")
+      let filename = "promptink-backup.zip"
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/)
+        if (match) filename = match[1]
+      }
+      
+      // Download the file
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      setBackupMessage({ type: "success", text: "Backup downloaded successfully!" })
+    } catch (err) {
+      setBackupMessage({ type: "error", text: err instanceof Error ? err.message : "Export failed" })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!token || !e.target.files?.length) return
+    
+    const file = e.target.files[0]
+    
+    if (!file.name.endsWith(".zip")) {
+      setBackupMessage({ type: "error", text: "Please select a .zip file" })
+      return
+    }
+    
+    const confirmed = window.confirm(
+      "Warning: This will overwrite existing data. Are you sure you want to restore from this backup?"
+    )
+    
+    if (!confirmed) {
+      e.target.value = ""
+      return
+    }
+    
+    setIsImporting(true)
+    setBackupMessage(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      
+      const response = await fetch("/api/admin/import", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Import failed")
+      }
+      
+      setBackupMessage({ type: "success", text: data.message || "Backup restored successfully!" })
+      
+      // Refresh data
+      fetchStats(token)
+      fetchUsers(token, 1)
+    } catch (err) {
+      setBackupMessage({ type: "error", text: err instanceof Error ? err.message : "Import failed" })
+    } finally {
+      setIsImporting(false)
+      e.target.value = ""
+    }
+  }
+
   // Login screen
   if (!isAuthenticated) {
     return (
@@ -400,6 +502,83 @@ export function AdminPage() {
             label="Active Subscriptions"
             icon={Crown}
           />
+        </div>
+
+        {/* Data Backup & Restore */}
+        <div className="mt-8 bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Database className="h-5 w-5 text-teal-500" />
+              Data Backup & Restore
+            </h2>
+          </div>
+          <div className="p-6">
+            <p className="text-zinc-400 text-sm mb-4">
+              Export all data from the /app/data volume as a ZIP file for backup, or restore from a previously exported backup.
+            </p>
+            
+            {backupMessage && (
+              <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                backupMessage.type === "success" 
+                  ? "bg-emerald-500/20 text-emerald-400" 
+                  : "bg-red-500/20 text-red-400"
+              }`}>
+                {backupMessage.type === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <span className="text-sm">{backupMessage.text}</span>
+              </div>
+            )}
+            
+            <div className="flex flex-wrap gap-4">
+              <Button
+                onClick={handleExport}
+                disabled={isExporting || isImporting}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                {isExporting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Data (ZIP)
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={handleImportClick}
+                disabled={isExporting || isImporting}
+                variant="outline"
+                className="border-zinc-700 text-zinc-300 hover:text-white"
+              >
+                {isImporting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import from Backup
+                  </>
+                )}
+              </Button>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImport}
+                accept=".zip"
+                className="hidden"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Users List */}

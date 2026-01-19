@@ -1,6 +1,11 @@
 import { config } from "../config"
 import { db } from "../db"
 import { log } from "../utils"
+import { readdir, stat } from "node:fs/promises"
+import { join, relative } from "node:path"
+import { createWriteStream, existsSync, mkdirSync, rmSync } from "node:fs"
+
+const DATA_DIR = "/app/data"
 
 const ADMIN_JWT_SECRET = config.admin.jwtSecret
 const ADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000 // 24 hours
@@ -212,4 +217,286 @@ export const adminRoutes = {
       }
     },
   },
+
+  // Export data as zip
+  "/api/admin/export": {
+    GET: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        // Close database connections to ensure data integrity
+        log("INFO", "Starting data export")
+        
+        // Get all files recursively
+        const files: { path: string; relativePath: string }[] = []
+        
+        async function collectFiles(dir: string) {
+          if (!existsSync(dir)) return
+          
+          const entries = await readdir(dir, { withFileTypes: true })
+          for (const entry of entries) {
+            const fullPath = join(dir, entry.name)
+            if (entry.isDirectory()) {
+              await collectFiles(fullPath)
+            } else {
+              files.push({
+                path: fullPath,
+                relativePath: relative(DATA_DIR, fullPath),
+              })
+            }
+          }
+        }
+        
+        await collectFiles(DATA_DIR)
+        
+        if (files.length === 0) {
+          return Response.json({ error: "No data to export" }, { status: 404 })
+        }
+
+        // Create zip entries
+        const zipEntries: Record<string, Uint8Array> = {}
+        
+        for (const file of files) {
+          const content = await Bun.file(file.path).arrayBuffer()
+          zipEntries[file.relativePath] = new Uint8Array(content)
+        }
+        
+        // Simple ZIP file creation (no compression, stored only)
+        const zipBuffer = createZipBuffer(zipEntries)
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+        const filename = `promptink-backup-${timestamp}.zip`
+        
+        log("INFO", `Data export completed: ${files.length} files`)
+        
+        return new Response(zipBuffer, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Content-Length": zipBuffer.byteLength.toString(),
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to export data", error)
+        return Response.json({ error: "Failed to export data" }, { status: 500 })
+      }
+    },
+  },
+
+  // Import data from zip
+  "/api/admin/import": {
+    POST: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const formData = await req.formData()
+        const file = formData.get("file") as File | null
+        
+        if (!file) {
+          return Response.json({ error: "No file provided" }, { status: 400 })
+        }
+        
+        if (!file.name.endsWith(".zip")) {
+          return Response.json({ error: "File must be a .zip file" }, { status: 400 })
+        }
+
+        log("INFO", `Starting data import: ${file.name}`)
+        
+        const zipBuffer = await file.arrayBuffer()
+        const entries = parseZipBuffer(new Uint8Array(zipBuffer))
+        
+        // Ensure data directory exists
+        if (!existsSync(DATA_DIR)) {
+          mkdirSync(DATA_DIR, { recursive: true })
+        }
+        
+        let filesRestored = 0
+        
+        for (const [relativePath, content] of Object.entries(entries)) {
+          const fullPath = join(DATA_DIR, relativePath)
+          const dir = fullPath.substring(0, fullPath.lastIndexOf("/"))
+          
+          if (dir && !existsSync(dir)) {
+            mkdirSync(dir, { recursive: true })
+          }
+          
+          await Bun.write(fullPath, content)
+          filesRestored++
+        }
+        
+        log("INFO", `Data import completed: ${filesRestored} files restored`)
+        
+        return Response.json({ 
+          success: true, 
+          message: `Successfully restored ${filesRestored} files`,
+          filesRestored,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to import data", error)
+        return Response.json({ error: "Failed to import data" }, { status: 500 })
+      }
+    },
+  },
+}
+
+// Simple ZIP file creation (no external dependencies)
+function createZipBuffer(files: Record<string, Uint8Array>): Uint8Array {
+  const entries: { name: Uint8Array; data: Uint8Array; offset: number }[] = []
+  const chunks: Uint8Array[] = []
+  let offset = 0
+  
+  const encoder = new TextEncoder()
+  
+  for (const [name, data] of Object.entries(files)) {
+    const nameBytes = encoder.encode(name)
+    const crc = crc32(data)
+    
+    // Local file header
+    const header = new Uint8Array(30 + nameBytes.length)
+    const view = new DataView(header.buffer)
+    
+    view.setUint32(0, 0x04034b50, true) // Local file header signature
+    view.setUint16(4, 20, true) // Version needed
+    view.setUint16(6, 0, true) // General purpose bit flag
+    view.setUint16(8, 0, true) // Compression method (0 = stored)
+    view.setUint16(10, 0, true) // File last modification time
+    view.setUint16(12, 0, true) // File last modification date
+    view.setUint32(14, crc, true) // CRC-32
+    view.setUint32(18, data.length, true) // Compressed size
+    view.setUint32(22, data.length, true) // Uncompressed size
+    view.setUint16(26, nameBytes.length, true) // File name length
+    view.setUint16(28, 0, true) // Extra field length
+    header.set(nameBytes, 30)
+    
+    entries.push({ name: nameBytes, data, offset })
+    chunks.push(header, data)
+    offset += header.length + data.length
+  }
+  
+  // Central directory
+  const centralDir: Uint8Array[] = []
+  let centralDirSize = 0
+  
+  for (const entry of entries) {
+    const centralHeader = new Uint8Array(46 + entry.name.length)
+    const view = new DataView(centralHeader.buffer)
+    const crc = crc32(entry.data)
+    
+    view.setUint32(0, 0x02014b50, true) // Central directory signature
+    view.setUint16(4, 20, true) // Version made by
+    view.setUint16(6, 20, true) // Version needed
+    view.setUint16(8, 0, true) // General purpose bit flag
+    view.setUint16(10, 0, true) // Compression method
+    view.setUint16(12, 0, true) // File last modification time
+    view.setUint16(14, 0, true) // File last modification date
+    view.setUint32(16, crc, true) // CRC-32
+    view.setUint32(20, entry.data.length, true) // Compressed size
+    view.setUint32(24, entry.data.length, true) // Uncompressed size
+    view.setUint16(28, entry.name.length, true) // File name length
+    view.setUint16(30, 0, true) // Extra field length
+    view.setUint16(32, 0, true) // File comment length
+    view.setUint16(34, 0, true) // Disk number start
+    view.setUint16(36, 0, true) // Internal file attributes
+    view.setUint32(38, 0, true) // External file attributes
+    view.setUint32(42, entry.offset, true) // Relative offset of local header
+    centralHeader.set(entry.name, 46)
+    
+    centralDir.push(centralHeader)
+    centralDirSize += centralHeader.length
+  }
+  
+  chunks.push(...centralDir)
+  
+  // End of central directory
+  const endOfCentralDir = new Uint8Array(22)
+  const endView = new DataView(endOfCentralDir.buffer)
+  
+  endView.setUint32(0, 0x06054b50, true) // End of central directory signature
+  endView.setUint16(4, 0, true) // Number of this disk
+  endView.setUint16(6, 0, true) // Disk where central directory starts
+  endView.setUint16(8, entries.length, true) // Number of central directory records on this disk
+  endView.setUint16(10, entries.length, true) // Total number of central directory records
+  endView.setUint32(12, centralDirSize, true) // Size of central directory
+  endView.setUint32(16, offset, true) // Offset of start of central directory
+  endView.setUint16(20, 0, true) // Comment length
+  
+  chunks.push(endOfCentralDir)
+  
+  // Combine all chunks
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  const result = new Uint8Array(totalLength)
+  let pos = 0
+  for (const chunk of chunks) {
+    result.set(chunk, pos)
+    pos += chunk.length
+  }
+  
+  return result
+}
+
+// Parse ZIP buffer (simple implementation for stored files)
+function parseZipBuffer(buffer: Uint8Array): Record<string, Uint8Array> {
+  const entries: Record<string, Uint8Array> = {}
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+  const decoder = new TextDecoder()
+  let offset = 0
+  
+  while (offset < buffer.length - 4) {
+    const signature = view.getUint32(offset, true)
+    
+    if (signature === 0x04034b50) {
+      // Local file header
+      const compressedSize = view.getUint32(offset + 18, true)
+      const fileNameLength = view.getUint16(offset + 26, true)
+      const extraFieldLength = view.getUint16(offset + 28, true)
+      
+      const fileName = decoder.decode(buffer.subarray(offset + 30, offset + 30 + fileNameLength))
+      const dataStart = offset + 30 + fileNameLength + extraFieldLength
+      const data = buffer.slice(dataStart, dataStart + compressedSize)
+      
+      if (!fileName.endsWith("/")) {
+        entries[fileName] = data
+      }
+      
+      offset = dataStart + compressedSize
+    } else if (signature === 0x02014b50 || signature === 0x06054b50) {
+      // Central directory or end of central directory - stop parsing
+      break
+    } else {
+      offset++
+    }
+  }
+  
+  return entries
+}
+
+// CRC-32 calculation
+function crc32(data: Uint8Array): number {
+  let crc = 0xFFFFFFFF
+  const table = getCrc32Table()
+  
+  for (let i = 0; i < data.length; i++) {
+    const byte = data[i]!
+    const tableIndex = (crc ^ byte) & 0xFF
+    crc = (crc >>> 8) ^ table[tableIndex]!
+  }
+  
+  return (crc ^ 0xFFFFFFFF) >>> 0
+}
+
+let crc32Table: Uint32Array | null = null
+function getCrc32Table(): Uint32Array {
+  if (crc32Table) return crc32Table
+  
+  crc32Table = new Uint32Array(256)
+  for (let i = 0; i < 256; i++) {
+    let c = i
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1)
+    }
+    crc32Table[i] = c
+  }
+  return crc32Table
 }
