@@ -6,8 +6,10 @@ import {
   translateText,
   generateInfographicPrompt,
   fetchUrlContent,
+  isGitHubRepoUrl,
   type GenerateImageOptions,
 } from "../services/openai-service"
+import { summarizeGitHubRepo } from "../services/repomix-service"
 import { verifyToken } from "../services/auth-service"
 import { generatedImageQueries } from "../db"
 import { saveImageToGallery, getGalleryImageUrl } from "./gallery"
@@ -319,8 +321,15 @@ export const imageRoutes = {
 
         // If URL provided, fetch the content
         if (body.url) {
-          log("INFO", "Fetching content from URL for infographic", { url: body.url, userId: user?.id })
-          content = await fetchUrlContent(body.url)
+          if (isGitHubRepoUrl(body.url)) {
+            // Use Repomix for full repository URLs
+            log("INFO", "Summarizing GitHub repo with Repomix for infographic", { url: body.url, userId: user?.id })
+            content = await summarizeGitHubRepo(body.url)
+          } else {
+            // Use existing fetch for individual file URLs
+            log("INFO", "Fetching content from URL for infographic", { url: body.url, userId: user?.id })
+            content = await fetchUrlContent(body.url)
+          }
         }
 
         // Generate infographic prompt using GPT-4
