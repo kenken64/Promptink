@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight, Monitor, Plus, Trash2, Edit2, X, Star, Save } from "lucide-react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight, Monitor, Plus, Trash2, Edit2, X, Star, Save, Eye, EyeOff } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -198,6 +198,7 @@ export function AdminPage() {
     device_api_key: "",
   })
   const [isSavingDevice, setIsSavingDevice] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
 
   // Check if any blocking operation is in progress
   const isBlocking = isExporting || isImporting
@@ -1156,13 +1157,22 @@ export function AdminPage() {
                                 <label className="block text-sm font-medium text-zinc-400 mb-1">
                                   Device API Key <span className="text-teal-500">(Admin Only)</span>
                                 </label>
-                                <input
-                                  type="text"
-                                  value={deviceForm.device_api_key}
-                                  onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
-                                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
-                                  placeholder="Enter device API key"
-                                />
+                                <div className="relative">
+                                  <input
+                                    type={showApiKey ? "text" : "password"}
+                                    value={deviceForm.device_api_key}
+                                    onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
+                                    className="w-full px-3 py-2 pr-10 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                    placeholder="Enter device API key"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
+                                  >
+                                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <div className="flex justify-end gap-2">
@@ -1308,13 +1318,22 @@ export function AdminPage() {
                               <label className="block text-sm font-medium text-zinc-400 mb-1">
                                 Device API Key <span className="text-teal-500">(Admin Only)</span>
                               </label>
-                              <input
-                                type="text"
-                                value={deviceForm.device_api_key}
-                                onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
-                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
-                                placeholder="Enter device API key"
-                              />
+                              <div className="relative">
+                                <input
+                                  type={showApiKey ? "text" : "password"}
+                                  value={deviceForm.device_api_key}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
+                                  className="w-full px-3 py-2 pr-10 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                  placeholder="Enter device API key"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowApiKey(!showApiKey)}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
+                                >
+                                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                              </div>
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
