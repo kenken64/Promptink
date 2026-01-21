@@ -362,3 +362,15 @@ export async function fetchUrlContent(url: string): Promise<string> {
 
   return content
 }
+
+/**
+ * Check if a URL is a GitHub repository URL (not a file URL)
+ * Returns true for: github.com/user/repo or github.com/user/repo/tree/branch
+ * Returns false for: github.com/user/repo/blob/branch/file.md
+ */
+export function isGitHubRepoUrl(url: string): boolean {
+  // Match: github.com/user/repo or github.com/user/repo/tree/branch
+  // NOT match: github.com/user/repo/blob/branch/file.md
+  const repoPattern = /^https?:\/\/github\.com\/[^/]+\/[^/]+(\/tree\/[^/]+)?$/
+  return repoPattern.test(url)
+}

@@ -1,6 +1,7 @@
 import { displayRoutes } from "./display"
 import { pluginRoutes } from "./plugins"
 import { deviceRoutes } from "./device"
+import { devicesRoutes } from "./devices"
 import { imageRoutes } from "./images"
 import { syncRoutes } from "./sync"
 import { authRoutes } from "./auth"
@@ -326,6 +327,7 @@ const allRoutes = {
   ...displayRoutes,
   ...pluginRoutes,
   ...deviceRoutes,
+  ...devicesRoutes,
   ...imageRoutes,
   ...syncRoutes,
   ...authRoutes,

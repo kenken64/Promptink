@@ -2,6 +2,35 @@
 
 ## Recent Changes and Fixes
 
+### Multi-Device TRMNL Sync & Admin Device Management
+**Commit:** `45b78d0`
+
+**Features Added:**
+- **Multi-Device Support:** Users can configure multiple TRMNL devices with individual webhook URLs
+- **Device Selector:** When syncing with multiple devices, a dropdown lets you choose which devices to sync to
+- **Admin Device Management:** Admins can now manage devices for any user from the Admin page
+  - View all devices for a user
+  - Add/edit/delete devices
+  - Set MAC Address and Device API Key (admin-only fields)
+  - Set default device
+
+**Changes:**
+- Sync now sends payload directly to device webhook URLs (removed MAC address/API key TRMNL API calls)
+- Sync button is disabled when no devices with webhook URLs are configured
+- `useTrmnlSync` hook now fetches and exposes user's device list
+
+**Files Modified:**
+- `backend/src/db/index.ts` - Added mac_address/device_api_key columns
+- `backend/src/routes/admin.ts` - Added admin device CRUD endpoints
+- `backend/src/routes/devices.ts` - Updated device response format
+- `backend/src/routes/sync.ts` - Simplified to webhook-only sync
+- `frontend/src/App.tsx` - Conditional sync button visibility
+- `frontend/src/components/ImageDetailModal.tsx` - Multi-device selector UI
+- `frontend/src/hooks/useTrmnlSync.ts` - Device fetching and multi-device sync
+- `frontend/src/pages/AdminPage.tsx` - Admin device management modal
+
+---
+
 ### Mobile Chrome Scroll Fix
 **Commit:** `7dee68a`
 

@@ -1,5 +1,5 @@
 import { log } from "../utils"
-import { scheduledJobQueries, generatedImageQueries, userQueries, type ScheduledJob } from "../db"
+import { scheduledJobQueries, generatedImageQueries, userQueries, userDeviceQueries, type ScheduledJob } from "../db"
 import { generateImage, type GenerateImageOptions } from "./openai-service"
 import { saveImageToGallery, getGalleryImageUrl } from "../routes/gallery"
 import { syncToTrmnl } from "../routes/sync"
@@ -264,8 +264,9 @@ async function executeScheduledJob(job: ScheduledJob): Promise<void> {
       // Auto-sync to TRMNL if enabled
       if (job.auto_sync_trmnl) {
         try {
-          const user = userQueries.findById.get(job.user_id)
-          if (user?.trmnl_device_api_key && user?.trmnl_mac_address) {
+          // Check if user has any devices configured
+          const deviceCount = userDeviceQueries.countByUserId.get(job.user_id)
+          if (deviceCount && deviceCount.count > 0) {
             await syncToTrmnl(permanentUrl, job.prompt, job.user_id)
             log("INFO", "Scheduled image synced to TRMNL", { jobId: job.id, userId: job.user_id })
           }

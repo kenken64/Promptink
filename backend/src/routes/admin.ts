@@ -1,5 +1,5 @@
 import { config } from "../config"
-import { db } from "../db"
+import { db, userDeviceQueries, type UserDevice } from "../db"
 import { log } from "../utils"
 import { readdir, stat } from "node:fs/promises"
 import { join, relative } from "node:path"
@@ -349,6 +349,218 @@ export const adminRoutes = {
       } catch (error) {
         log("ERROR", "Failed to import data", error)
         return Response.json({ error: "Failed to import data" }, { status: 500 })
+      }
+    },
+  },
+
+  // Get devices for a specific user (admin)
+  "/api/admin/users/:userId/devices": {
+    GET: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const url = new URL(req.url)
+        const pathParts = url.pathname.split("/")
+        const userId = parseInt(pathParts[pathParts.length - 2] || "0", 10)
+
+        if (isNaN(userId)) {
+          return Response.json({ error: "Invalid user ID" }, { status: 400 })
+        }
+
+        const devices = userDeviceQueries.findAllByUserId.all(userId)
+        return Response.json({
+          devices: devices.map(d => ({
+            id: d.id,
+            name: d.name,
+            webhook_url: d.webhook_uuid,
+            background_color: d.background_color,
+            is_default: d.is_default === 1,
+            mac_address: d.mac_address,
+            device_api_key: d.device_api_key,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
+          })),
+        })
+      } catch (error) {
+        log("ERROR", "Failed to fetch user devices", error)
+        return Response.json({ error: "Failed to fetch devices" }, { status: 500 })
+      }
+    },
+
+    POST: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const url = new URL(req.url)
+        const pathParts = url.pathname.split("/")
+        const userId = parseInt(pathParts[pathParts.length - 2] || "0", 10)
+
+        if (isNaN(userId)) {
+          return Response.json({ error: "Invalid user ID" }, { status: 400 })
+        }
+
+        const body = await req.json() as {
+          name: string
+          webhook_url?: string
+          background_color?: "black" | "white"
+          is_default?: boolean
+          mac_address?: string
+          device_api_key?: string
+        }
+
+        if (!body.name?.trim()) {
+          return Response.json({ error: "Device name is required" }, { status: 400 })
+        }
+
+        const existingCount = userDeviceQueries.countByUserId.get(userId)
+        const isDefault = existingCount?.count === 0 || body.is_default === true
+
+        if (isDefault) {
+          userDeviceQueries.clearDefault.run(userId)
+        }
+
+        const device = userDeviceQueries.create.get(
+          userId,
+          body.name.trim(),
+          body.webhook_url?.trim() || "",
+          body.background_color || "black",
+          isDefault ? 1 : 0,
+          body.mac_address?.trim() || null,
+          body.device_api_key?.trim() || null
+        )
+
+        if (!device) {
+          return Response.json({ error: "Failed to create device" }, { status: 500 })
+        }
+
+        log("INFO", "Admin created device", { userId, deviceId: device.id })
+
+        return Response.json({
+          success: true,
+          device: {
+            id: device.id,
+            name: device.name,
+            webhook_url: device.webhook_uuid,
+            background_color: device.background_color,
+            is_default: device.is_default === 1,
+            mac_address: device.mac_address,
+            device_api_key: device.device_api_key,
+            created_at: device.created_at,
+            updated_at: device.updated_at,
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to create device", error)
+        return Response.json({ error: "Failed to create device" }, { status: 500 })
+      }
+    },
+  },
+
+  // Update or delete a specific device (admin)
+  "/api/admin/devices/:deviceId": {
+    PUT: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const url = new URL(req.url)
+        const deviceId = parseInt(url.pathname.split("/").pop() || "0", 10)
+
+        if (isNaN(deviceId)) {
+          return Response.json({ error: "Invalid device ID" }, { status: 400 })
+        }
+
+        const device = userDeviceQueries.findById.get(deviceId)
+        if (!device) {
+          return Response.json({ error: "Device not found" }, { status: 404 })
+        }
+
+        const body = await req.json() as {
+          name?: string
+          webhook_url?: string
+          background_color?: "black" | "white"
+          is_default?: boolean
+          mac_address?: string | null
+          device_api_key?: string | null
+        }
+
+        const newName = body.name?.trim() || device.name
+        const newWebhookUrl = body.webhook_url?.trim() ?? device.webhook_uuid
+        const newBackgroundColor = body.background_color || device.background_color
+        const newMacAddress = body.mac_address !== undefined ? (body.mac_address?.trim() || null) : device.mac_address
+        const newDeviceApiKey = body.device_api_key !== undefined ? (body.device_api_key?.trim() || null) : device.device_api_key
+
+        userDeviceQueries.update.run(newName, newWebhookUrl, newBackgroundColor, newMacAddress, newDeviceApiKey, deviceId)
+
+        if (body.is_default === true) {
+          userDeviceQueries.clearDefault.run(device.user_id)
+          userDeviceQueries.setDefault.run(deviceId, device.user_id)
+        }
+
+        const updatedDevice = userDeviceQueries.findById.get(deviceId)
+
+        log("INFO", "Admin updated device", { deviceId })
+
+        return Response.json({
+          success: true,
+          device: updatedDevice ? {
+            id: updatedDevice.id,
+            name: updatedDevice.name,
+            webhook_url: updatedDevice.webhook_uuid,
+            background_color: updatedDevice.background_color,
+            is_default: updatedDevice.is_default === 1,
+            mac_address: updatedDevice.mac_address,
+            device_api_key: updatedDevice.device_api_key,
+            created_at: updatedDevice.created_at,
+            updated_at: updatedDevice.updated_at,
+          } : null,
+        })
+      } catch (error) {
+        log("ERROR", "Failed to update device", error)
+        return Response.json({ error: "Failed to update device" }, { status: 500 })
+      }
+    },
+
+    DELETE: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const url = new URL(req.url)
+        const deviceId = parseInt(url.pathname.split("/").pop() || "0", 10)
+
+        if (isNaN(deviceId)) {
+          return Response.json({ error: "Invalid device ID" }, { status: 400 })
+        }
+
+        const device = userDeviceQueries.findById.get(deviceId)
+        if (!device) {
+          return Response.json({ error: "Device not found" }, { status: 404 })
+        }
+
+        const wasDefault = device.is_default === 1
+        const userId = device.user_id
+
+        userDeviceQueries.delete.run(deviceId, userId)
+
+        if (wasDefault) {
+          const remainingDevices = userDeviceQueries.findAllByUserId.all(userId)
+          if (remainingDevices.length > 0 && remainingDevices[0]) {
+            userDeviceQueries.setDefault.run(remainingDevices[0].id, userId)
+          }
+        }
+
+        log("INFO", "Admin deleted device", { deviceId, userId })
+
+        return Response.json({
+          success: true,
+          message: "Device deleted successfully",
+        })
+      } catch (error) {
+        log("ERROR", "Failed to delete device", error)
+        return Response.json({ error: "Failed to delete device" }, { status: 500 })
       }
     },
   },

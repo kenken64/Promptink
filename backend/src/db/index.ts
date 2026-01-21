@@ -190,6 +190,20 @@ export interface BatchJobItem {
   completed_at: string | null
 }
 
+// User device type (multiple TRMNL devices per user)
+export interface UserDevice {
+  id: number
+  user_id: number
+  name: string
+  webhook_uuid: string
+  background_color: "black" | "white"
+  is_default: number
+  mac_address: string | null
+  device_api_key: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Password reset token type
 export interface PasswordResetToken {
   id: number
@@ -509,6 +523,67 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)`)
 
+  // User devices table (multiple TRMNL devices per user)
+  // Migration: Remove UNIQUE constraint from webhook_uuid (users enter their own external URLs)
+  // Migration 2: Add mac_address and device_api_key columns
+  const userDevicesTableExists = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='user_devices'").get()
+  if (userDevicesTableExists) {
+    // Check if we need to migrate (if the unique constraint exists)
+    const tableInfo = db.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_devices'").get() as { sql: string } | null
+    if (tableInfo?.sql?.includes("UNIQUE")) {
+      log("INFO", "Migrating user_devices table to remove UNIQUE constraint from webhook_uuid")
+      db.run(`ALTER TABLE user_devices RENAME TO user_devices_old`)
+      db.run(`
+        CREATE TABLE user_devices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          webhook_uuid TEXT NOT NULL,
+          background_color TEXT DEFAULT 'black',
+          is_default INTEGER DEFAULT 0,
+          mac_address TEXT,
+          device_api_key TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `)
+      db.run(`INSERT INTO user_devices (id, user_id, name, webhook_uuid, background_color, is_default, created_at, updated_at) SELECT id, user_id, name, webhook_uuid, background_color, is_default, created_at, updated_at FROM user_devices_old`)
+      db.run(`DROP TABLE user_devices_old`)
+      log("INFO", "Migration complete: user_devices table updated")
+    }
+    
+    // Check if mac_address column exists, add it if not
+    const columns = db.query("PRAGMA table_info(user_devices)").all() as { name: string }[]
+    const hasMacAddress = columns.some(c => c.name === "mac_address")
+    if (!hasMacAddress) {
+      log("INFO", "Adding mac_address and device_api_key columns to user_devices")
+      db.run(`ALTER TABLE user_devices ADD COLUMN mac_address TEXT`)
+      db.run(`ALTER TABLE user_devices ADD COLUMN device_api_key TEXT`)
+    }
+  } else {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_devices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        webhook_uuid TEXT NOT NULL,
+        background_color TEXT DEFAULT 'black',
+        is_default INTEGER DEFAULT 0,
+        mac_address TEXT,
+        device_api_key TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `)
+  }
+
+  // Create indexes for user_devices
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_webhook_uuid ON user_devices(webhook_uuid)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_is_default ON user_devices(is_default)`)
+
   // Initialize prepared statements after tables are created
   initPreparedStatements()
 
@@ -634,6 +709,20 @@ let _refreshTokenQueries: {
   revoke: Statement<void, [number]>
   revokeAllByUserId: Statement<void, [number]>
   deleteExpired: Statement<void, [string]>
+}
+
+let _userDeviceQueries: {
+  findById: Statement<UserDevice, [number]>
+  findByIdAndUserId: Statement<UserDevice, [number, number]>
+  findAllByUserId: Statement<UserDevice, [number]>
+  findDefaultByUserId: Statement<UserDevice, [number]>
+  findByWebhookUuid: Statement<UserDevice, [string]>
+  countByUserId: Statement<{ count: number }, [number]>
+  create: Statement<UserDevice, [number, string, string, string, number, string | null, string | null]>
+  update: Statement<void, [string, string, string, string | null, string | null, number]>
+  setDefault: Statement<void, [number, number]>
+  clearDefault: Statement<void, [number]>
+  delete: Statement<void, [number, number]>
 }
 
 function initPreparedStatements() {
@@ -922,6 +1011,42 @@ function initPreparedStatements() {
       "DELETE FROM refresh_tokens WHERE expires_at < ?"
     ),
   }
+
+  _userDeviceQueries = {
+    findById: db.prepare<UserDevice, [number]>(
+      "SELECT * FROM user_devices WHERE id = ?"
+    ),
+    findByIdAndUserId: db.prepare<UserDevice, [number, number]>(
+      "SELECT * FROM user_devices WHERE id = ? AND user_id = ?"
+    ),
+    findAllByUserId: db.prepare<UserDevice, [number]>(
+      "SELECT * FROM user_devices WHERE user_id = ? ORDER BY is_default DESC, created_at ASC"
+    ),
+    findDefaultByUserId: db.prepare<UserDevice, [number]>(
+      "SELECT * FROM user_devices WHERE user_id = ? AND is_default = 1 LIMIT 1"
+    ),
+    findByWebhookUuid: db.prepare<UserDevice, [string]>(
+      "SELECT * FROM user_devices WHERE webhook_uuid = ?"
+    ),
+    countByUserId: db.prepare<{ count: number }, [number]>(
+      "SELECT COUNT(*) as count FROM user_devices WHERE user_id = ?"
+    ),
+    create: db.prepare<UserDevice, [number, string, string, string, number, string | null, string | null]>(
+      "INSERT INTO user_devices (user_id, name, webhook_uuid, background_color, is_default, mac_address, device_api_key) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    ),
+    update: db.prepare<void, [string, string, string, string | null, string | null, number]>(
+      "UPDATE user_devices SET name = ?, webhook_uuid = ?, background_color = ?, mac_address = ?, device_api_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ),
+    setDefault: db.prepare<void, [number, number]>(
+      "UPDATE user_devices SET is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?"
+    ),
+    clearDefault: db.prepare<void, [number]>(
+      "UPDATE user_devices SET is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+    ),
+    delete: db.prepare<void, [number, number]>(
+      "DELETE FROM user_devices WHERE id = ? AND user_id = ?"
+    ),
+  }
 }
 
 // Getters for prepared statements
@@ -1034,4 +1159,18 @@ export const refreshTokenQueries = {
   get revoke() { return _refreshTokenQueries.revoke },
   get revokeAllByUserId() { return _refreshTokenQueries.revokeAllByUserId },
   get deleteExpired() { return _refreshTokenQueries.deleteExpired },
+}
+
+export const userDeviceQueries = {
+  get findById() { return _userDeviceQueries.findById },
+  get findByIdAndUserId() { return _userDeviceQueries.findByIdAndUserId },
+  get findAllByUserId() { return _userDeviceQueries.findAllByUserId },
+  get findDefaultByUserId() { return _userDeviceQueries.findDefaultByUserId },
+  get findByWebhookUuid() { return _userDeviceQueries.findByWebhookUuid },
+  get countByUserId() { return _userDeviceQueries.countByUserId },
+  get create() { return _userDeviceQueries.create },
+  get update() { return _userDeviceQueries.update },
+  get setDefault() { return _userDeviceQueries.setDefault },
+  get clearDefault() { return _userDeviceQueries.clearDefault },
+  get delete() { return _userDeviceQueries.delete },
 }

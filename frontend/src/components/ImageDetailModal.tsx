@@ -52,18 +52,24 @@ export function ImageDetailModal({
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
   const { accessToken: token } = useAuth()
-  const { syncToTrmnl, isSyncing } = useTrmnlSync()
+  const { syncToTrmnl, isSyncing, devices, hasDevices, isLoadingDevices } = useTrmnlSync()
   const [imageError, setImageError] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [syncSuccess, setSyncSuccess] = useState(false)
+  const [showDeviceMenu, setShowDeviceMenu] = useState(false)
+  const [selectedDevices, setSelectedDevices] = useState<number[]>([])
   const exportMenuRef = useRef<HTMLDivElement>(null)
+  const deviceMenuRef = useRef<HTMLDivElement>(null)
 
-  // Close export menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false)
+      }
+      if (deviceMenuRef.current && !deviceMenuRef.current.contains(e.target as Node)) {
+        setShowDeviceMenu(false)
       }
     }
     document.addEventListener("mousedown", handleClickOutside)
@@ -74,6 +80,8 @@ export function ImageDetailModal({
   useEffect(() => {
     setImageError(false)
     setSyncSuccess(false)
+    setShowDeviceMenu(false)
+    setSelectedDevices([])
   }, [image?.id])
 
   // Handle keyboard navigation
@@ -474,83 +482,170 @@ export function ImageDetailModal({
             </div>
 
             {/* Sync to TRMNL button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={async () => {
-                if (isSyncing || syncSuccess) return
-                try {
-                  await syncToTrmnl(
-                    image.imageUrl,
-                    image.originalPrompt
-                  )
-                  setSyncSuccess(true)
-                  setTimeout(() => setSyncSuccess(false), 2000)
-                } catch (err) {
-                  console.error("Failed to sync to TRMNL:", err)
-                }
-              }}
-              disabled={isSyncing}
-            >
-              {isSyncing ? (
-                <>
-                  <svg
-                    className="animate-spin w-4 h-4 mr-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
+            <div className="relative" ref={deviceMenuRef}>
+              {isLoadingDevices ? (
+                <Button variant="outline" size="sm" className="w-full" disabled>
+                  <svg className="animate-spin w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {t.syncing}
-                </>
-              ) : syncSuccess ? (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-4 h-4 mr-1 text-green-500"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  Loading...
+                </Button>
+              ) : !hasDevices ? (
+                <Button variant="outline" size="sm" className="w-full opacity-50 cursor-not-allowed" disabled>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-7.5a2.25 2.25 0 012.25-2.25H12" />
                   </svg>
-                  {t.syncSuccess}
-                </>
+                  {t.noDevicesConfigured || "No devices configured"}
+                </Button>
+              ) : devices.length === 1 ? (
+                /* Single device - direct sync */
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    if (isSyncing || syncSuccess) return
+                    try {
+                      await syncToTrmnl(image.imageUrl, image.originalPrompt)
+                      setSyncSuccess(true)
+                      setTimeout(() => setSyncSuccess(false), 2000)
+                    } catch (err) {
+                      console.error("Failed to sync to TRMNL:", err)
+                    }
+                  }}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      {t.syncing}
+                    </>
+                  ) : syncSuccess ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 mr-1 text-green-500">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      {t.syncSuccess}
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-7.5a2.25 2.25 0 012.25-2.25H12" />
+                      </svg>
+                      {t.syncToTrmnl}
+                    </>
+                  )}
+                </Button>
               ) : (
+                /* Multiple devices - show dropdown */
                 <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-4 h-4 mr-1"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setShowDeviceMenu(!showDeviceMenu)}
+                    disabled={isSyncing}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-7.5a2.25 2.25 0 012.25-2.25H12"
-                    />
-                  </svg>
-                  {t.syncToTrmnl}
+                    {isSyncing ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        {t.syncing}
+                      </>
+                    ) : syncSuccess ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 mr-1 text-green-500">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        {t.syncSuccess}
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-7.5a2.25 2.25 0 012.25-2.25H12" />
+                        </svg>
+                        {t.syncToTrmnl}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 ml-1">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Device Selection Dropdown */}
+                  {showDeviceMenu && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
+                      <div className="p-2 border-b border-border">
+                        <p className="text-xs text-muted-foreground">{t.selectDevices || "Select devices to sync"}</p>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {devices.map((device) => (
+                          <label
+                            key={device.id}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedDevices.includes(device.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedDevices([...selectedDevices, device.id])
+                                } else {
+                                  setSelectedDevices(selectedDevices.filter(id => id !== device.id))
+                                }
+                              }}
+                              className="rounded border-border"
+                            />
+                            <span className="text-sm flex-1">{device.name}</span>
+                            {device.is_default && (
+                              <span className="text-xs text-muted-foreground">(default)</span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="p-2 border-t border-border flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="flex-1 text-xs"
+                          onClick={() => setSelectedDevices(devices.map(d => d.id))}
+                        >
+                          {t.selectAll || "Select All"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 text-xs"
+                          disabled={selectedDevices.length === 0}
+                          onClick={async () => {
+                            setShowDeviceMenu(false)
+                            try {
+                              await syncToTrmnl(
+                                image.imageUrl,
+                                image.originalPrompt,
+                                selectedDevices.length === devices.length ? undefined : selectedDevices
+                              )
+                              setSyncSuccess(true)
+                              setSelectedDevices([])
+                              setTimeout(() => setSyncSuccess(false), 2000)
+                            } catch (err) {
+                              console.error("Failed to sync to TRMNL:", err)
+                            }
+                          }}
+                        >
+                          {t.syncSelected || `Sync (${selectedDevices.length})`}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
-            </Button>
+            </div>
 
             <div className="flex gap-2">
               <ShareButton
