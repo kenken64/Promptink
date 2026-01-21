@@ -63,7 +63,6 @@ interface SettingsPageProps {
 interface Device {
   id: number
   name: string
-  webhook_uuid: string
   webhook_url: string
   background_color: "black" | "white"
   is_default: boolean
@@ -80,6 +79,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
   const [showAddDevice, setShowAddDevice] = useState(false)
   const [editingDevice, setEditingDevice] = useState<Device | null>(null)
   const [newDeviceName, setNewDeviceName] = useState("")
+  const [newDeviceWebhookUrl, setNewDeviceWebhookUrl] = useState("")
   const [newDeviceBackgroundColor, setNewDeviceBackgroundColor] = useState<"black" | "white">("black")
   const [isSavingDevice, setIsSavingDevice] = useState(false)
   const [deviceMessage, setDeviceMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -129,7 +129,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
 
   const handleAddDevice = async (e: FormEvent) => {
     e.preventDefault()
-    if (!newDeviceName.trim()) return
+    if (!newDeviceName.trim() || !newDeviceWebhookUrl.trim()) return
 
     setIsSavingDevice(true)
     setDeviceMessage(null)
@@ -140,6 +140,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newDeviceName.trim(),
+          webhook_url: newDeviceWebhookUrl.trim(),
           background_color: newDeviceBackgroundColor,
           is_default: devices.length === 0,
         }),
@@ -149,6 +150,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
         const data = await response.json()
         setDevices([...devices, data.device])
         setNewDeviceName("")
+        setNewDeviceWebhookUrl("")
         setNewDeviceBackgroundColor("black")
         setShowAddDevice(false)
         setDeviceMessage({ type: "success", text: t.saveSuccess })
@@ -176,6 +178,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newDeviceName.trim(),
+          webhook_url: newDeviceWebhookUrl.trim(),
           background_color: newDeviceBackgroundColor,
         }),
       })
@@ -185,6 +188,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
         setDevices(devices.map(d => d.id === editingDevice.id ? data.device : d))
         setEditingDevice(null)
         setNewDeviceName("")
+        setNewDeviceWebhookUrl("")
         setNewDeviceBackgroundColor("black")
         setDeviceMessage({ type: "success", text: t.saveSuccess })
       } else {
@@ -249,6 +253,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
   const startEditDevice = (device: Device) => {
     setEditingDevice(device)
     setNewDeviceName(device.name)
+    setNewDeviceWebhookUrl(device.webhook_url)
     setNewDeviceBackgroundColor(device.background_color)
     setShowAddDevice(false)
   }
@@ -257,6 +262,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
     setEditingDevice(null)
     setShowAddDevice(false)
     setNewDeviceName("")
+    setNewDeviceWebhookUrl("")
     setNewDeviceBackgroundColor("black")
   }
 
@@ -395,6 +401,23 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
 
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-foreground">
+                        {dt.webhookUrl}
+                      </label>
+                      <input
+                        type="url"
+                        value={newDeviceWebhookUrl}
+                        onChange={(e) => setNewDeviceWebhookUrl(e.target.value)}
+                        placeholder="https://usetrmnl.com/api/custom_plugins/..."
+                        required
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t.webhookUrlNote}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-foreground">
                         {t.backgroundColorLabel}
                       </label>
                       <div className="flex bg-muted border border-border rounded-xl p-1">
@@ -433,7 +456,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
 
                     <Button
                       type="submit"
-                      disabled={isSavingDevice || !newDeviceName.trim()}
+                      disabled={isSavingDevice || !newDeviceName.trim() || !newDeviceWebhookUrl.trim()}
                       className={cn(
                         "w-full py-3 rounded-xl font-semibold text-white transition-all duration-300",
                         "bg-gradient-to-r from-teal-500 to-emerald-500",

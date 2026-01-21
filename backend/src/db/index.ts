@@ -676,7 +676,7 @@ let _userDeviceQueries: {
   findByWebhookUuid: Statement<UserDevice, [string]>
   countByUserId: Statement<{ count: number }, [number]>
   create: Statement<UserDevice, [number, string, string, string, number]>
-  update: Statement<void, [string, string, number]>
+  update: Statement<void, [string, string, string, number]>
   setDefault: Statement<void, [number, number]>
   clearDefault: Statement<void, [number]>
   delete: Statement<void, [number, number]>
@@ -991,8 +991,8 @@ function initPreparedStatements() {
     create: db.prepare<UserDevice, [number, string, string, string, number]>(
       "INSERT INTO user_devices (user_id, name, webhook_uuid, background_color, is_default) VALUES (?, ?, ?, ?, ?) RETURNING *"
     ),
-    update: db.prepare<void, [string, string, number]>(
-      "UPDATE user_devices SET name = ?, background_color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    update: db.prepare<void, [string, string, string, number]>(
+      "UPDATE user_devices SET name = ?, webhook_uuid = ?, background_color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     setDefault: db.prepare<void, [number, number]>(
       "UPDATE user_devices SET is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?"

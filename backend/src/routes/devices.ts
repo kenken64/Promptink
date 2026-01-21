@@ -1,23 +1,11 @@
 import { userDeviceQueries, type UserDevice } from "../db"
 import { withAuth } from "../middleware/auth"
 import { log } from "../utils"
-import { config } from "../config"
-
-// Generate a unique webhook UUID
-function generateWebhookUuid(): string {
-  return crypto.randomUUID()
-}
-
-// Build webhook URL for a device
-function buildWebhookUrl(webhookUuid: string): string {
-  return `${config.server.baseUrl}/api/devices/webhook/${webhookUuid}`
-}
 
 // Device response type (includes webhook URL)
 interface DeviceResponse {
   id: number
   name: string
-  webhook_uuid: string
   webhook_url: string
   background_color: "black" | "white"
   is_default: boolean
@@ -30,8 +18,7 @@ function toDeviceResponse(device: UserDevice): DeviceResponse {
   return {
     id: device.id,
     name: device.name,
-    webhook_uuid: device.webhook_uuid,
-    webhook_url: buildWebhookUrl(device.webhook_uuid),
+    webhook_url: device.webhook_uuid, // webhook_uuid now stores the full URL
     background_color: device.background_color,
     is_default: device.is_default === 1,
     created_at: device.created_at,
@@ -59,6 +46,7 @@ export const devicesRoutes = {
       try {
         const body = await req.json() as {
           name: string
+          webhook_url?: string
           background_color?: "black" | "white"
           is_default?: boolean
         }
@@ -67,9 +55,16 @@ export const devicesRoutes = {
           return Response.json({ error: "Device name is required" }, { status: 400 })
         }
 
+        if (!body.webhook_url || body.webhook_url.trim().length === 0) {
+          return Response.json({ error: "Webhook URL is required" }, { status: 400 })
+        }
+
         const name = body.name.trim()
+        const webhookUrl = body.webhook_url.trim()
         const backgroundColor = body.background_color || "black"
-        const webhookUuid = generateWebhookUuid()
+        
+        // Use the provided webhook URL as the identifier (store full URL)
+        const webhookUuid = webhookUrl
 
         // Check if this is the first device - make it default
         const existingCount = userDeviceQueries.countByUserId.get(user.id)
@@ -148,15 +143,17 @@ export const devicesRoutes = {
 
         const body = await req.json() as {
           name?: string
+          webhook_url?: string
           background_color?: "black" | "white"
           is_default?: boolean
         }
 
         const newName = body.name?.trim() || device.name
+        const newWebhookUrl = body.webhook_url?.trim() || device.webhook_uuid
         const newBackgroundColor = body.background_color || device.background_color
 
         // Update device
-        userDeviceQueries.update.run(newName, newBackgroundColor, deviceId)
+        userDeviceQueries.update.run(newName, newWebhookUrl, newBackgroundColor, deviceId)
 
         // Handle default flag
         if (body.is_default === true) {
@@ -256,37 +253,5 @@ export const devicesRoutes = {
         return Response.json({ error: "Failed to set default device" }, { status: 500 })
       }
     }),
-  },
-
-  // Webhook endpoint for TRMNL to fetch device data (public - no auth)
-  "/api/devices/webhook/:uuid": {
-    GET: async (req: Request) => {
-      try {
-        const url = new URL(req.url)
-        const uuid = url.pathname.split("/").pop()
-
-        if (!uuid) {
-          return Response.json({ error: "Webhook UUID is required" }, { status: 400 })
-        }
-
-        const device = userDeviceQueries.findByWebhookUuid.get(uuid)
-
-        if (!device) {
-          return Response.json({ error: "Device not found" }, { status: 404 })
-        }
-
-        log("INFO", "Webhook accessed", { deviceId: device.id, webhookUuid: uuid })
-
-        // Return device info for TRMNL integration
-        return Response.json({
-          device_id: device.id,
-          name: device.name,
-          background_color: device.background_color,
-        })
-      } catch (error) {
-        log("ERROR", "Webhook error", error)
-        return Response.json({ error: "Webhook error" }, { status: 500 })
-      }
-    },
   },
 }
