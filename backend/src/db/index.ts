@@ -522,19 +522,46 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)`)
 
   // User devices table (multiple TRMNL devices per user)
-  db.run(`
-    CREATE TABLE IF NOT EXISTS user_devices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      webhook_uuid TEXT UNIQUE NOT NULL,
-      background_color TEXT DEFAULT 'black',
-      is_default INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `)
+  // Migration: Remove UNIQUE constraint from webhook_uuid (users enter their own external URLs)
+  const userDevicesTableExists = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='user_devices'").get()
+  if (userDevicesTableExists) {
+    // Check if we need to migrate (if the unique constraint exists)
+    const tableInfo = db.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_devices'").get() as { sql: string } | null
+    if (tableInfo?.sql?.includes("UNIQUE")) {
+      log("INFO", "Migrating user_devices table to remove UNIQUE constraint from webhook_uuid")
+      db.run(`ALTER TABLE user_devices RENAME TO user_devices_old`)
+      db.run(`
+        CREATE TABLE user_devices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          webhook_uuid TEXT NOT NULL,
+          background_color TEXT DEFAULT 'black',
+          is_default INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `)
+      db.run(`INSERT INTO user_devices SELECT * FROM user_devices_old`)
+      db.run(`DROP TABLE user_devices_old`)
+      log("INFO", "Migration complete: user_devices table updated")
+    }
+  } else {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_devices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        webhook_uuid TEXT NOT NULL,
+        background_color TEXT DEFAULT 'black',
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `)
+  }
 
   // Create indexes for user_devices
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id)`)
