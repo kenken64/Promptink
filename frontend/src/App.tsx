@@ -80,7 +80,7 @@ export default function App() {
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
-  const { syncToTrmnl, hasDevices } = useTrmnlSync()
+  const { syncToTrmnl, devices, isLoadingDevices } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, authFetch } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
@@ -407,11 +407,11 @@ export default function App() {
     }
   }
 
-  const handleSyncWithAuth = async (imageUrl: string, prompt?: string) => {
-    if (!hasDevices) {
+  const handleSyncWithAuth = async (imageUrl: string, prompt?: string, deviceIds?: number[]) => {
+    if (devices.length === 0) {
       throw new Error("No devices configured")
     }
-    return await syncToTrmnl(imageUrl, prompt)
+    return await syncToTrmnl(imageUrl, prompt, deviceIds)
   }
 
   const handleOrderSuccess = (orderId: number, isFirst: boolean) => {
@@ -743,7 +743,13 @@ export default function App() {
                   copyLinkText={t.copyLink}
                   copiedText={t.copied}
                   closeText={t.close}
-                  onSync={hasDevices ? handleSyncWithAuth : undefined}
+                  selectDevicesText={t.selectDevices || "Select devices to sync"}
+                  selectAllText={t.selectAll || "Select All"}
+                  syncSelectedText={t.syncSelected || "Sync"}
+                  noDevicesText={t.noDevicesConfigured || "No devices configured"}
+                  devices={devices.map(d => ({ id: d.id, name: d.name, is_default: d.is_default }))}
+                  isLoadingDevices={isLoadingDevices}
+                  onSync={handleSyncWithAuth}
                 />
               ))}
             </div>
