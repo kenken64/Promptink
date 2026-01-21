@@ -65,7 +65,7 @@ function getSharedImageUrl(shareId: string): string {
 
 // Get the share page URL
 function getSharePageUrl(shareId: string): string {
-  return `${config.server.baseUrl}/share/${shareId}`
+  return `${config.server.baseUrl}/s/${shareId}`
 }
 
 // Download image from URL and save to file
@@ -312,7 +312,7 @@ export const shareRoutes = {
   },
 
   // Share page (public) - serves HTML for social media previews
-  "/share/:shareId": {
+  "/s/:shareId": {
     GET: async (req: Request & { params: { shareId: string } }) => {
       try {
         const { shareId } = req.params
