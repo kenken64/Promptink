@@ -244,51 +244,93 @@ Click on a completed batch to see all generated images. Each image shows:
 
 ## TRMNL Sync
 
-Push your images to a TRMNL e-ink display device.
+Push your images to one or more TRMNL e-ink display devices.
 
 ### What is TRMNL?
 
 TRMNL is an e-ink display device that shows custom content. PromptInk integrates with TRMNL to display your AI-generated images.
 
+### Managing Devices
+
+Before syncing, you need to configure at least one TRMNL device in Settings:
+
+1. Go to **Settings** → **TRMNL Devices**
+2. Click **Add Device**
+3. Enter a device name (e.g., "Living Room Display")
+4. Enter your **Webhook URL** from TRMNL (required for sync)
+5. Choose background color (black or white)
+6. Click **Save**
+
+You can add multiple devices and set a default device for quick syncing.
+
 ### Syncing an Image
 
-After generating an image:
-1. Click the **Sync to TRMNL** button on the image
-2. Wait for confirmation
-3. Your TRMNL device will update on its next refresh
+**Single Device:**
+- If you have one device configured, click **Sync to TRMNL** and the image syncs immediately
+
+**Multiple Devices:**
+- If you have multiple devices, clicking **Sync to TRMNL** shows a device selector
+- Check the devices you want to sync to
+- Use **Select All** to sync to all devices
+- Click **Sync (N)** where N is the number of selected devices
+- Wait for confirmation - you'll see per-device sync status
+
+### Sync Button States
+
+| State | Meaning |
+|-------|---------|
+| **Sync to TRMNL** | Ready to sync |
+| **Syncing...** | Sync in progress |
+| **Synced!** | Successfully synced |
+| **No devices** | No devices with webhook URLs configured (disabled) |
 
 ### Auto Sync
 
-Enable auto-sync in scheduled or batch jobs to automatically push images to TRMNL when they're generated.
+Enable auto-sync in scheduled or batch jobs to automatically push images to TRMNL when they're generated. Auto-sync sends to all configured devices.
 
 ### Requirements
 
-You'll need a TRMNL Custom Plugin UUID configured in Settings. See the [Settings](#settings) section.
+- At least one TRMNL device with a **Webhook URL** configured in Settings
+- Webhook URL is obtained from your TRMNL Custom Plugin setup
 
 ---
 
 ## Settings
 
-Configure your account and TRMNL integration.
+Configure your account and TRMNL devices.
 
 ### Accessing Settings
 
 - Desktop: Click the **gear icon** in the header
 - Mobile: Tap the **menu icon** (☰) → Settings
 
-### TRMNL Configuration
+### TRMNL Devices
+
+Manage your TRMNL display devices:
+
+| Action | Description |
+|--------|-------------|
+| **Add Device** | Create a new device configuration |
+| **Edit** | Modify device name, webhook URL, or background color |
+| **Delete** | Remove a device |
+| **Set Default** | Choose which device is used by default |
+
+#### Device Settings
 
 | Setting | Description |
 |---------|-------------|
-| **Device API Key** | Your TRMNL device access token (optional, for advanced features) |
-| **MAC Address** | Your TRMNL device MAC address (optional, for advanced features) |
-| **Background Color** | Choose black or white background for TRMNL display |
+| **Device Name** | A friendly name for your device (e.g., "Office Display") |
+| **Webhook URL** | Your TRMNL Custom Plugin webhook URL (required) |
+| **Background Color** | Black or white background for the e-ink display |
 
-*Note: The Device API Key and MAC Address are optional. The main sync functionality uses the Custom Plugin UUID which is configured server-side.*
+#### Getting Your Webhook URL
 
-### Webhook URL
+1. Log in to your TRMNL account at [usetrmnl.com](https://usetrmnl.com)
+2. Create or select a Custom Plugin
+3. Copy the webhook URL from the plugin settings
+4. Paste it in PromptInk device configuration
 
-Your personal webhook URL is displayed in Settings. This URL can be used for external integrations.
+*Note: Each TRMNL Custom Plugin has a unique webhook URL. You can set up multiple plugins for different devices.*
 
 ### Change Password
 
@@ -383,9 +425,11 @@ For the best experience:
 
 ### TRMNL not updating
 
-- Verify your TRMNL Custom Plugin UUID is configured correctly
+- Verify your device has a **Webhook URL** configured in Settings
 - Check that your TRMNL device is connected and online
-- Wait for the next device refresh cycle
+- Ensure the Webhook URL is correct (copy it fresh from TRMNL)
+- Wait for the next device refresh cycle (TRMNL devices poll periodically)
+- Try syncing again - check the per-device sync results for errors
 
 ### Session expired
 
