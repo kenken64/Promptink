@@ -74,7 +74,7 @@ export default function App() {
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
-  const { syncToTrmnl } = useTrmnlSync()
+  const { syncToTrmnl, hasDevices } = useTrmnlSync()
   const { user, isLoading: authLoading, isAuthenticated, login, register, logout, authFetch } = useAuth()
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
@@ -348,6 +348,9 @@ export default function App() {
   }
 
   const handleSyncWithAuth = async (imageUrl: string, prompt?: string) => {
+    if (!hasDevices) {
+      throw new Error("No devices configured")
+    }
     return await syncToTrmnl(imageUrl, prompt)
   }
 
@@ -680,7 +683,7 @@ export default function App() {
                   copyLinkText={t.copyLink}
                   copiedText={t.copied}
                   closeText={t.close}
-                  onSync={handleSyncWithAuth}
+                  onSync={hasDevices ? handleSyncWithAuth : undefined}
                 />
               ))}
             </div>

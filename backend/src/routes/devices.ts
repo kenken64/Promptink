@@ -9,6 +9,8 @@ interface DeviceResponse {
   webhook_url: string
   background_color: "black" | "white"
   is_default: boolean
+  mac_address: string | null
+  device_api_key: string | null
   created_at: string
   updated_at: string
 }
@@ -21,6 +23,8 @@ function toDeviceResponse(device: UserDevice): DeviceResponse {
     webhook_url: device.webhook_uuid, // webhook_uuid now stores the full URL
     background_color: device.background_color,
     is_default: device.is_default === 1,
+    mac_address: device.mac_address,
+    device_api_key: device.device_api_key,
     created_at: device.created_at,
     updated_at: device.updated_at,
   }
@@ -80,7 +84,9 @@ export const devicesRoutes = {
           name,
           webhookUuid,
           backgroundColor,
-          isDefault ? 1 : 0
+          isDefault ? 1 : 0,
+          null, // mac_address - set by admin
+          null  // device_api_key - set by admin
         )
 
         if (!device) {
@@ -152,8 +158,8 @@ export const devicesRoutes = {
         const newWebhookUrl = body.webhook_url?.trim() || device.webhook_uuid
         const newBackgroundColor = body.background_color || device.background_color
 
-        // Update device
-        userDeviceQueries.update.run(newName, newWebhookUrl, newBackgroundColor, deviceId)
+        // Update device (preserve mac_address and device_api_key - only admin can change those)
+        userDeviceQueries.update.run(newName, newWebhookUrl, newBackgroundColor, device.mac_address, device.device_api_key, deviceId)
 
         // Handle default flag
         if (body.is_default === true) {

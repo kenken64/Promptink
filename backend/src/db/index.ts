@@ -198,6 +198,8 @@ export interface UserDevice {
   webhook_uuid: string
   background_color: "black" | "white"
   is_default: number
+  mac_address: string | null
+  device_api_key: string | null
   created_at: string
   updated_at: string
 }
@@ -523,6 +525,7 @@ export function initDatabase() {
 
   // User devices table (multiple TRMNL devices per user)
   // Migration: Remove UNIQUE constraint from webhook_uuid (users enter their own external URLs)
+  // Migration 2: Add mac_address and device_api_key columns
   const userDevicesTableExists = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='user_devices'").get()
   if (userDevicesTableExists) {
     // Check if we need to migrate (if the unique constraint exists)
@@ -538,14 +541,25 @@ export function initDatabase() {
           webhook_uuid TEXT NOT NULL,
           background_color TEXT DEFAULT 'black',
           is_default INTEGER DEFAULT 0,
+          mac_address TEXT,
+          device_api_key TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `)
-      db.run(`INSERT INTO user_devices SELECT * FROM user_devices_old`)
+      db.run(`INSERT INTO user_devices (id, user_id, name, webhook_uuid, background_color, is_default, created_at, updated_at) SELECT id, user_id, name, webhook_uuid, background_color, is_default, created_at, updated_at FROM user_devices_old`)
       db.run(`DROP TABLE user_devices_old`)
       log("INFO", "Migration complete: user_devices table updated")
+    }
+    
+    // Check if mac_address column exists, add it if not
+    const columns = db.query("PRAGMA table_info(user_devices)").all() as { name: string }[]
+    const hasMacAddress = columns.some(c => c.name === "mac_address")
+    if (!hasMacAddress) {
+      log("INFO", "Adding mac_address and device_api_key columns to user_devices")
+      db.run(`ALTER TABLE user_devices ADD COLUMN mac_address TEXT`)
+      db.run(`ALTER TABLE user_devices ADD COLUMN device_api_key TEXT`)
     }
   } else {
     db.run(`
@@ -556,6 +570,8 @@ export function initDatabase() {
         webhook_uuid TEXT NOT NULL,
         background_color TEXT DEFAULT 'black',
         is_default INTEGER DEFAULT 0,
+        mac_address TEXT,
+        device_api_key TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -702,8 +718,8 @@ let _userDeviceQueries: {
   findDefaultByUserId: Statement<UserDevice, [number]>
   findByWebhookUuid: Statement<UserDevice, [string]>
   countByUserId: Statement<{ count: number }, [number]>
-  create: Statement<UserDevice, [number, string, string, string, number]>
-  update: Statement<void, [string, string, string, number]>
+  create: Statement<UserDevice, [number, string, string, string, number, string | null, string | null]>
+  update: Statement<void, [string, string, string, string | null, string | null, number]>
   setDefault: Statement<void, [number, number]>
   clearDefault: Statement<void, [number]>
   delete: Statement<void, [number, number]>
@@ -1015,11 +1031,11 @@ function initPreparedStatements() {
     countByUserId: db.prepare<{ count: number }, [number]>(
       "SELECT COUNT(*) as count FROM user_devices WHERE user_id = ?"
     ),
-    create: db.prepare<UserDevice, [number, string, string, string, number]>(
-      "INSERT INTO user_devices (user_id, name, webhook_uuid, background_color, is_default) VALUES (?, ?, ?, ?, ?) RETURNING *"
+    create: db.prepare<UserDevice, [number, string, string, string, number, string | null, string | null]>(
+      "INSERT INTO user_devices (user_id, name, webhook_uuid, background_color, is_default, mac_address, device_api_key) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
     ),
-    update: db.prepare<void, [string, string, string, number]>(
-      "UPDATE user_devices SET name = ?, webhook_uuid = ?, background_color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    update: db.prepare<void, [string, string, string, string | null, string | null, number]>(
+      "UPDATE user_devices SET name = ?, webhook_uuid = ?, background_color = ?, mac_address = ?, device_api_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     setDefault: db.prepare<void, [number, number]>(
       "UPDATE user_devices SET is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?"

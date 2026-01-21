@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight } from "lucide-react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight, Monitor, Plus, Trash2, Edit2, X, Star, Save } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -8,6 +8,18 @@ interface AdminStats {
   totalImages: number
   paidOrders: number
   activeSubscriptions: number
+}
+
+interface Device {
+  id: number
+  name: string
+  webhook_url: string
+  background_color: "black" | "white"
+  is_default: boolean
+  mac_address: string | null
+  device_api_key: string | null
+  created_at: string
+  updated_at: string
 }
 
 interface User {
@@ -171,6 +183,22 @@ export function AdminPage() {
   const [newUrl, setNewUrl] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Device management state
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+  const [selectedUserEmail, setSelectedUserEmail] = useState<string>("")
+  const [userDevices, setUserDevices] = useState<Device[]>([])
+  const [isLoadingDevices, setIsLoadingDevices] = useState(false)
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null)
+  const [isAddingDevice, setIsAddingDevice] = useState(false)
+  const [deviceForm, setDeviceForm] = useState({
+    name: "",
+    webhook_url: "",
+    background_color: "black" as "black" | "white",
+    mac_address: "",
+    device_api_key: "",
+  })
+  const [isSavingDevice, setIsSavingDevice] = useState(false)
+
   // Check if any blocking operation is in progress
   const isBlocking = isExporting || isImporting
 
@@ -303,6 +331,173 @@ export function AdminPage() {
         return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400">Past Due</span>
       default:
         return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-700/50 text-zinc-400">None</span>
+    }
+  }
+
+  // Device Management Functions
+  const fetchUserDevices = async (userId: number) => {
+    if (!token) return
+    setIsLoadingDevices(true)
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/devices`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const devices = await response.json()
+        setUserDevices(devices)
+      }
+    } catch (err) {
+      console.error("Failed to fetch user devices:", err)
+    } finally {
+      setIsLoadingDevices(false)
+    }
+  }
+
+  const openDeviceManager = (user: User) => {
+    setSelectedUserId(user.id)
+    setSelectedUserEmail(user.email)
+    setEditingDevice(null)
+    setIsAddingDevice(false)
+    resetDeviceForm()
+    fetchUserDevices(user.id)
+  }
+
+  const closeDeviceManager = () => {
+    setSelectedUserId(null)
+    setSelectedUserEmail("")
+    setUserDevices([])
+    setEditingDevice(null)
+    setIsAddingDevice(false)
+    resetDeviceForm()
+  }
+
+  const resetDeviceForm = () => {
+    setDeviceForm({
+      name: "",
+      webhook_url: "",
+      background_color: "#FFFFFF",
+      mac_address: "",
+      device_api_key: ""
+    })
+  }
+
+  const startEditDevice = (device: Device) => {
+    setEditingDevice(device)
+    setIsAddingDevice(false)
+    setDeviceForm({
+      name: device.name,
+      webhook_url: device.webhook_url || "",
+      background_color: device.background_color,
+      mac_address: device.mac_address || "",
+      device_api_key: device.device_api_key || ""
+    })
+  }
+
+  const startAddDevice = () => {
+    setEditingDevice(null)
+    setIsAddingDevice(true)
+    resetDeviceForm()
+  }
+
+  const cancelDeviceEdit = () => {
+    setEditingDevice(null)
+    setIsAddingDevice(false)
+    resetDeviceForm()
+  }
+
+  const handleSaveDevice = async () => {
+    if (!token || !selectedUserId) return
+    setIsSavingDevice(true)
+    
+    try {
+      const payload = {
+        name: deviceForm.name || "My Device",
+        webhook_url: deviceForm.webhook_url || null,
+        background_color: deviceForm.background_color,
+        mac_address: deviceForm.mac_address || null,
+        device_api_key: deviceForm.device_api_key || null
+      }
+
+      let response: Response
+      if (editingDevice) {
+        // Update existing device
+        response = await fetch(`/api/admin/devices/${editingDevice.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+      } else {
+        // Create new device
+        response = await fetch(`/api/admin/users/${selectedUserId}/devices`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+      }
+
+      if (response.ok) {
+        await fetchUserDevices(selectedUserId)
+        setEditingDevice(null)
+        setIsAddingDevice(false)
+        resetDeviceForm()
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to save device")
+      }
+    } catch (err) {
+      console.error("Failed to save device:", err)
+      alert("Failed to save device")
+    } finally {
+      setIsSavingDevice(false)
+    }
+  }
+
+  const handleDeleteDevice = async (deviceId: number) => {
+    if (!token || !selectedUserId) return
+    if (!confirm("Are you sure you want to delete this device?")) return
+
+    try {
+      const response = await fetch(`/api/admin/devices/${deviceId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        await fetchUserDevices(selectedUserId)
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to delete device")
+      }
+    } catch (err) {
+      console.error("Failed to delete device:", err)
+      alert("Failed to delete device")
+    }
+  }
+
+  const handleSetDefaultDevice = async (deviceId: number) => {
+    if (!token || !selectedUserId) return
+
+    try {
+      const response = await fetch(`/api/admin/devices/${deviceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_default: true })
+      })
+
+      if (response.ok) {
+        await fetchUserDevices(selectedUserId)
+      }
+    } catch (err) {
+      console.error("Failed to set default device:", err)
     }
   }
 
@@ -751,19 +946,20 @@ export function AdminPage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Name</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Subscription</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Joined</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-zinc-400 uppercase tracking-wider">Devices</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {isLoadingUsers ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
                       <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                       Loading users...
                     </td>
                   </tr>
                 ) : usersData?.users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
                       No users found
                     </td>
                   </tr>
@@ -784,6 +980,17 @@ export function AdminPage() {
                           <Calendar className="h-4 w-4" />
                           {formatDate(user.created_at)}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDeviceManager(user)}
+                          className="border-zinc-700 text-zinc-400 hover:text-white hover:border-teal-500"
+                        >
+                          <Monitor className="h-4 w-4 mr-1" />
+                          Manage
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -838,6 +1045,321 @@ export function AdminPage() {
             100% { transform: rotateX(0deg); }
           }
         `}</style>
+
+        {/* Device Manager Modal */}
+        {selectedUserId && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Monitor className="h-5 w-5 text-teal-500" />
+                    Devices for {selectedUserEmail}
+                  </h2>
+                  <p className="text-sm text-zinc-500 mt-1">Manage TRMNL devices for this user</p>
+                </div>
+                <button
+                  onClick={closeDeviceManager}
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-auto p-6">
+                {/* Device List */}
+                {isLoadingDevices ? (
+                  <div className="text-center py-8 text-zinc-500">
+                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    Loading devices...
+                  </div>
+                ) : userDevices.length === 0 && !isAddingDevice ? (
+                  <div className="text-center py-8 text-zinc-500">
+                    <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No devices configured for this user</p>
+                    <Button
+                      onClick={startAddDevice}
+                      className="mt-4 bg-teal-600 hover:bg-teal-700 text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add First Device
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Existing Devices */}
+                    {userDevices.map((device) => (
+                      <div
+                        key={device.id}
+                        className={`bg-zinc-800/50 rounded-xl p-4 border ${
+                          editingDevice?.id === device.id ? "border-teal-500" : "border-zinc-700"
+                        }`}
+                      >
+                        {editingDevice?.id === device.id ? (
+                          /* Edit Form */
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">Device Name</label>
+                                <input
+                                  type="text"
+                                  value={deviceForm.name}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })}
+                                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                  placeholder="My TRMNL"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">Background Color</label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={deviceForm.background_color}
+                                    onChange={(e) => setDeviceForm({ ...deviceForm, background_color: e.target.value })}
+                                    className="w-10 h-10 rounded cursor-pointer"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={deviceForm.background_color}
+                                    onChange={(e) => setDeviceForm({ ...deviceForm, background_color: e.target.value })}
+                                    className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-400 mb-1">Webhook URL</label>
+                              <input
+                                type="text"
+                                value={deviceForm.webhook_url}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, webhook_url: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                placeholder="https://usetrmnl.com/api/custom_plugins/..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">
+                                  MAC Address <span className="text-teal-500">(Admin Only)</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={deviceForm.mac_address}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, mac_address: e.target.value })}
+                                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                  placeholder="AA:BB:CC:DD:EE:FF"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">
+                                  Device API Key <span className="text-teal-500">(Admin Only)</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={deviceForm.device_api_key}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
+                                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                  placeholder="Enter device API key"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={cancelDeviceEdit}
+                                className="border-zinc-700 text-zinc-400"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleSaveDevice}
+                                disabled={isSavingDevice}
+                                className="bg-teal-600 hover:bg-teal-700 text-white"
+                              >
+                                {isSavingDevice ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                                ) : (
+                                  <Save className="h-4 w-4 mr-1" />
+                                )}
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Display Mode */
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-8 h-8 rounded-lg border border-zinc-600"
+                                style={{ backgroundColor: device.background_color }}
+                              />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-white">{device.name}</span>
+                                  {device.is_default && (
+                                    <span className="px-2 py-0.5 text-xs bg-teal-500/20 text-teal-400 rounded-full flex items-center gap-1">
+                                      <Star className="h-3 w-3" />
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm text-zinc-500 mt-1 space-x-3">
+                                  {device.webhook_url && (
+                                    <span>Webhook: {device.webhook_url.substring(0, 40)}...</span>
+                                  )}
+                                  {device.mac_address && (
+                                    <span>MAC: {device.mac_address}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!device.is_default && (
+                                <button
+                                  onClick={() => handleSetDefaultDevice(device.id)}
+                                  className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700 rounded-lg transition-colors"
+                                  title="Set as default"
+                                >
+                                  <Star className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => startEditDevice(device)}
+                                className="p-2 text-zinc-400 hover:text-teal-400 hover:bg-zinc-700 rounded-lg transition-colors"
+                                title="Edit device"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDevice(device.id)}
+                                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded-lg transition-colors"
+                                title="Delete device"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Add New Device Form */}
+                    {isAddingDevice && (
+                      <div className="bg-zinc-800/50 rounded-xl p-4 border border-teal-500">
+                        <h3 className="text-white font-medium mb-4">Add New Device</h3>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-400 mb-1">Device Name</label>
+                              <input
+                                type="text"
+                                value={deviceForm.name}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                placeholder="My TRMNL"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-400 mb-1">Background Color</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="color"
+                                  value={deviceForm.background_color}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, background_color: e.target.value })}
+                                  className="w-10 h-10 rounded cursor-pointer"
+                                />
+                                <input
+                                  type="text"
+                                  value={deviceForm.background_color}
+                                  onChange={(e) => setDeviceForm({ ...deviceForm, background_color: e.target.value })}
+                                  className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-400 mb-1">Webhook URL</label>
+                            <input
+                              type="text"
+                              value={deviceForm.webhook_url}
+                              onChange={(e) => setDeviceForm({ ...deviceForm, webhook_url: e.target.value })}
+                              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                              placeholder="https://usetrmnl.com/api/custom_plugins/..."
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-400 mb-1">
+                                MAC Address <span className="text-teal-500">(Admin Only)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={deviceForm.mac_address}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, mac_address: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                placeholder="AA:BB:CC:DD:EE:FF"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-400 mb-1">
+                                Device API Key <span className="text-teal-500">(Admin Only)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={deviceForm.device_api_key}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, device_api_key: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+                                placeholder="Enter device API key"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={cancelDeviceEdit}
+                              className="border-zinc-700 text-zinc-400"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={handleSaveDevice}
+                              disabled={isSavingDevice}
+                              className="bg-teal-600 hover:bg-teal-700 text-white"
+                            >
+                              {isSavingDevice ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <Plus className="h-4 w-4 mr-1" />
+                              )}
+                              Add Device
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Device Button */}
+                    {!isAddingDevice && !editingDevice && (
+                      <Button
+                        onClick={startAddDevice}
+                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 border-dashed"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Device
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

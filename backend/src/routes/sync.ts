@@ -1,21 +1,13 @@
 import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
-import { syncedImageQueries, userQueries, userDeviceQueries } from "../db"
+import { syncedImageQueries, userQueries, userDeviceQueries, type UserDevice } from "../db"
 import { config } from "../config"
-import { getCurrentScreen } from "../services"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 
-// Get user's background color preference from default device (or fallback to user settings)
-function getUserBackgroundColor(userId: number): string {
-  // First try to get from default device
-  const defaultDevice = userDeviceQueries.findDefaultByUserId.get(userId)
-  if (defaultDevice) {
-    return defaultDevice.background_color || "black"
-  }
-  // Fallback to user settings (legacy)
-  const settings = userQueries.getSettings.get(userId)
-  return settings?.trmnl_background_color || "black"
+// Get device's background color
+function getDeviceBackgroundColor(device: UserDevice): string {
+  return device.background_color || "black"
 }
 
 // Ensure images directory exists
@@ -59,34 +51,22 @@ async function downloadAndSaveImage(imageUrl: string, userId: number): Promise<s
   return filePath
 }
 
-// Advance TRMNL playlist by calling display endpoint (triggers device to get new content on next wake)
-async function advanceTrmnlPlaylist(): Promise<{ success: boolean; error?: string }> {
-  try {
-    log("INFO", "Advancing TRMNL playlist to trigger screen update")
-    const screen = await getCurrentScreen()
-    log("INFO", "TRMNL playlist advanced", { imageUrl: screen.image_url, refreshRate: screen.refresh_rate })
-    return { success: true }
-  } catch (error) {
-    log("WARN", "Failed to advance TRMNL playlist", error)
-    return { success: false, error: String(error) }
-  }
-}
-
-// Trigger TRMNL plugin data update with permanent image URL
-async function triggerTrmnlUpdate(imageUrl: string, prompt: string, backgroundColor: string): Promise<{ success: boolean; error?: string }> {
-  const pluginUuid = config.trmnl.customPluginUuid
-
-  if (!pluginUuid) {
-    log("WARN", "TRMNL_CUSTOM_PLUGIN_UUID not configured, skipping TRMNL update")
-    return { success: false, error: "Plugin UUID not configured" }
+// Send image to a device's webhook URL
+async function sendToDeviceWebhook(
+  webhookUrl: string,
+  imageUrl: string,
+  prompt: string,
+  backgroundColor: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!webhookUrl) {
+    return { success: false, error: "No webhook URL configured" }
   }
 
   try {
-    const url = `https://usetrmnl.com/api/custom_plugins/${pluginUuid}`
     const bgHex = backgroundColor === "white" ? "#fff" : "#000"
-    log("INFO", "Sending image URL to TRMNL custom plugin", { url, imageUrl, backgroundColor: bgHex })
+    log("INFO", "Sending image to device webhook", { webhookUrl, imageUrl, backgroundColor: bgHex })
 
-    const response = await fetch(url, {
+    const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,15 +83,15 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string, backgroundCo
     })
 
     if (response.ok) {
-      log("INFO", "TRMNL plugin data updated successfully")
+      log("INFO", "Device webhook updated successfully", { webhookUrl })
       return { success: true }
     } else {
       const errorText = await response.text()
-      log("WARN", "TRMNL plugin update failed", { status: response.status, error: errorText })
+      log("WARN", "Device webhook update failed", { webhookUrl, status: response.status, error: errorText })
       return { success: false, error: `HTTP ${response.status}: ${errorText}` }
     }
   } catch (error) {
-    log("ERROR", "TRMNL plugin update error", error)
+    log("ERROR", "Device webhook error", { webhookUrl, error })
     return { success: false, error: String(error) }
   }
 }
@@ -120,8 +100,9 @@ async function triggerTrmnlUpdate(imageUrl: string, prompt: string, backgroundCo
 export async function syncToTrmnl(
   imageUrl: string,
   prompt: string,
-  userId: number
-): Promise<{ success: boolean; error?: string }> {
+  userId: number,
+  deviceIds?: number[]
+): Promise<{ success: boolean; error?: string; deviceResults?: Array<{ deviceId: number; success: boolean; error?: string }> }> {
   try {
     // Download and save the image
     await downloadAndSaveImage(imageUrl, userId)
@@ -132,16 +113,41 @@ export async function syncToTrmnl(
     // Save to database
     syncedImageQueries.create.run(userId, permanentUrl, prompt || null)
 
-    // Get user's background color preference
-    const backgroundColor = getUserBackgroundColor(userId)
+    // Get devices to sync to
+    let devices: UserDevice[]
+    if (deviceIds && deviceIds.length > 0) {
+      // Sync to specific devices
+      devices = deviceIds
+        .map(id => userDeviceQueries.findById.get(id))
+        .filter((d): d is UserDevice => d !== null && d !== undefined && d.user_id === userId)
+    } else {
+      // Sync to all devices with webhook URLs
+      devices = userDeviceQueries.findAllByUserId.all(userId).filter(d => d.webhook_uuid)
+    }
 
-    // Trigger TRMNL update
-    const trmnlResult = await triggerTrmnlUpdate(permanentUrl, prompt || "", backgroundColor)
+    if (devices.length === 0) {
+      log("WARN", "No devices with webhook URLs to sync to", { userId })
+      return { success: true, deviceResults: [] }
+    }
 
-    // Advance the playlist
-    await advanceTrmnlPlaylist()
+    // Send to all device webhooks in parallel
+    const results = await Promise.all(
+      devices.map(async (device) => {
+        if (!device.webhook_uuid) {
+          return { deviceId: device.id, success: false, error: "No webhook URL" }
+        }
+        const result = await sendToDeviceWebhook(
+          device.webhook_uuid,
+          permanentUrl,
+          prompt || "",
+          getDeviceBackgroundColor(device)
+        )
+        return { deviceId: device.id, success: result.success, error: result.error }
+      })
+    )
 
-    return { success: true }
+    const allSuccess = results.every(r => r.success)
+    return { success: allSuccess, deviceResults: results }
   } catch (error) {
     log("ERROR", "syncToTrmnl failed", { userId, error: String(error) })
     return { success: false, error: String(error) }
@@ -155,13 +161,29 @@ export const syncRoutes = {
       const startTime = performance.now()
       try {
         const text = await req.text()
-        const { imageUrl, prompt } = text ? JSON.parse(text) : {}
+        const { imageUrl, prompt, deviceIds } = text ? JSON.parse(text) : {}
 
         if (!imageUrl) {
           return Response.json({ error: "imageUrl is required" }, { status: 400 })
         }
 
-        log("INFO", "Syncing image for TRMNL", { userId: user.id, imageUrl: imageUrl.substring(0, 100) + "...", prompt })
+        // Get devices to sync to
+        let devices: UserDevice[]
+        if (deviceIds && Array.isArray(deviceIds) && deviceIds.length > 0) {
+          // Sync to specific devices
+          devices = (deviceIds as number[])
+            .map(id => userDeviceQueries.findById.get(id))
+            .filter((d): d is UserDevice => d !== null && d !== undefined && d.user_id === user.id && !!d.webhook_uuid)
+        } else {
+          // Sync to all devices with webhook URLs
+          devices = userDeviceQueries.findAllByUserId.all(user.id).filter(d => d.webhook_uuid)
+        }
+
+        if (devices.length === 0) {
+          return Response.json({ error: "No devices with webhook URLs configured" }, { status: 400 })
+        }
+
+        log("INFO", "Syncing image for TRMNL", { userId: user.id, deviceCount: devices.length, prompt })
 
         // Download and save image to file system
         const downloadStart = performance.now()
@@ -188,43 +210,55 @@ export const syncRoutes = {
           return Response.json({ error: "Failed to store image reference" }, { status: 500 })
         }
 
-        // Get user's background color preference
-        const backgroundColor = getUserBackgroundColor(user.id)
+        log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl })
 
-        log("INFO", "Image synced successfully", { userId: user.id, filePath, permanentImageUrl, backgroundColor })
-
-        // Run TRMNL API calls in parallel for faster response
-        const trmnlStart = performance.now()
-        const [updateResult, advanceResult] = await Promise.all([
-          // Trigger TRMNL plugin update with permanent URL and background color
-          triggerTrmnlUpdate(permanentImageUrl, prompt || "", backgroundColor),
-          // Advance TRMNL playlist to trigger device refresh on next wake
-          advanceTrmnlPlaylist(),
-        ])
-        const trmnlTime = performance.now() - trmnlStart
-        log("INFO", `TRMNL API calls completed`, { trmnlTimeMs: Math.round(trmnlTime) })
+        // Send to all device webhooks in parallel
+        const webhookStart = performance.now()
+        const deviceResults = await Promise.all(
+          devices.map(async (device) => {
+            const result = await sendToDeviceWebhook(
+              device.webhook_uuid!,
+              permanentImageUrl,
+              prompt || "",
+              getDeviceBackgroundColor(device)
+            )
+            return { 
+              deviceId: device.id, 
+              deviceName: device.name,
+              success: result.success, 
+              error: result.error 
+            }
+          })
+        )
+        const webhookTime = performance.now() - webhookStart
+        log("INFO", `Webhook calls completed`, { webhookTimeMs: Math.round(webhookTime) })
 
         const totalTime = performance.now() - startTime
+        const successCount = deviceResults.filter(r => r.success).length
+
         log("INFO", `Sync completed`, {
           totalTimeMs: Math.round(totalTime),
           downloadTimeMs: Math.round(downloadTime),
           dbTimeMs: Math.round(dbTime),
-          trmnlTimeMs: Math.round(trmnlTime)
+          webhookTimeMs: Math.round(webhookTime),
+          successCount,
+          totalDevices: devices.length
         })
 
         return Response.json({
-          success: true,
-          message: updateResult.success
-            ? "Image synced and sent to TRMNL!"
-            : "Image synced successfully. TRMNL will pick it up on next poll.",
+          success: successCount > 0,
+          message: successCount === devices.length
+            ? `Image synced to ${successCount} device${successCount > 1 ? "s" : ""}!`
+            : successCount > 0
+              ? `Image synced to ${successCount} of ${devices.length} devices`
+              : "Failed to sync to any devices",
           syncedAt: syncedImage.synced_at,
           imageUrl: permanentImageUrl,
-          trmnlUpdate: updateResult,
-          playlistAdvanced: advanceResult.success,
+          deviceResults,
           timing: {
             totalMs: Math.round(totalTime),
             downloadMs: Math.round(downloadTime),
-            trmnlMs: Math.round(trmnlTime),
+            webhookMs: Math.round(webhookTime),
           },
         })
       } catch (error) {
