@@ -343,8 +343,8 @@ export function AdminPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {
-        const devices = await response.json()
-        setUserDevices(devices)
+        const data = await response.json()
+        setUserDevices(data.devices || [])
       }
     } catch (err) {
       console.error("Failed to fetch user devices:", err)
