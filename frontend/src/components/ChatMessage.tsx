@@ -1,9 +1,15 @@
-import { User, Sparkles, Copy, Check, Download, RefreshCw } from "lucide-react"
-import { useState } from "react"
+import { User, Sparkles, Copy, Check, Download, RefreshCw, ChevronDown } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
 import { cn } from "../lib/utils"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { ShareButton } from "./ShareButton"
+
+interface Device {
+  id: number
+  name: string
+  is_default: boolean
+}
 
 interface ChatMessageProps {
   type: "user" | "assistant"
@@ -23,7 +29,13 @@ interface ChatMessageProps {
   copyLinkText: string
   copiedText: string
   closeText: string
-  onSync?: (imageUrl: string, prompt?: string) => Promise<void>
+  selectDevicesText?: string
+  selectAllText?: string
+  syncSelectedText?: string
+  noDevicesText?: string
+  devices?: Device[]
+  isLoadingDevices?: boolean
+  onSync?: (imageUrl: string, prompt?: string, deviceIds?: number[]) => Promise<void>
 }
 
 export function ChatMessage({
@@ -44,11 +56,31 @@ export function ChatMessage({
   copyLinkText,
   copiedText,
   closeText,
+  selectDevicesText = "Select devices to sync",
+  selectAllText = "Select All",
+  syncSelectedText = "Sync",
+  noDevicesText = "No devices configured",
+  devices = [],
+  isLoadingDevices = false,
   onSync,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncSuccess, setSyncSuccess] = useState(false)
+  const [showDeviceMenu, setShowDeviceMenu] = useState(false)
+  const [selectedDevices, setSelectedDevices] = useState<number[]>([])
+  const deviceMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close device menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (deviceMenuRef.current && !deviceMenuRef.current.contains(e.target as Node)) {
+        setShowDeviceMenu(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content)
@@ -62,15 +94,17 @@ export function ChatMessage({
     }
   }
 
-  const handleSync = async () => {
+  const handleSync = async (deviceIds?: number[]) => {
     if (!imageUrl || !onSync) return
 
     setIsSyncing(true)
     setSyncSuccess(false)
+    setShowDeviceMenu(false)
 
     try {
-      await onSync(imageUrl, content)
+      await onSync(imageUrl, content, deviceIds)
       setSyncSuccess(true)
+      setSelectedDevices([])
       setTimeout(() => setSyncSuccess(false), 3000)
     } catch (error) {
       console.error("Sync failed:", error)
@@ -138,11 +172,33 @@ export function ChatMessage({
                     <span className="hidden xs:inline">{openFullSizeText}</span>
                     <span className="xs:hidden">Open</span>
                   </Button>
-                  {onSync && (
+                  {/* Sync button with multi-device support */}
+                  {isLoadingDevices ? (
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={handleSync}
+                      disabled
+                      className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8"
+                    >
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span className="hidden xs:inline">Loading...</span>
+                    </Button>
+                  ) : devices.length === 0 ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled
+                      className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8 opacity-50"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      <span className="hidden xs:inline">{noDevicesText}</span>
+                      <span className="xs:hidden">No Device</span>
+                    </Button>
+                  ) : devices.length === 1 ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleSync()}
                       disabled={isSyncing}
                       className={cn(
                         "gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation",
@@ -157,6 +213,82 @@ export function ChatMessage({
                         {isSyncing ? "..." : syncSuccess ? "Done" : "Sync"}
                       </span>
                     </Button>
+                  ) : (
+                    /* Multiple devices - show dropdown */
+                    <div className="relative" ref={deviceMenuRef}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowDeviceMenu(!showDeviceMenu)}
+                        disabled={isSyncing}
+                        className={cn(
+                          "gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation",
+                          syncSuccess && "bg-green-500 hover:bg-green-600 text-white"
+                        )}
+                      >
+                        <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                        <span className="hidden xs:inline">
+                          {isSyncing ? syncingText : syncSuccess ? syncSuccessText : syncText}
+                        </span>
+                        <span className="xs:hidden">
+                          {isSyncing ? "..." : syncSuccess ? "Done" : "Sync"}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                      
+                      {showDeviceMenu && (
+                        <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50 min-w-[200px]">
+                          <div className="p-2 border-b border-border">
+                            <p className="text-xs text-muted-foreground">{selectDevicesText}</p>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto">
+                            {devices.map((device) => (
+                              <label
+                                key={device.id}
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDevices.includes(device.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedDevices([...selectedDevices, device.id])
+                                    } else {
+                                      setSelectedDevices(selectedDevices.filter(id => id !== device.id))
+                                    }
+                                  }}
+                                  className="rounded border-border"
+                                />
+                                <span className="text-sm flex-1">{device.name}</span>
+                                {device.is_default && (
+                                  <span className="text-xs text-muted-foreground">(default)</span>
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                          <div className="p-2 border-t border-border flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="flex-1 text-xs"
+                              onClick={() => setSelectedDevices(devices.map(d => d.id))}
+                            >
+                              {selectAllText}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 text-xs"
+                              disabled={selectedDevices.length === 0}
+                              onClick={() => handleSync(
+                                selectedDevices.length === devices.length ? undefined : selectedDevices
+                              )}
+                            >
+                              {syncSelectedText} ({selectedDevices.length})
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                   <ShareButton
                     imageUrl={imageUrl}
@@ -187,11 +319,11 @@ export function ChatMessage({
                   <Copy className="h-4 w-4" />
                 )}
               </Button>
-              {imageUrl && onSync && (
+              {imageUrl && devices.length > 0 && onSync && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleSync}
+                  onClick={() => handleSync()}
                   disabled={isSyncing}
                   className={cn(
                     "h-8 px-2 gap-1 touch-manipulation",
