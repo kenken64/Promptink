@@ -1,13 +1,19 @@
 import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
-import { syncedImageQueries, userQueries } from "../db"
+import { syncedImageQueries, userQueries, userDeviceQueries } from "../db"
 import { config } from "../config"
 import { getCurrentScreen } from "../services"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 
-// Get user's background color preference
+// Get user's background color preference from default device (or fallback to user settings)
 function getUserBackgroundColor(userId: number): string {
+  // First try to get from default device
+  const defaultDevice = userDeviceQueries.findDefaultByUserId.get(userId)
+  if (defaultDevice) {
+    return defaultDevice.background_color || "black"
+  }
+  // Fallback to user settings (legacy)
   const settings = userQueries.getSettings.get(userId)
   return settings?.trmnl_background_color || "black"
 }
