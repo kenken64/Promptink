@@ -392,6 +392,14 @@ export const translations = {
       oneBatchProcessing: "1 batch is being processed...",
       batchesProcessing: "batches are being processed...",
     },
+    // Prompt Enhancement
+    enhancePromptTitle: "Enhance Your Prompt?",
+    originalPrompt: "Your Prompt",
+    enhancedPrompt: "AI Enhanced",
+    enhancingPrompt: "Enhancing your prompt...",
+    enhanceDescription: "AI enhancement adds artistic details, lighting, and style to help generate better images. Choose which version to use for generation.",
+    useOriginal: "Use Original",
+    useEnhanced: "Use Enhanced",
   },
   zh: {
     appName: "PromptInk",
@@ -782,6 +790,14 @@ export const translations = {
       oneBatchProcessing: "1 个批量任务正在处理中...",
       batchesProcessing: "个批量任务正在处理中...",
     },
+    // Prompt Enhancement
+    enhancePromptTitle: "增强您的提示词？",
+    originalPrompt: "您的提示词",
+    enhancedPrompt: "AI 增强版",
+    enhancingPrompt: "正在增强您的提示词...",
+    enhanceDescription: "AI 增强会添加艺术细节、光影和风格，帮助生成更好的图像。选择用于生成的版本。",
+    useOriginal: "使用原始版本",
+    useEnhanced: "使用增强版本",
   },
 }
 

@@ -7,6 +7,7 @@ import { ChatInput } from "./components/ChatInput"
 import { ThemeToggle } from "./components/ThemeToggle"
 import { LanguageToggle } from "./components/LanguageToggle"
 import { AuthGuard } from "./components/AuthGuard"
+import { PromptEnhanceModal } from "./components/PromptEnhanceModal"
 import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
@@ -71,6 +72,11 @@ export default function App() {
   const [selectedSize, setSelectedSize] = useState<ImageSize>("1024x1024")
   const [selectedStyle, setSelectedStyle] = useState<ImageStylePreset>("none")
   const [resetToken, setResetToken] = useState<string>("")
+  // Prompt enhancement modal state
+  const [enhanceModalOpen, setEnhanceModalOpen] = useState(false)
+  const [enhanceOriginalPrompt, setEnhanceOriginalPrompt] = useState("")
+  const [enhanceEnhancedPrompt, setEnhanceEnhancedPrompt] = useState("")
+  const [enhanceLoading, setEnhanceLoading] = useState(false)
   const { generateImage, isLoading } = useImageGeneration()
   const { theme, themeMode, toggleTheme } = useTheme()
   const { language, toggleLanguage, t } = useLanguage()
@@ -167,13 +173,17 @@ export default function App() {
     return { isUrl: false }
   }
 
-  const handleSend = async (prompt: string, imageFile?: File, maskFile?: File, maskPreviewUrl?: string) => {
+  // Actual image generation logic (extracted to be reusable)
+  const performImageGeneration = async (
+    prompt: string, 
+    imageFile?: File, 
+    maskFile?: File, 
+    maskPreviewUrl?: string,
+    isInfographic?: boolean,
+    infographicUrl?: string
+  ) => {
     const userMessageId = Date.now().toString()
     const assistantMessageId = (Date.now() + 1).toString()
-
-    // Check for infographic request
-    const infographicCheck = isInfographicRequest(prompt)
-    const isInfographic = infographicCheck.isUrl || prompt.toLowerCase().includes("infographic")
 
     // Create user message with optional image preview
     let userContent = prompt
@@ -232,8 +242,8 @@ export default function App() {
       } else if (isInfographic) {
         // Use infographic API
         const body: { content?: string; url?: string; size?: string } = { size: selectedSize }
-        if (infographicCheck.url) {
-          body.url = infographicCheck.url
+        if (infographicUrl) {
+          body.url = infographicUrl
         } else {
           // Use the prompt as content (removing "infographic" keyword)
           body.content = prompt.replace(/(?:create\s+)?infographic(?:\s+(?:from|for|of))?/gi, "").trim()
@@ -297,6 +307,56 @@ export default function App() {
         )
       )
     }
+  }
+
+  const handleSend = async (prompt: string, imageFile?: File, maskFile?: File, maskPreviewUrl?: string) => {
+    // Check for infographic request
+    const infographicCheck = isInfographicRequest(prompt)
+    const isInfographic = infographicCheck.isUrl || prompt.toLowerCase().includes("infographic")
+
+    // For regular image generation (not image edit, not infographic), show enhancement modal
+    if (!imageFile && !isInfographic) {
+      setEnhanceOriginalPrompt(prompt)
+      setEnhanceEnhancedPrompt("")
+      setEnhanceLoading(true)
+      setEnhanceModalOpen(true)
+
+      // Fetch enhanced prompt in background
+      try {
+        const response = await authFetch("/api/prompt/enhance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setEnhanceEnhancedPrompt(data.enhanced)
+        } else {
+          // If enhancement fails, just use original
+          setEnhanceEnhancedPrompt(prompt)
+        }
+      } catch (error) {
+        console.error("Failed to enhance prompt:", error)
+        setEnhanceEnhancedPrompt(prompt)
+      } finally {
+        setEnhanceLoading(false)
+      }
+      return
+    }
+
+    // For image edits or infographics, proceed directly
+    await performImageGeneration(prompt, imageFile, maskFile, maskPreviewUrl, isInfographic, infographicCheck.url)
+  }
+
+  const handleUseOriginalPrompt = () => {
+    setEnhanceModalOpen(false)
+    performImageGeneration(enhanceOriginalPrompt)
+  }
+
+  const handleUseEnhancedPrompt = () => {
+    setEnhanceModalOpen(false)
+    performImageGeneration(enhanceEnhancedPrompt || enhanceOriginalPrompt)
   }
 
   const handleNewChat = () => {
@@ -774,6 +834,17 @@ export default function App() {
           footer={t.footer}
         />
       </div>
+
+      {/* Prompt Enhancement Modal */}
+      <PromptEnhanceModal
+        isOpen={enhanceModalOpen}
+        onClose={() => setEnhanceModalOpen(false)}
+        originalPrompt={enhanceOriginalPrompt}
+        enhancedPrompt={enhanceEnhancedPrompt}
+        isLoading={enhanceLoading}
+        onUseOriginal={handleUseOriginalPrompt}
+        onUseEnhanced={handleUseEnhancedPrompt}
+      />
     </div>
   )
 

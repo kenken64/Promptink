@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X } from "lucide-react"
+import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X, User, Mail } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
@@ -71,7 +71,7 @@ interface Device {
 }
 
 export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: SettingsPageProps) {
-  const { authFetch } = useAuth()
+  const { authFetch, user } = useAuth()
 
   // Devices state
   const [devices, setDevices] = useState<Device[]>([])
@@ -337,6 +337,29 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
                   <Settings className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-foreground">{t.subtitle}</h2>
+              </div>
+
+              {/* Account Section */}
+              <div className="mb-8 p-4 bg-muted/50 rounded-xl border border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                  <User className="h-5 w-5 text-teal-500" />
+                  Account
+                </h3>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center">
+                    <Mail className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="text-foreground font-medium">{user?.email || "—"}</p>
+                  </div>
+                </div>
+                {user?.name && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="text-foreground">{user.name}</p>
+                  </div>
+                )}
               </div>
 
               {/* Device Message */}

@@ -2,6 +2,32 @@
 
 ## Recent Changes and Fixes
 
+### AI Prompt Enhancement Feature
+**Date:** June 2025
+
+**Features Added:**
+- **AI Prompt Enhancement:** When users submit a prompt for image generation, an AI-powered modal shows both the original and an enhanced version
+- **User Choice:** Users can choose to use their original prompt or the AI-enhanced version with more artistic details
+- **Smart Enhancement:** Uses GPT-4o-mini to add lighting, atmosphere, composition, and style details to prompts
+- **Bilingual Support:** Full English and Chinese translations for the enhancement modal
+
+**Changes:**
+- Added `enhancePrompt` function to OpenAI service using GPT-4o-mini
+- Added `/api/prompt/enhance` POST endpoint (authenticated)
+- Created `PromptEnhanceModal` component with side-by-side comparison
+- Modified `handleSend` flow to show enhancement modal for regular prompts (not image edits or infographics)
+
+**Files Modified:**
+- `backend/src/services/openai-service.ts` - Added `enhancePrompt` function
+- `backend/src/routes/prompt.ts` - New route file for prompt enhancement
+- `backend/src/routes/index.ts` - Added prompt routes
+- `frontend/src/components/PromptEnhanceModal.tsx` - New modal component
+- `frontend/src/components/index.ts` - Export modal
+- `frontend/src/App.tsx` - Modal integration and flow logic
+- `frontend/src/hooks/useLanguage.ts` - Added translations
+
+---
+
 ### Multi-Device TRMNL Sync & Admin Device Management
 **Commit:** `45b78d0`
 

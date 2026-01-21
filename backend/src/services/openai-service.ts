@@ -4,6 +4,61 @@ import sharp from "sharp"
 
 const OPENAI_API_BASE = "https://api.openai.com/v1"
 
+// Enhance a user's image prompt using AI
+export async function enhancePrompt(prompt: string): Promise<string> {
+  if (!config.openai.apiKey) {
+    throw new Error("OPENAI_API_KEY not configured")
+  }
+
+  log("INFO", "Enhancing prompt", { promptLength: prompt.length })
+
+  const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.openai.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert at writing prompts for AI image generation (like DALL-E 3). 
+Your task is to enhance the user's prompt to produce better, more detailed, and visually stunning images.
+
+Guidelines:
+- Add specific details about lighting, atmosphere, composition, and style
+- Include artistic references when appropriate (e.g., "in the style of Studio Ghibli")
+- Add texture, color, and mood descriptors
+- Keep the core intent of the original prompt
+- Make it vivid and evocative
+- Keep the enhanced prompt under 200 words
+- Only return the enhanced prompt, nothing else`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json() as { error?: { message?: string } }
+    log("ERROR", "Prompt enhancement API error", error)
+    throw new Error(error.error?.message || "Failed to enhance prompt")
+  }
+
+  const result = await response.json() as { choices?: { message?: { content?: string } }[] }
+  const enhancedPrompt = result.choices?.[0]?.message?.content?.trim() || prompt
+
+  log("INFO", "Prompt enhanced", { originalLength: prompt.length, enhancedLength: enhancedPrompt.length })
+
+  return enhancedPrompt
+}
+
 // Translate text using OpenAI Chat API
 export async function translateText(
   text: string,
