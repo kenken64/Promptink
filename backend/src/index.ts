@@ -259,6 +259,18 @@ if (isDev) {
         return addSecurityHeaders(response)
       }
 
+      // Serve favicon
+      if (url.pathname === "/favicon.svg") {
+        const faviconPath = join(import.meta.dir, "../../frontend/public/favicon.svg")
+        const file = Bun.file(faviconPath)
+        if (await file.exists()) {
+          const response = new Response(file, {
+            headers: { "Content-Type": "image/svg+xml" },
+          })
+          return addSecurityHeaders(response)
+        }
+      }
+
       // Serve CSS
       if (url.pathname === "/assets/styles.css") {
         const response = new Response(stylesCSS, {
