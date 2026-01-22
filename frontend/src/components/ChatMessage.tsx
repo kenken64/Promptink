@@ -35,7 +35,7 @@ interface ChatMessageProps {
   noDevicesText?: string
   devices?: Device[]
   isLoadingDevices?: boolean
-  onSync?: (imageUrl: string, prompt?: string, deviceIds?: number[]) => Promise<void>
+  onSync?: (imageUrl: string, prompt?: string, deviceIds?: number[]) => Promise<unknown>
 }
 
 export function ChatMessage({

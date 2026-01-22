@@ -61,8 +61,26 @@ const getInitialPage = (): AppPage => {
   return "chat"
 }
 
+// Storage key for chat messages
+const CHAT_MESSAGES_KEY = "promptink_chat_messages"
+
+// Load messages from localStorage
+const loadMessagesFromStorage = (): Message[] => {
+  try {
+    const stored = localStorage.getItem(CHAT_MESSAGES_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      // Filter out any loading messages that may have been persisted during generation
+      return parsed.filter((msg: Message) => !msg.isLoading)
+    }
+  } catch (e) {
+    console.error("Failed to load messages from storage:", e)
+  }
+  return []
+}
+
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(loadMessagesFromStorage)
   const [authPage, setAuthPage] = useState<AuthPage>("login")
   const [appPage, setAppPage] = useState<AppPage>(getInitialPage)
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
@@ -126,6 +144,17 @@ export default function App() {
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
+
+  // Persist messages to localStorage when they change
+  useEffect(() => {
+    try {
+      // Only persist non-loading messages
+      const messagesToPersist = messages.filter(msg => !msg.isLoading)
+      localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messagesToPersist))
+    } catch (e) {
+      console.error("Failed to save messages to storage:", e)
     }
   }, [messages])
 
@@ -361,6 +390,7 @@ export default function App() {
 
   const handleNewChat = () => {
     setMessages([])
+    localStorage.removeItem(CHAT_MESSAGES_KEY)
   }
 
   const handleLogin = async (email: string, password: string) => {
