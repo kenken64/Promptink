@@ -401,6 +401,7 @@ export const translations = {
       confirmDeleteBatch: "Are you sure you want to delete this batch?",
       oneBatchProcessing: "1 batch is being processed...",
       batchesProcessing: "batches are being processed...",
+      duplicateBatch: "Duplicate Batch",
     },
     // Prompt Enhancement
     enhancePromptTitle: "Enhance Your Prompt?",
@@ -809,6 +810,7 @@ export const translations = {
       confirmDeleteBatch: "确定要删除此批量任务吗？",
       oneBatchProcessing: "1 个批量任务正在处理中...",
       batchesProcessing: "个批量任务正在处理中...",
+      duplicateBatch: "复制批量任务",
     },
     // Prompt Enhancement
     enhancePromptTitle: "增强您的提示词？",

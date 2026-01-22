@@ -18,6 +18,7 @@ import {
   Ban,
   Image,
   Eye,
+  Copy,
 } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -50,18 +51,21 @@ const SIZE_OPTIONS = [
 const MAX_BATCH_SIZE = 10
 
 interface BatchFormProps {
+  initialData?: BatchJobWithItems | null
   onSubmit: (data: CreateBatchJobInput) => Promise<void>
   onCancel: () => void
   isSubmitting: boolean
 }
 
-function BatchForm({ onSubmit, onCancel, isSubmitting }: BatchFormProps) {
+function BatchForm({ initialData, onSubmit, onCancel, isSubmitting }: BatchFormProps) {
   const { t } = useLanguage()
-  const [name, setName] = useState("")
-  const [prompts, setPrompts] = useState<string[]>([""])
-  const [size, setSize] = useState("1024x1024")
-  const [stylePreset, setStylePreset] = useState("none")
-  const [autoSyncTrmnl, setAutoSyncTrmnl] = useState(false)
+  const [name, setName] = useState(initialData?.name ? `${initialData.name} (copy)` : "")
+  const [prompts, setPrompts] = useState<string[]>(
+    initialData?.items?.map(item => item.prompt) || [""]
+  )
+  const [size, setSize] = useState(initialData?.size || "1024x1024")
+  const [stylePreset, setStylePreset] = useState(initialData?.style_preset || "none")
+  const [autoSyncTrmnl, setAutoSyncTrmnl] = useState(!!initialData?.auto_sync_trmnl)
 
   const addPrompt = () => {
     if (prompts.length < MAX_BATCH_SIZE) {
@@ -227,9 +231,10 @@ interface BatchCardProps {
   onView: () => void
   onCancel: () => void
   onDelete: () => void
+  onDuplicate: () => void
 }
 
-function BatchCard({ batch, onView, onCancel, onDelete }: BatchCardProps) {
+function BatchCard({ batch, onView, onCancel, onDelete, onDuplicate }: BatchCardProps) {
   const { t } = useLanguage()
 
   const getStatusIcon = () => {
@@ -312,16 +317,21 @@ function BatchCard({ batch, onView, onCancel, onDelete }: BatchCardProps) {
           </div>
 
           <div className="flex gap-1">
-            <Button size="icon" variant="ghost" onClick={onView}>
+            <Button size="icon" variant="ghost" onClick={onView} title={t.batch?.view || "View"}>
               <Eye className="h-4 w-4" />
             </Button>
+            {!isActive && (
+              <Button size="icon" variant="ghost" onClick={onDuplicate} title={t.batch?.duplicate || "Duplicate"}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            )}
             {isActive && (
-              <Button size="icon" variant="ghost" onClick={onCancel}>
+              <Button size="icon" variant="ghost" onClick={onCancel} title={t.batch?.cancel || "Cancel"}>
                 <Ban className="h-4 w-4" />
               </Button>
             )}
             {!isActive && (
-              <Button size="icon" variant="ghost" onClick={onDelete}>
+              <Button size="icon" variant="ghost" onClick={onDelete} title={t.batch?.delete || "Delete"}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
@@ -450,6 +460,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
   const [pollingBatchId, setPollingBatchId] = useState<number | null>(null)
+  const [duplicatingBatch, setDuplicatingBatch] = useState<BatchJobWithItems | null>(null)
 
   const handleCreate = async (data: CreateBatchJobInput) => {
     setIsSubmitting(true)
@@ -457,6 +468,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
       const batch = await createBatch(data)
       if (batch) {
         setShowForm(false)
+        setDuplicatingBatch(null) // Reset duplicate form
         // Start polling for this batch
         setPollingBatchId(batch.id)
         pollStatus(batch.id)
@@ -491,6 +503,16 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
     }
   }
 
+  const handleDuplicate = async (batch: BatchJob) => {
+    // Fetch full batch with items to get prompts
+    const fullBatch = await fetchBatch(batch.id)
+    if (fullBatch) {
+      setDuplicatingBatch(fullBatch)
+      setShowForm(false) // Hide new form if open
+      setShowDetail(false) // Hide detail view if open
+    }
+  }
+
   const closeDetail = () => {
     setShowDetail(false)
     stopPolling()
@@ -519,7 +541,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
           <p className="text-sm text-muted-foreground">
             {t.batch?.description || "Generate multiple images at once"}
           </p>
-          {!showForm && (
+          {!showForm && !duplicatingBatch && (
             <Button 
               onClick={() => setShowForm(true)}
               className="rounded-xl font-medium text-white transition-all duration-300 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400"
@@ -548,6 +570,23 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
               onSubmit={handleCreate}
               onCancel={() => setShowForm(false)}
               isSubmitting={isSubmitting}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Duplicate Form */}
+      {duplicatingBatch && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">{t.batch?.duplicateBatch || "Duplicate Batch"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BatchForm
+              onSubmit={handleCreate}
+              onCancel={() => setDuplicatingBatch(null)}
+              isSubmitting={isSubmitting}
+              initialData={duplicatingBatch}
             />
           </CardContent>
         </Card>
@@ -586,6 +625,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
               onView={() => handleView(batch)}
               onCancel={() => handleCancel(batch)}
               onDelete={() => handleDelete(batch)}
+              onDuplicate={() => handleDuplicate(batch)}
             />
           ))}
         </div>
