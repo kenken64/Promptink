@@ -239,21 +239,38 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     const permanentUrl = getGalleryImageUrl(galleryImage.id)
     generatedImageQueries.updateImageUrl.run(permanentUrl, galleryImage.id)
 
-    // Auto-sync to TRMNL if enabled - queue for delayed sync (10 min between each)
+    // Auto-sync to TRMNL if enabled
     if (batch.auto_sync_trmnl === 1) {
-      pendingSyncs.push({
-        imageUrl: permanentUrl,
-        prompt: item.prompt,
-        userId: batch.user_id,
-        batchId: batch.id,
-        itemId: item.id
-      })
-      log("INFO", "Batch image queued for TRMNL sync", { 
-        batchId: batch.id, 
-        itemId: item.id,
-        imageId: galleryImage.id,
-        queuePosition: pendingSyncs.length
-      })
+      // First image syncs immediately, subsequent ones are queued with 10-min delay
+      if (lastSyncToTrmnlAt === 0) {
+        // First sync - do it immediately
+        try {
+          await syncToTrmnl(permanentUrl, item.prompt, batch.user_id)
+          lastSyncToTrmnlAt = Date.now()
+          log("INFO", "Batch image synced to TRMNL (first/immediate)", { 
+            batchId: batch.id, 
+            itemId: item.id,
+            imageId: galleryImage.id 
+          })
+        } catch (syncError) {
+          log("WARN", "Failed to sync batch image to TRMNL", syncError)
+        }
+      } else {
+        // Queue for delayed sync (10 min between each)
+        pendingSyncs.push({
+          imageUrl: permanentUrl,
+          prompt: item.prompt,
+          userId: batch.user_id,
+          batchId: batch.id,
+          itemId: item.id
+        })
+        log("INFO", "Batch image queued for TRMNL sync", { 
+          batchId: batch.id, 
+          itemId: item.id,
+          imageId: galleryImage.id,
+          queuePosition: pendingSyncs.length
+        })
+      }
     }
 
     // Update item as completed
