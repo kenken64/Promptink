@@ -189,6 +189,7 @@ export interface BatchJobItem {
   error_message: string | null
   created_at: string
   completed_at: string | null
+  synced_to_trmnl: number // 0 = not synced, 1 = synced
 }
 
 // User device type (multiple TRMNL devices per user)
@@ -471,6 +472,11 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_batch_job_items_batch_id ON batch_job_items(batch_id)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_batch_job_items_status ON batch_job_items(status)`)
 
+  // Migration: Add synced_to_trmnl column to batch_job_items
+  try {
+    db.run(`ALTER TABLE batch_job_items ADD COLUMN synced_to_trmnl INTEGER DEFAULT 0`)
+  } catch { /* Column already exists */ }
+
   // Token blacklist table (for revoked tokens)
   db.run(`
     CREATE TABLE IF NOT EXISTS token_blacklist (
@@ -690,6 +696,7 @@ let _batchJobItemQueries: {
   create: Statement<BatchJobItem, [number, string]>
   updateStatus: Statement<void, [string, number | null, string | null, number]>
   updateCompleted: Statement<void, [string, number | null, string | null, number]>
+  markSyncedToTrmnl: Statement<void, [number]>
 }
 
 let _passwordResetTokenQueries: {
@@ -962,6 +969,9 @@ function initPreparedStatements() {
     updateCompleted: db.prepare<void, [string, number | null, string | null, number]>(
       "UPDATE batch_job_items SET status = ?, image_id = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
+    markSyncedToTrmnl: db.prepare<void, [number]>(
+      "UPDATE batch_job_items SET synced_to_trmnl = 1 WHERE id = ?"
+    ),
   }
 
   _passwordResetTokenQueries = {
@@ -1144,6 +1154,7 @@ export const batchJobItemQueries = {
   get create() { return _batchJobItemQueries.create },
   get updateStatus() { return _batchJobItemQueries.updateStatus },
   get updateCompleted() { return _batchJobItemQueries.updateCompleted },
+  get markSyncedToTrmnl() { return _batchJobItemQueries.markSyncedToTrmnl },
 }
 
 export const passwordResetTokenQueries = {

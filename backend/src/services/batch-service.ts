@@ -123,6 +123,8 @@ async function processPendingSyncs(): Promise<void> {
   try {
     await syncToTrmnl(sync.imageUrl, sync.prompt, sync.userId)
     lastSyncToTrmnlAt = Date.now()
+    // Mark the item as synced to TRMNL
+    batchJobItemQueries.markSyncedToTrmnl.run(sync.itemId)
     log("INFO", "Batch image synced to TRMNL (delayed)", { 
       batchId: sync.batchId, 
       itemId: sync.itemId,
@@ -247,6 +249,8 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
         try {
           await syncToTrmnl(permanentUrl, item.prompt, batch.user_id)
           lastSyncToTrmnlAt = Date.now()
+          // Mark the item as synced to TRMNL
+          batchJobItemQueries.markSyncedToTrmnl.run(item.id)
           log("INFO", "Batch image synced to TRMNL (first/immediate)", { 
             batchId: batch.id, 
             itemId: item.id,
