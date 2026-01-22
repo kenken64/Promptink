@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
   Edit2,
+  Copy,
   Power,
   PowerOff,
   X,
@@ -263,11 +264,12 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
 interface ScheduleCardProps {
   job: ScheduledJob
   onEdit: () => void
+  onDuplicate: () => void
   onDelete: () => void
   onToggle: () => void
 }
 
-function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
+function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: ScheduleCardProps) {
   const { t } = useLanguage()
   const isEnabled = !!job.is_enabled
 
@@ -340,10 +342,13 @@ function ScheduleCard({ job, onEdit, onDelete, onToggle }: ScheduleCardProps) {
                 <PowerOff className="h-4 w-4 text-muted-foreground" />
               )}
             </Button>
-            <Button size="sm" variant="ghost" onClick={onEdit}>
+            <Button size="sm" variant="ghost" onClick={onEdit} title={t.schedule?.edit || "Edit"}>
               <Edit2 className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={onDelete}>
+            <Button size="sm" variant="ghost" onClick={onDuplicate} title={t.schedule?.duplicate || "Duplicate"}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onDelete} title={t.schedule?.delete || "Delete"}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
@@ -358,6 +363,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { jobs, total, limit, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
   const [showForm, setShowForm] = useState(false)
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null)
+  const [duplicatingJob, setDuplicatingJob] = useState<ScheduledJob | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
@@ -367,6 +373,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
       const result = await createJob(data)
       if (result) {
         setShowForm(false)
+        setDuplicatingJob(null)
       }
     } finally {
       setIsSubmitting(false)
@@ -413,7 +420,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
             {t.schedule?.description || "Automatically generate images on a schedule"}
           </p>
           {/* New Schedule button */}
-          {!showForm && !editingJob && (
+          {!showForm && !editingJob && !duplicatingJob && (
             <Button
               onClick={() => setShowForm(true)}
               disabled={!canCreateMore}
@@ -459,6 +466,27 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
         </Card>
       )}
 
+      {/* Duplicate Form */}
+      {duplicatingJob && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>{t.schedule?.duplicateSchedule || "Duplicate Schedule"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScheduleForm
+              initialData={{
+                ...duplicatingJob,
+                id: 0, // Reset id so it creates a new one
+                scheduled_at: null, // Reset one-time schedule date
+              }}
+              onSubmit={handleCreate}
+              onCancel={() => setDuplicatingJob(null)}
+              isSubmitting={isSubmitting}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Error */}
       {error && (
         <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4">
@@ -491,6 +519,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
               <ScheduleCard
                 job={job}
                 onEdit={() => setEditingJob(job)}
+                onDuplicate={() => setDuplicatingJob(job)}
                 onDelete={() => setDeleteConfirm(job.id)}
                 onToggle={() => handleToggle(job.id)}
               />

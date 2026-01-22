@@ -73,12 +73,13 @@ const SUBSCRIPTION_WITH_GST = SUBSCRIPTION_FEE + SUBSCRIPTION_GST
 
 export function PurchasePage({ onSuccess, onNavigate, onSkip, onLogout }: PurchasePageProps) {
   const { createOrder, verifyPayment } = useOrders()
-  const { subscription } = useSubscription()
+  const { subscription, markAsTrmnlOwner } = useSubscription()
   const { t } = useLanguage()
 
   const [quantity, setQuantity] = useState(1)
   const [isGift, setIsGift] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isMarkingOwner, setIsMarkingOwner] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Shipping form state
@@ -561,6 +562,30 @@ export function PurchasePage({ onSuccess, onNavigate, onSkip, onLogout }: Purcha
                   {t.purchase.skipForNow}
                 </button>
               )}
+
+              {/* I already own a TRMNL device button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsMarkingOwner(true)
+                  setError(null)
+                  const result = await markAsTrmnlOwner()
+                  setIsMarkingOwner(false)
+                  if (result.success) {
+                    // Navigate to chat after marking as owner
+                    onSkip?.()
+                  } else {
+                    setError(result.error || "Failed to update. Please try again.")
+                  }
+                }}
+                disabled={isMarkingOwner}
+                className="w-full py-3 text-teal-500 hover:text-teal-400 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isMarkingOwner 
+                  ? t.purchase.saving || "Saving..." 
+                  : t.purchase.alreadyOwnDevice || "I already own a TRMNL device"
+                }
+              </button>
             </div>
           </form>
         </div>

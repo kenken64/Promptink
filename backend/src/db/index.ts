@@ -60,6 +60,7 @@ export interface User {
   subscription_status: 'none' | 'active' | 'paused' | 'cancelled' | 'past_due'
   subscription_current_period_end: string | null
   first_order_id: number | null
+  owns_trmnl_device: number // 1 if user already owns a TRMNL device (skipped purchase)
   created_at: string
   updated_at: string
 }
@@ -288,6 +289,9 @@ export function initDatabase() {
   } catch {}
   try {
     db.run(`ALTER TABLE users ADD COLUMN first_order_id INTEGER REFERENCES orders(id)`)
+  } catch {}
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN owns_trmnl_device INTEGER DEFAULT 0`)
   } catch {}
 
   // Orders table
@@ -597,6 +601,7 @@ export interface UserSubscriptionStatus {
   subscription_current_period_end: string | null
   razorpay_customer_id: string | null
   first_order_id: number | null
+  owns_trmnl_device: number
 }
 
 // Prepared statements (initialized after tables exist)
@@ -614,6 +619,7 @@ let _userQueries: {
   updateFirstOrderId: Statement<void, [number, number]>
   findBySubscriptionId: Statement<{ id: number }, [string]>
   findByRazorpayCustomerId: Statement<{ id: number }, [string]>
+  setOwnsTrmnlDevice: Statement<void, [number, number]>
 }
 
 let _syncedImageQueries: {
@@ -746,7 +752,7 @@ function initPreparedStatements() {
       "SELECT trmnl_device_api_key, trmnl_mac_address, COALESCE(trmnl_background_color, 'black') as trmnl_background_color FROM users WHERE id = ?"
     ),
     getSubscriptionStatus: db.prepare<UserSubscriptionStatus, [number]>(
-      "SELECT COALESCE(subscription_status, 'none') as subscription_status, subscription_id, subscription_current_period_end, razorpay_customer_id, first_order_id FROM users WHERE id = ?"
+      "SELECT COALESCE(subscription_status, 'none') as subscription_status, subscription_id, subscription_current_period_end, razorpay_customer_id, first_order_id, COALESCE(owns_trmnl_device, 0) as owns_trmnl_device FROM users WHERE id = ?"
     ),
     updateRazorpayCustomerId: db.prepare<void, [string, number]>(
       "UPDATE users SET razorpay_customer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -765,6 +771,9 @@ function initPreparedStatements() {
     ),
     findByRazorpayCustomerId: db.prepare<{ id: number }, [string]>(
       "SELECT id FROM users WHERE razorpay_customer_id = ?"
+    ),
+    setOwnsTrmnlDevice: db.prepare<void, [number, number]>(
+      "UPDATE users SET owns_trmnl_device = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
   }
 
@@ -1064,6 +1073,7 @@ export const userQueries = {
   get updateFirstOrderId() { return _userQueries.updateFirstOrderId },
   get findBySubscriptionId() { return _userQueries.findBySubscriptionId },
   get findByRazorpayCustomerId() { return _userQueries.findByRazorpayCustomerId },
+  get setOwnsTrmnlDevice() { return _userQueries.setOwnsTrmnlDevice },
 }
 
 export const syncedImageQueries = {

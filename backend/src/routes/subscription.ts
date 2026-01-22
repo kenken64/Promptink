@@ -10,6 +10,7 @@ import {
   updateRazorpayCustomerId,
   activateSubscription,
   getUserIdBySubscriptionId,
+  setOwnsTrmnlDevice,
 } from "../services/subscription-service"
 import {
   cancelRazorpaySubscription,
@@ -424,6 +425,35 @@ export const subscriptionRoutes = {
         log("ERROR", "Failed to check access status", error)
         return Response.json(
           { error: "Failed to check access status" },
+          { status: 500 }
+        )
+      }
+    }),
+  },
+
+  // Mark user as owning a TRMNL device (skip purchase requirement)
+  "/api/subscription/owns-trmnl": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const success = setOwnsTrmnlDevice(user.id, true)
+
+        if (!success) {
+          return Response.json(
+            { error: "Failed to update device ownership status" },
+            { status: 500 }
+          )
+        }
+
+        log("INFO", "User marked as TRMNL device owner", { userId: user.id })
+
+        return Response.json({
+          success: true,
+          message: "Device ownership recorded. You can now use the app.",
+        })
+      } catch (error) {
+        log("ERROR", "Failed to set TRMNL device ownership", error)
+        return Response.json(
+          { error: "Failed to update device ownership status" },
           { status: 500 }
         )
       }

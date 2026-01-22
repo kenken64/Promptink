@@ -24,13 +24,16 @@ export function getSubscriptionStatus(
 
     const hasOrder = hasCompletedOrder(userId)
     const orderCount = getPaidOrderCount(userId)
+    
+    // User has "completed order" if they have a paid order OR they own a TRMNL device
+    const hasCompletedOrderOrOwnsTrmnl = hasOrder || subStatus.owns_trmnl_device === 1
 
     return {
       subscription: {
         status: (subStatus.subscription_status as SubscriptionStatusResponse["status"]) || "none",
         subscriptionId: subStatus.subscription_id,
         currentPeriodEnd: subStatus.subscription_current_period_end,
-        hasCompletedOrder: hasOrder,
+        hasCompletedOrder: hasCompletedOrderOrOwnsTrmnl,
         totalOrdersCount: orderCount,
       },
     }
@@ -55,6 +58,12 @@ export function hasActiveSubscription(userId: number): boolean {
 // Check if user needs to purchase first
 export function needsToPurchase(userId: number): boolean {
   try {
+    // Check if user already owns a TRMNL device (skipped purchase)
+    const subStatus = userQueries.getSubscriptionStatus.get(userId)
+    if (subStatus?.owns_trmnl_device === 1) {
+      return false
+    }
+    
     const hasOrder = hasCompletedOrder(userId)
     return !hasOrder
   } catch (error) {
@@ -234,5 +243,17 @@ export function getUserIdByRazorpayCustomerId(customerId: string): number | null
   } catch (error) {
     log("ERROR", "Failed to get user by Razorpay customer ID", error)
     return null
+  }
+}
+
+// Set user as owning a TRMNL device (skipping purchase)
+export function setOwnsTrmnlDevice(userId: number, owns: boolean): boolean {
+  try {
+    userQueries.setOwnsTrmnlDevice.run(owns ? 1 : 0, userId)
+    log("INFO", "Updated owns_trmnl_device flag", { userId, owns })
+    return true
+  } catch (error) {
+    log("ERROR", "Failed to set owns_trmnl_device flag", error)
+    return false
   }
 }
