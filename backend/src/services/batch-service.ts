@@ -39,10 +39,24 @@ export const MAX_BATCH_SIZE = 10
 // Rate limiting: 30 second delay between each image generation to avoid OpenAI rate limits
 const RATE_LIMIT_DELAY_MS = 30000
 
+// TRMNL sync delay: 10 minutes between each sync to stagger updates
+const TRMNL_SYNC_DELAY_MS = 10 * 60 * 1000 // 10 minutes
+
 // Batch processor singleton
 let isProcessing = false
 let processorInterval: Timer | null = null
 let lastImageGeneratedAt: number = 0
+let lastSyncToTrmnlAt: number = 0
+
+// Queue for pending TRMNL syncs (imageUrl, prompt, userId, batchId, itemId)
+interface PendingSync {
+  imageUrl: string
+  prompt: string
+  userId: number
+  batchId: number
+  itemId: number
+}
+let pendingSyncs: PendingSync[] = []
 
 // Start the batch processor
 export function startBatchProcessor(intervalMs: number = 5000): void {
@@ -62,13 +76,15 @@ export function startBatchProcessor(intervalMs: number = 5000): void {
     })
   }
 
-  log("INFO", "Starting batch processor", { intervalMs, rateLimitDelayMs: RATE_LIMIT_DELAY_MS })
+  log("INFO", "Starting batch processor", { intervalMs, rateLimitDelayMs: RATE_LIMIT_DELAY_MS, trmnlSyncDelayMs: TRMNL_SYNC_DELAY_MS })
 
   processorInterval = setInterval(async () => {
+    await processPendingSyncs()
     await processPendingBatches()
   }, intervalMs)
 
   // Run immediately on start
+  processPendingSyncs()
   processPendingBatches()
 }
 
@@ -78,6 +94,42 @@ export function stopBatchProcessor(): void {
     clearInterval(processorInterval)
     processorInterval = null
     log("INFO", "Batch processor stopped")
+  }
+}
+
+// Process pending TRMNL syncs with 10-minute delay between each
+async function processPendingSyncs(): Promise<void> {
+  if (pendingSyncs.length === 0) {
+    return
+  }
+
+  const now = Date.now()
+  const timeSinceLastSync = now - lastSyncToTrmnlAt
+
+  // Check if 10 minutes have passed since last sync
+  if (lastSyncToTrmnlAt > 0 && timeSinceLastSync < TRMNL_SYNC_DELAY_MS) {
+    const remainingMs = TRMNL_SYNC_DELAY_MS - timeSinceLastSync
+    const remainingMin = Math.ceil(remainingMs / 60000)
+    log("DEBUG", `TRMNL sync delayed, ${remainingMin} min remaining`, { 
+      pendingCount: pendingSyncs.length 
+    })
+    return
+  }
+
+  // Process the next sync in queue
+  const sync = pendingSyncs.shift()
+  if (!sync) return
+
+  try {
+    await syncToTrmnl(sync.imageUrl, sync.prompt, sync.userId)
+    lastSyncToTrmnlAt = Date.now()
+    log("INFO", "Batch image synced to TRMNL (delayed)", { 
+      batchId: sync.batchId, 
+      itemId: sync.itemId,
+      remainingInQueue: pendingSyncs.length
+    })
+  } catch (syncError) {
+    log("WARN", "Failed to sync batch image to TRMNL", syncError)
   }
 }
 
@@ -189,15 +241,35 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
 
     // Auto-sync to TRMNL if enabled
     if (batch.auto_sync_trmnl === 1) {
-      try {
-        await syncToTrmnl(permanentUrl, item.prompt, batch.user_id)
-        log("INFO", "Batch image synced to TRMNL", { 
+      // First image syncs immediately, subsequent ones are queued with 10-min delay
+      if (lastSyncToTrmnlAt === 0) {
+        // First sync - do it immediately
+        try {
+          await syncToTrmnl(permanentUrl, item.prompt, batch.user_id)
+          lastSyncToTrmnlAt = Date.now()
+          log("INFO", "Batch image synced to TRMNL (first/immediate)", { 
+            batchId: batch.id, 
+            itemId: item.id,
+            imageId: galleryImage.id 
+          })
+        } catch (syncError) {
+          log("WARN", "Failed to sync batch image to TRMNL", syncError)
+        }
+      } else {
+        // Queue for delayed sync (10 min between each)
+        pendingSyncs.push({
+          imageUrl: permanentUrl,
+          prompt: item.prompt,
+          userId: batch.user_id,
+          batchId: batch.id,
+          itemId: item.id
+        })
+        log("INFO", "Batch image queued for TRMNL sync", { 
           batchId: batch.id, 
           itemId: item.id,
-          imageId: galleryImage.id 
+          imageId: galleryImage.id,
+          queuePosition: pendingSyncs.length
         })
-      } catch (syncError) {
-        log("WARN", "Failed to sync batch image to TRMNL", syncError)
       }
     }
 

@@ -173,6 +173,31 @@ export function useSubscription() {
     }
   }, [authFetch])
 
+  // Mark user as already owning a TRMNL device (skip purchase)
+  const markAsTrmnlOwner = useCallback(async (): Promise<{
+    success: boolean
+    error?: string
+  }> => {
+    try {
+      const response = await authFetch("/api/subscription/owns-trmnl", {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        return { success: false, error: data.error || "Failed to update device ownership" }
+      }
+
+      // Refresh subscription status after marking as owner
+      fetchStatus()
+
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: "Failed to update device ownership" }
+    }
+  }, [authFetch, fetchStatus])
+
   // Helper to check if user has full access
   const hasFullAccess = useCallback((): boolean => {
     if (!state.subscription) return false
@@ -215,6 +240,7 @@ export function useSubscription() {
     cancelSubscription,
     reactivateSubscription,
     createDirectSubscription,
+    markAsTrmnlOwner,
     hasFullAccess,
     needsToPurchase,
     needsToReactivate,
