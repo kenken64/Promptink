@@ -404,6 +404,12 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
                 <div className="flex items-center gap-2 min-w-[80px]">
                   {getItemStatusIcon(item.status)}
                   <span className="text-sm font-medium">#{index + 1}</span>
+                  {item.synced_to_trmnl === 1 && (
+                    <Monitor 
+                      className="h-4 w-4 text-emerald-500" 
+                      title={t.batch?.syncedToTrmnl || "Synced to TRMNL"} 
+                    />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{item.prompt}</p>

@@ -26,6 +26,7 @@ export interface BatchJobItem {
   error_message: string | null
   created_at: string
   completed_at: string | null
+  synced_to_trmnl: number // 0 = not synced, 1 = synced
 }
 
 export interface BatchJobWithItems extends BatchJob {

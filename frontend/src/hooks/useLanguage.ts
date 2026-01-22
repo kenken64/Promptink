@@ -402,6 +402,7 @@ export const translations = {
       oneBatchProcessing: "1 batch is being processed...",
       batchesProcessing: "batches are being processed...",
       duplicateBatch: "Duplicate Batch",
+      syncedToTrmnl: "Synced to TRMNL",
     },
     // Prompt Enhancement
     enhancePromptTitle: "Enhance Your Prompt?",
@@ -811,6 +812,7 @@ export const translations = {
       oneBatchProcessing: "1 个批量任务正在处理中...",
       batchesProcessing: "个批量任务正在处理中...",
       duplicateBatch: "复制批量任务",
+      syncedToTrmnl: "已同步到 TRMNL",
     },
     // Prompt Enhancement
     enhancePromptTitle: "增强您的提示词？",
