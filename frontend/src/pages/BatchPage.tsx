@@ -413,13 +413,13 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
                 </div>
                 {item.image_id && (
                   <a
-                    href={`/api/gallery/${item.image_id}/image`}
+                    href={`/api/gallery/image/${item.image_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-shrink-0"
                   >
                     <img
-                      src={`/api/gallery/${item.image_id}/image`}
+                      src={`/api/gallery/thumbnail/${item.image_id}`}
                       alt={item.prompt}
                       className="w-12 h-12 object-cover rounded"
                     />
