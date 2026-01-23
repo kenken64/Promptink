@@ -1,5 +1,4 @@
 import { config } from "../config"
-import { sharedImageQueries, generatedImageQueries, userQueries } from "../db"
 
 // SEO meta tags configuration for each route
 export interface SEOConfig {
@@ -103,36 +102,17 @@ export async function getSEOConfig(pathname: string): Promise<SEOConfig> {
 }
 
 // Get SEO config for shared image pages
+// Note: Share pages are served with full meta tags from the share route handler
+// This provides basic SEO for the initial HTML before the share route takes over
 async function getSharePageSEO(shareId: string): Promise<SEOConfig> {
-  try {
-    const share = sharedImageQueries.findByShareId.get(shareId)
-    if (!share) {
-      return {
-        ...defaultSEO,
-        title: "Shared Image - PromptInk",
-        description: "View this AI-generated image on PromptInk.",
-      }
-    }
-
-    const truncatedPrompt = share.prompt.length > 100
-      ? share.prompt.substring(0, 100) + "..."
-      : share.prompt
-
-    return {
-      title: `"${truncatedPrompt}" - AI Art by PromptInk`,
-      description: `AI-generated image: ${share.prompt}. Created with DALL-E 3 on PromptInk.`,
-      keywords: "AI art, AI generated image, DALL-E, PromptInk",
-      ogType: "article",
-      ogImage: `${config.server.baseUrl}/api/share/${shareId}/image`,
-      twitterCard: "summary_large_image",
-      canonical: `${config.server.baseUrl}/share/${shareId}`,
-    }
-  } catch (error) {
-    return {
-      ...defaultSEO,
-      title: "Shared Image - PromptInk",
-      description: "View this AI-generated image on PromptInk.",
-    }
+  return {
+    title: "Shared Image - PromptInk",
+    description: "View this AI-generated image created with DALL-E 3 on PromptInk.",
+    keywords: "AI art, AI generated image, DALL-E, PromptInk",
+    ogType: "article",
+    ogImage: `${config.server.baseUrl}/api/share/${shareId}/image`,
+    twitterCard: "summary_large_image",
+    canonical: `${config.server.baseUrl}/share/${shareId}`,
   }
 }
 
