@@ -368,7 +368,9 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
 
 export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { t } = useLanguage()
-  const { jobs, total, limit, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
+  const { jobs, pagination, maxJobsAllowed, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
+  const total = pagination?.total ?? 0
+  const limit = maxJobsAllowed
   const [showForm, setShowForm] = useState(false)
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null)
   const [duplicatingJob, setDuplicatingJob] = useState<ScheduledJob | null>(null)
