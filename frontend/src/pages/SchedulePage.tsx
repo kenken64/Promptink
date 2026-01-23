@@ -182,12 +182,16 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {scheduleType !== "once" && (
         <div>
           <label className="block text-sm font-medium mb-1">{t.schedule?.scheduleTime || "Time"}</label>
-          <Input
-            type="time"
-            value={scheduleTime}
-            onChange={e => setScheduleTime(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={e => setScheduleTime(e.target.value)}
+              className="pl-10 cursor-pointer"
+              required
+            />
+          </div>
         </div>
       )}
 
@@ -218,13 +222,17 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {scheduleType === "once" && (
         <div>
           <label className="block text-sm font-medium mb-1">{t.schedule?.scheduledAt || "Date & Time"}</label>
-          <Input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={e => setScheduledAt(e.target.value)}
-            min={getLocalDatetimeString(new Date().toISOString())}
-            required
-          />
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={e => setScheduledAt(e.target.value)}
+              min={getLocalDatetimeString(new Date().toISOString())}
+              className="pl-10 cursor-pointer"
+              required
+            />
+          </div>
         </div>
       )}
 
