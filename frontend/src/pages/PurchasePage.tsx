@@ -353,7 +353,7 @@ export function PurchasePage({ onSuccess, onNavigate, onSkip, onLogout }: Purcha
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Gift toggle */}
             <div className="flex items-center gap-3">
               <button

@@ -104,7 +104,7 @@ function BatchForm({ initialData, onSubmit, onCancel, isSubmitting }: BatchFormP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {/* Batch Name (Optional) */}
       <div>
         <label className="block text-sm font-medium mb-1">{t.batch?.batchName || "Batch Name (Optional)"}</label>

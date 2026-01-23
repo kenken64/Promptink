@@ -681,7 +681,7 @@ export function AdminPage() {
             <p className="text-zinc-500 mt-2">Enter the admin password to continue</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} noValidate className="space-y-4">
             <Input
               type="password"
               placeholder="Password"

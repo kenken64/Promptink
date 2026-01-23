@@ -112,7 +112,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {/* Prompt */}
       <div>
         <label className="block text-sm font-medium mb-1">{t.schedule?.prompt || "Prompt"}</label>

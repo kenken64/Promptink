@@ -91,7 +91,7 @@ export function RegisterPage({ onRegister, onSwitchToLogin, translations: t }: R
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Name field */}
             <div className="space-y-2">
               <label htmlFor="name" className="block text-sm font-medium text-foreground">
