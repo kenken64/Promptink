@@ -180,16 +180,23 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
   const item = batchJobItemQueries.findPendingByBatchId.get(batch.id)
 
   if (!item) {
-    // No more items to process, batch is complete
-    const status = batch.failed_count > 0 && batch.completed_count === 0 
-      ? "failed" 
+    // No more items to process - fetch fresh batch data to get accurate counts
+    const freshBatch = batchJobQueries.findById.get(batch.id)
+    if (!freshBatch) {
+      log("ERROR", "Batch not found when trying to mark as complete", { batchId: batch.id })
+      return
+    }
+
+    // Determine status based on fresh counts
+    const status = freshBatch.failed_count > 0 && freshBatch.completed_count === 0
+      ? "failed"
       : "completed"
     batchJobQueries.updateCompleted.run(status, batch.id)
-    log("INFO", "Batch job completed", { 
-      batchId: batch.id, 
+    log("INFO", "Batch job completed", {
+      batchId: batch.id,
       status,
-      completed: batch.completed_count,
-      failed: batch.failed_count 
+      completed: freshBatch.completed_count,
+      failed: freshBatch.failed_count
     })
     return
   }
@@ -280,17 +287,13 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     // Update item as completed
     batchJobItemQueries.updateCompleted.run("completed", galleryImage.id, null, item.id)
 
-    // Update batch progress
-    batchJobQueries.updateProgress.run(
-      batch.completed_count + 1,
-      batch.failed_count,
-      batch.id
-    )
+    // Update batch progress atomically
+    batchJobQueries.incrementCompleted.run(batch.id)
 
-    log("INFO", "Batch item completed", { 
-      batchId: batch.id, 
-      itemId: item.id, 
-      imageId: galleryImage.id 
+    log("INFO", "Batch item completed", {
+      batchId: batch.id,
+      itemId: item.id,
+      imageId: galleryImage.id
     })
 
   } catch (error) {
@@ -307,12 +310,8 @@ async function processNextBatchItem(batch: BatchJob): Promise<void> {
     // Update item as failed
     batchJobItemQueries.updateCompleted.run("failed", null, errorMessage, item.id)
 
-    // Update batch progress
-    batchJobQueries.updateProgress.run(
-      batch.completed_count,
-      batch.failed_count + 1,
-      batch.id
-    )
+    // Update batch progress atomically
+    batchJobQueries.incrementFailed.run(batch.id)
   }
 }
 
@@ -391,6 +390,18 @@ export function getBatchJobWithItems(batchId: number, userId: number): BatchJobW
 // Get all batch jobs for a user
 export function getUserBatchJobs(userId: number): BatchJob[] {
   return batchJobQueries.findAllByUserId.all(userId)
+}
+
+// Get batch jobs for a user with pagination
+export function getUserBatchJobsPaginated(
+  userId: number,
+  limit: number,
+  offset: number
+): { batches: BatchJob[]; total: number } {
+  const batches = batchJobQueries.findAllByUserIdPaginated.all(userId, limit, offset)
+  const countResult = batchJobQueries.countByUserId.get(userId)
+  const total = countResult?.count || 0
+  return { batches, total }
 }
 
 // Cancel a batch job

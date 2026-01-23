@@ -23,6 +23,7 @@ import { useTrmnlSync } from "./hooks/useTrmnlSync"
 import { useAuth } from "./hooks/useAuth"
 import { useSubscription } from "./hooks/useSubscription"
 import { useSuggestions } from "./hooks/useSuggestions"
+import { useSEO } from "./hooks/useSEO"
 
 // Lazy load heavier pages for code splitting
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })))
@@ -103,6 +104,9 @@ export default function App() {
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Update SEO meta tags when page changes
+  useSEO()
 
   // Check if user needs to be redirected to purchase page
   useEffect(() => {
