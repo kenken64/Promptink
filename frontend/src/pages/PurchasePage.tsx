@@ -218,7 +218,7 @@ export function PurchasePage({ onSuccess, onNavigate, onSkip, onLogout }: Purcha
         amount: razorpay.amount,
         currency: razorpay.currency,
         name: "PromptInk",
-        description: `TRMNL Photo Frame x${quantity}`,
+        description: `TRMNL E-ink Display Frame (Qty: ${quantity})${hasExistingSubscription ? "" : " + Monthly Subscription"}`,
         image: `${window.location.origin}/api/logo.svg`,
         order_id: razorpay.orderId,
         handler: async (response: RazorpayResponse) => {
