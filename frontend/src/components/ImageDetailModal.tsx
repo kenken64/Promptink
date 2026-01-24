@@ -191,19 +191,8 @@ export function ImageDetailModal({
   }
 
   const formatDate = (dateStr: string) => {
-    if (userTimezone) {
-      return formatDateTimeInTimezone(dateStr, userTimezone, {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    }
-    // Fallback to browser timezone
-    const date = new Date(dateStr)
-    return date.toLocaleDateString(undefined, {
+    // Function handles fallback to browser timezone when userTimezone is empty
+    return formatDateTimeInTimezone(dateStr, userTimezone || "", {
       weekday: "long",
       year: "numeric",
       month: "long",

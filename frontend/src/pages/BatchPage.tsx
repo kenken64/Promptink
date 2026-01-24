@@ -317,15 +317,13 @@ function BatchCard({ batch, onView, onCancel, onDelete, onDuplicate, userTimezon
             )}
 
             <p className="text-xs text-muted-foreground mt-1">
-              {t.batch?.created || "Created"}: {userTimezone
-                ? formatDateTimeInTimezone(batch.created_at, userTimezone, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : new Date(batch.created_at).toLocaleString()}
+              {t.batch?.created || "Created"}: {formatDateTimeInTimezone(batch.created_at, userTimezone || "", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
           </div>
 

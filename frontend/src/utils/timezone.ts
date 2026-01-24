@@ -97,11 +97,15 @@ export function formatDateInTimezone(
   try {
     const date = new Date(dateStr)
     const defaultOptions: Intl.DateTimeFormatOptions = {
-      timeZone: timezone,
       month: "short",
       day: "numeric",
       year: "numeric",
       ...options
+    }
+    // Only set timeZone if it's a valid non-UTC timezone
+    // This allows browser locale to be used when timezone is not set
+    if (timezone && timezone !== "UTC") {
+      defaultOptions.timeZone = timezone
     }
     return date.toLocaleDateString(undefined, defaultOptions)
   } catch {
@@ -120,7 +124,6 @@ export function formatDateTimeInTimezone(
   try {
     const date = new Date(dateStr)
     const defaultOptions: Intl.DateTimeFormatOptions = {
-      timeZone: timezone,
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -129,10 +132,15 @@ export function formatDateTimeInTimezone(
       minute: "2-digit",
       ...options
     }
-    return date.toLocaleDateString(undefined, defaultOptions)
+    // Only set timeZone if it's a valid non-UTC timezone
+    // This allows browser locale to be used when timezone is not set
+    if (timezone && timezone !== "UTC") {
+      defaultOptions.timeZone = timezone
+    }
+    return date.toLocaleString(undefined, defaultOptions)
   } catch {
     // Fallback to browser timezone
     const date = new Date(dateStr)
-    return date.toLocaleDateString(undefined, options)
+    return date.toLocaleString(undefined, options)
   }
 }

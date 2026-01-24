@@ -79,16 +79,8 @@ export const GalleryCard = memo(function GalleryCard({
   }
 
   const formatDate = (dateStr: string) => {
-    if (userTimezone) {
-      return formatDateInTimezone(dateStr, userTimezone, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    }
-    // Fallback to browser timezone
-    const date = new Date(dateStr)
-    return date.toLocaleDateString(undefined, {
+    // Function handles fallback to browser timezone when userTimezone is empty
+    return formatDateInTimezone(dateStr, userTimezone || "", {
       month: "short",
       day: "numeric",
       year: "numeric",

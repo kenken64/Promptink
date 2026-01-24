@@ -303,27 +303,21 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezo
     if (diffMs < 60000) return t.schedule?.soon || "Soon"
     if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m`
     if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h`
-    // Use user timezone for date display
-    if (userTimezone) {
-      return formatDateInTimezone(dateStr, userTimezone)
-    }
-    return date.toLocaleDateString()
+    // Use user timezone for date display (function handles fallback to browser timezone)
+    return formatDateInTimezone(dateStr, userTimezone || "")
   }
 
   const getScheduleDescription = () => {
     if (job.schedule_type === "once") {
       if (!job.scheduled_at) return "-"
-      // Use user timezone for datetime display
-      if (userTimezone) {
-        return formatDateTimeInTimezone(job.scheduled_at, userTimezone, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      }
-      return new Date(job.scheduled_at).toLocaleString()
+      // Use user timezone for datetime display (function handles fallback to browser timezone)
+      return formatDateTimeInTimezone(job.scheduled_at, userTimezone || "", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     }
     if (job.schedule_type === "daily") {
       return `${t.schedule?.daily || "Daily"} @ ${job.schedule_time}`
