@@ -83,7 +83,8 @@
 
       html, body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
       html { height: 100%; }
-      body { min-height: 100%; min-height: 100dvh; overscroll-behavior-y: contain; }
+      body { min-height: 100%; min-height: 100dvh; overscroll-behavior-y: contain; overflow-y: auto; }
+      #root { min-height: 100%; min-height: 100dvh; }
 
       /* Enable touch scrolling on iOS */
       .scroll-touch { -webkit-overflow-scrolling: touch; overflow-y: auto; }
