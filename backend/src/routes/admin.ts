@@ -114,6 +114,12 @@ async function getOpenAIUsage(): Promise<{
 }> {
   const adminKey = config.openai.adminKey
   
+  log("DEBUG", "OpenAI Admin Key check", { 
+    hasKey: !!adminKey, 
+    keyLength: adminKey?.length || 0,
+    keyPrefix: adminKey?.substring(0, 10) || "none"
+  })
+  
   if (!adminKey) {
     return {
       images: { total: 0, byModel: {}, bySize: {} },
