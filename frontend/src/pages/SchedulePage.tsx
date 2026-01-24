@@ -404,14 +404,16 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
 
-  // Fetch user's saved timezone
+  // Fetch user's saved timezone (only use if explicitly set, not default UTC)
   useEffect(() => {
     const fetchTimezone = async () => {
       try {
         const response = await authFetch("/api/settings")
         if (response.ok) {
           const data = await response.json()
-          if (data.timezone) {
+          // Only use saved timezone if it's not the default UTC
+          // This allows browser timezone to be used for users who haven't set a preference
+          if (data.timezone && data.timezone !== "UTC") {
             setUserTimezone(data.timezone)
           }
         }
