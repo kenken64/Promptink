@@ -889,6 +889,9 @@ function initPreparedStatements() {
     findAllByUserId: db.prepare<ScheduledJob, [number]>(
       "SELECT * FROM scheduled_jobs WHERE user_id = ? ORDER BY created_at DESC"
     ),
+    findAllByUserIdPaginated: db.prepare<ScheduledJob, [number, number, number]>(
+      "SELECT * FROM scheduled_jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ),
     findDueJobs: db.prepare<ScheduledJob, [string]>(
       "SELECT * FROM scheduled_jobs WHERE is_enabled = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?"
     ),
@@ -929,6 +932,12 @@ function initPreparedStatements() {
     findAllByUserId: db.prepare<BatchJob, [number]>(
       "SELECT * FROM batch_jobs WHERE user_id = ? ORDER BY created_at DESC"
     ),
+    findAllByUserIdPaginated: db.prepare<BatchJob, [number, number, number]>(
+      "SELECT * FROM batch_jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ),
+    countByUserId: db.prepare<{ count: number }, [number]>(
+      "SELECT COUNT(*) as count FROM batch_jobs WHERE user_id = ?"
+    ),
     findPending: db.prepare<BatchJob, []>(
       "SELECT * FROM batch_jobs WHERE status = 'pending' OR status = 'processing' ORDER BY created_at ASC LIMIT 1"
     ),
@@ -940,6 +949,12 @@ function initPreparedStatements() {
     ),
     updateProgress: db.prepare<void, [number, number, number]>(
       "UPDATE batch_jobs SET completed_count = ?, failed_count = ? WHERE id = ?"
+    ),
+    incrementCompleted: db.prepare<void, [number]>(
+      "UPDATE batch_jobs SET completed_count = completed_count + 1 WHERE id = ?"
+    ),
+    incrementFailed: db.prepare<void, [number]>(
+      "UPDATE batch_jobs SET failed_count = failed_count + 1 WHERE id = ?"
     ),
     updateStarted: db.prepare<void, [number]>(
       "UPDATE batch_jobs SET status = 'processing', started_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -1126,6 +1141,7 @@ export const scheduledJobQueries = {
   get findById() { return _scheduledJobQueries.findById },
   get findByIdAndUserId() { return _scheduledJobQueries.findByIdAndUserId },
   get findAllByUserId() { return _scheduledJobQueries.findAllByUserId },
+  get findAllByUserIdPaginated() { return _scheduledJobQueries.findAllByUserIdPaginated },
   get findDueJobs() { return _scheduledJobQueries.findDueJobs },
   get countByUserId() { return _scheduledJobQueries.countByUserId },
   get create() { return _scheduledJobQueries.create },
@@ -1139,10 +1155,14 @@ export const batchJobQueries = {
   get findById() { return _batchJobQueries.findById },
   get findByIdAndUserId() { return _batchJobQueries.findByIdAndUserId },
   get findAllByUserId() { return _batchJobQueries.findAllByUserId },
+  get findAllByUserIdPaginated() { return _batchJobQueries.findAllByUserIdPaginated },
+  get countByUserId() { return _batchJobQueries.countByUserId },
   get findPending() { return _batchJobQueries.findPending },
   get create() { return _batchJobQueries.create },
   get updateStatus() { return _batchJobQueries.updateStatus },
   get updateProgress() { return _batchJobQueries.updateProgress },
+  get incrementCompleted() { return _batchJobQueries.incrementCompleted },
+  get incrementFailed() { return _batchJobQueries.incrementFailed },
   get updateStarted() { return _batchJobQueries.updateStarted },
   get updateCompleted() { return _batchJobQueries.updateCompleted },
   get delete() { return _batchJobQueries.delete },

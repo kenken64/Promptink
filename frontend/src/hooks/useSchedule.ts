@@ -34,28 +34,39 @@ export interface CreateScheduledJobInput {
   autoSyncTrmnl?: boolean
 }
 
+export interface SchedulePagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasMore: boolean
+}
+
 interface UseScheduleReturn {
   jobs: ScheduledJob[]
-  total: number
-  limit: number
+  pagination: SchedulePagination | null
+  maxJobsAllowed: number
   isLoading: boolean
   error: string | null
-  fetchJobs: () => Promise<void>
+  fetchJobs: (page?: number, limit?: number) => Promise<void>
   createJob: (input: CreateScheduledJobInput) => Promise<ScheduledJob | null>
   updateJob: (id: number, input: CreateScheduledJobInput) => Promise<ScheduledJob | null>
   deleteJob: (id: number) => Promise<boolean>
   toggleJob: (id: number) => Promise<ScheduledJob | null>
+  nextPage: () => Promise<void>
+  prevPage: () => Promise<void>
+  goToPage: (page: number) => Promise<void>
 }
 
 export function useSchedule(): UseScheduleReturn {
   const [jobs, setJobs] = useState<ScheduledJob[]>([])
-  const [total, setTotal] = useState(0)
-  const [limit, setLimit] = useState(10)
+  const [pagination, setPagination] = useState<SchedulePagination | null>(null)
+  const [maxJobsAllowed, setMaxJobsAllowed] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { authFetch, isAuthenticated, isLoading: authLoading } = useAuth()
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (page: number = 1, limit: number = 10) => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
       return
@@ -63,7 +74,7 @@ export function useSchedule(): UseScheduleReturn {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await authFetch("/api/schedule")
+      const response = await authFetch(`/api/schedule?page=${page}&limit=${limit}`)
 
       if (!response.ok) {
         throw new Error("Failed to fetch scheduled jobs")
@@ -71,14 +82,32 @@ export function useSchedule(): UseScheduleReturn {
 
       const data = await response.json()
       setJobs(data.jobs || [])
-      setTotal(data.total || 0)
-      setLimit(data.limit || 10)
+      setPagination(data.pagination || null)
+      setMaxJobsAllowed(data.maxJobsAllowed || 10)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
   }, [authFetch, isAuthenticated])
+
+  const nextPage = useCallback(async () => {
+    if (pagination && pagination.hasMore) {
+      await fetchJobs(pagination.page + 1, pagination.limit)
+    }
+  }, [pagination, fetchJobs])
+
+  const prevPage = useCallback(async () => {
+    if (pagination && pagination.page > 1) {
+      await fetchJobs(pagination.page - 1, pagination.limit)
+    }
+  }, [pagination, fetchJobs])
+
+  const goToPage = useCallback(async (page: number) => {
+    if (pagination && page >= 1 && page <= pagination.totalPages) {
+      await fetchJobs(page, pagination.limit)
+    }
+  }, [pagination, fetchJobs])
 
   const createJob = useCallback(async (input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
@@ -98,7 +127,8 @@ export function useSchedule(): UseScheduleReturn {
 
       const job = await response.json()
       setJobs(prev => [job, ...prev])
-      setTotal(prev => prev + 1)
+      // Update pagination total
+      setPagination(prev => prev ? { ...prev, total: prev.total + 1, totalPages: Math.ceil((prev.total + 1) / prev.limit) } : null)
       return job
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
@@ -143,7 +173,8 @@ export function useSchedule(): UseScheduleReturn {
       }
 
       setJobs(prev => prev.filter(j => j.id !== id))
-      setTotal(prev => prev - 1)
+      // Update pagination total
+      setPagination(prev => prev ? { ...prev, total: Math.max(0, prev.total - 1), totalPages: Math.ceil(Math.max(0, prev.total - 1) / prev.limit) } : null)
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
@@ -180,8 +211,8 @@ export function useSchedule(): UseScheduleReturn {
 
   return {
     jobs,
-    total,
-    limit,
+    pagination,
+    maxJobsAllowed,
     isLoading,
     error,
     fetchJobs,
@@ -189,5 +220,8 @@ export function useSchedule(): UseScheduleReturn {
     updateJob,
     deleteJob,
     toggleJob,
+    nextPage,
+    prevPage,
+    goToPage,
   }
 }

@@ -50,29 +50,42 @@ export interface BatchStatus {
   progress: number
 }
 
+export interface BatchPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasMore: boolean
+}
+
 interface UseBatchReturn {
   batches: BatchJob[]
   currentBatch: BatchJobWithItems | null
+  pagination: BatchPagination | null
   isLoading: boolean
   error: string | null
-  fetchBatches: () => Promise<void>
+  fetchBatches: (page?: number, limit?: number) => Promise<void>
   fetchBatch: (id: number) => Promise<BatchJobWithItems | null>
   createBatch: (input: CreateBatchJobInput) => Promise<BatchJob | null>
   cancelBatch: (id: number) => Promise<boolean>
   deleteBatch: (id: number) => Promise<boolean>
   pollStatus: (id: number, onUpdate?: (status: BatchStatus) => void) => void
   stopPolling: () => void
+  nextPage: () => Promise<void>
+  prevPage: () => Promise<void>
+  goToPage: (page: number) => Promise<void>
 }
 
 export function useBatch(): UseBatchReturn {
   const [batches, setBatches] = useState<BatchJob[]>([])
   const [currentBatch, setCurrentBatch] = useState<BatchJobWithItems | null>(null)
+  const [pagination, setPagination] = useState<BatchPagination | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { authFetch, isAuthenticated, isLoading: authLoading } = useAuth()
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchBatches = useCallback(async () => {
+  const fetchBatches = useCallback(async (page: number = 1, limit: number = 10) => {
     // Don't fetch if not authenticated
     if (!isAuthenticated) {
       return
@@ -80,7 +93,7 @@ export function useBatch(): UseBatchReturn {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await authFetch("/api/batch")
+      const response = await authFetch(`/api/batch?page=${page}&limit=${limit}`)
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch jobs")
@@ -88,12 +101,31 @@ export function useBatch(): UseBatchReturn {
 
       const data = await response.json()
       setBatches(data.batches || [])
+      setPagination(data.pagination || null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
   }, [authFetch, isAuthenticated])
+
+  const nextPage = useCallback(async () => {
+    if (pagination && pagination.hasMore) {
+      await fetchBatches(pagination.page + 1, pagination.limit)
+    }
+  }, [pagination, fetchBatches])
+
+  const prevPage = useCallback(async () => {
+    if (pagination && pagination.page > 1) {
+      await fetchBatches(pagination.page - 1, pagination.limit)
+    }
+  }, [pagination, fetchBatches])
+
+  const goToPage = useCallback(async (page: number) => {
+    if (pagination && page >= 1 && page <= pagination.totalPages) {
+      await fetchBatches(page, pagination.limit)
+    }
+  }, [pagination, fetchBatches])
 
   const fetchBatch = useCallback(async (id: number): Promise<BatchJobWithItems | null> => {
     setError(null)
@@ -252,6 +284,7 @@ export function useBatch(): UseBatchReturn {
   return {
     batches,
     currentBatch,
+    pagination,
     isLoading,
     error,
     fetchBatches,
@@ -261,5 +294,8 @@ export function useBatch(): UseBatchReturn {
     deleteBatch,
     pollStatus,
     stopPolling,
+    nextPage,
+    prevPage,
+    goToPage,
   }
 }

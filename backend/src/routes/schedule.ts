@@ -6,6 +6,10 @@ import { calculateNextRunTime, validateScheduleInput } from "../services/schedul
 // Maximum scheduled jobs per user
 const MAX_JOBS_PER_USER = 10
 
+// Default pagination settings
+const DEFAULT_PAGE_SIZE = 10
+const MAX_PAGE_SIZE = 50
+
 // Request body interface for schedule creation/update
 interface ScheduleRequestBody {
   prompt?: string
@@ -21,12 +25,18 @@ interface ScheduleRequestBody {
 }
 
 export const scheduleRoutes = {
-  // List all scheduled jobs for user
+  // List all scheduled jobs for user (with pagination)
   "/api/schedule": {
     GET: withAuth(async (req, user) => {
       try {
-        const jobs = scheduledJobQueries.findAllByUserId.all(user.id)
-        const count = scheduledJobQueries.countByUserId.get(user.id)?.count || 0
+        const url = new URL(req.url)
+        const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10))
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(url.searchParams.get("limit") || String(DEFAULT_PAGE_SIZE), 10)))
+        const offset = (page - 1) * limit
+
+        const jobs = scheduledJobQueries.findAllByUserIdPaginated.all(user.id, limit, offset)
+        const total = scheduledJobQueries.countByUserId.get(user.id)?.count || 0
+        const totalPages = Math.ceil(total / limit)
 
         // Parse schedule_days from JSON string to array
         const formattedJobs = jobs.map(job => ({
@@ -36,8 +46,14 @@ export const scheduleRoutes = {
 
         return Response.json({
           jobs: formattedJobs,
-          total: count,
-          limit: MAX_JOBS_PER_USER,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasMore: page < totalPages,
+          },
+          maxJobsAllowed: MAX_JOBS_PER_USER,
         })
       } catch (error) {
         log("ERROR", "Failed to list scheduled jobs", error)

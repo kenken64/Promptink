@@ -398,7 +398,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
 
                 {/* Add/Edit Device Form */}
                 {(showAddDevice || editingDevice) && (
-                  <form onSubmit={editingDevice ? handleUpdateDevice : handleAddDevice} className="space-y-4 p-4 bg-muted/50 rounded-xl border border-border">
+                  <form onSubmit={editingDevice ? handleUpdateDevice : handleAddDevice} noValidate className="space-y-4 p-4 bg-muted/50 rounded-xl border border-border">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium text-sm">
                         {editingDevice ? "Edit Device" : "Add New Device"}
@@ -614,7 +614,7 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
                   </div>
                 )}
 
-                <form onSubmit={handleChangePassword} className="space-y-4">
+                <form onSubmit={handleChangePassword} noValidate className="space-y-4">
                   <div className="space-y-2">
                     <label htmlFor="currentPassword" className="block text-sm font-medium text-foreground">
                       {t.changePassword.currentPasswordLabel}

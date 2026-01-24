@@ -1,13 +1,19 @@
 import { log } from "../utils"
 import { withAuth } from "../middleware/auth"
+import { batchJobQueries } from "../db"
 import {
   createBatchJob,
   getBatchJobWithItems,
   getUserBatchJobs,
+  getUserBatchJobsPaginated,
   cancelBatchJob,
   deleteBatchJob,
   MAX_BATCH_SIZE,
 } from "../services/batch-service"
+
+// Default pagination settings
+const DEFAULT_PAGE_SIZE = 10
+const MAX_PAGE_SIZE = 50
 
 export const batchRoutes = {
   // Create a new batch job
@@ -67,11 +73,27 @@ export const batchRoutes = {
       }
     }),
 
-    // List all batch jobs for the user
+    // List all batch jobs for the user (with pagination)
     GET: withAuth(async (req, user) => {
       try {
-        const batches = getUserBatchJobs(user.id)
-        return Response.json({ batches })
+        const url = new URL(req.url)
+        const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10))
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(url.searchParams.get("limit") || String(DEFAULT_PAGE_SIZE), 10)))
+        const offset = (page - 1) * limit
+
+        const { batches, total } = getUserBatchJobsPaginated(user.id, limit, offset)
+        const totalPages = Math.ceil(total / limit)
+
+        return Response.json({
+          batches,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasMore: page < totalPages,
+          },
+        })
       } catch (error) {
         log("ERROR", "Failed to get batch jobs", error)
         return Response.json({ error: String(error) }, { status: 500 })

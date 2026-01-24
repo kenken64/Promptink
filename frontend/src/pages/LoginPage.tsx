@@ -71,7 +71,7 @@ export function LoginPage({ onLogin, onSwitchToRegister, onForgotPassword, trans
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Email field */}
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-foreground">

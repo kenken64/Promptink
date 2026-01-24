@@ -19,6 +19,8 @@ import {
   Image,
   Eye,
   Copy,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -104,7 +106,7 @@ function BatchForm({ initialData, onSubmit, onCancel, isSubmitting }: BatchFormP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {/* Batch Name (Optional) */}
       <div>
         <label className="block text-sm font-medium mb-1">{t.batch?.batchName || "Batch Name (Optional)"}</label>
@@ -451,6 +453,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   const {
     batches,
     currentBatch,
+    pagination,
     isLoading,
     error,
     fetchBatches,
@@ -460,6 +463,8 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
     deleteBatch,
     pollStatus,
     stopPolling,
+    nextPage,
+    prevPage,
   } = useBatch()
 
   const [showForm, setShowForm] = useState(false)
@@ -623,18 +628,50 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {batches.map(batch => (
-            <BatchCard
-              key={batch.id}
-              batch={batch}
-              onView={() => handleView(batch)}
-              onCancel={() => handleCancel(batch)}
-              onDelete={() => handleDelete(batch)}
-              onDuplicate={() => handleDuplicate(batch)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3">
+            {batches.map(batch => (
+              <BatchCard
+                key={batch.id}
+                batch={batch}
+                onView={() => handleView(batch)}
+                onCancel={() => handleCancel(batch)}
+                onDelete={() => handleDelete(batch)}
+                onDuplicate={() => handleDuplicate(batch)}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                {t.batch?.showingPage || "Page"} {pagination.page} {t.batch?.of || "of"} {pagination.totalPages}
+                {" "}({pagination.total} {t.batch?.totalBatches || "batches"})
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={prevPage}
+                  disabled={pagination.page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t.batch?.previous || "Previous"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={nextPage}
+                  disabled={!pagination.hasMore}
+                >
+                  {t.batch?.next || "Next"}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Detail Modal */}

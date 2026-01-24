@@ -220,7 +220,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
             </div>
 
             {/* Search */}
-            <form onSubmit={handleSearch} className="flex-1 flex gap-2 max-w-md">
+            <form onSubmit={handleSearch} noValidate className="flex-1 flex gap-2 max-w-md">
               <div className="relative flex-1">
                 <Input
                   type="text"

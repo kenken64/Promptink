@@ -23,6 +23,7 @@ import { useTrmnlSync } from "./hooks/useTrmnlSync"
 import { useAuth } from "./hooks/useAuth"
 import { useSubscription } from "./hooks/useSubscription"
 import { useSuggestions } from "./hooks/useSuggestions"
+import { useSEO } from "./hooks/useSEO"
 
 // Lazy load heavier pages for code splitting
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })))
@@ -103,6 +104,9 @@ export default function App() {
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Update SEO meta tags when page changes
+  useSEO()
 
   // Check if user needs to be redirected to purchase page
   useEffect(() => {
@@ -298,7 +302,8 @@ export default function App() {
         result = await generateImage({ prompt, language, size: selectedSize, stylePreset: selectedStyle })
       }
 
-      const imageUrl = result.data[0]?.url
+      // Prefer permanent gallery URL over temporary OpenAI URL (which expires after ~1 hour)
+      const imageUrl = result.galleryUrl || result.data[0]?.url
       const revisedPrompt = result.data[0]?.revised_prompt
 
       setMessages((prev) =>

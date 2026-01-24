@@ -4,6 +4,13 @@ import { routes } from "./routes"
 import { initDatabase } from "./db"
 import { startScheduler } from "./services/scheduler-service"
 import { startBatchProcessor } from "./services/batch-service"
+import {
+  getSEOConfig,
+  generateMetaTagsHTML,
+  generateStructuredData,
+  generateSitemap,
+  generateRobotsTxt,
+} from "./services/seo-service"
 import { join } from "path"
 import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync, readdirSync } from "fs"
 import { gzipSync } from "bun"
@@ -36,6 +43,30 @@ function getDirectorySizeBytes(dirPath: string): number {
 // Format bytes to MB with 2 decimal places
 function bytesToMB(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(2)
+}
+
+// Inject SEO meta tags into HTML template
+async function injectSEOMetaTags(html: string, pathname: string): Promise<string> {
+  try {
+    const seoConfig = await getSEOConfig(pathname)
+    const metaTags = generateMetaTagsHTML(seoConfig)
+    const structuredData = generateStructuredData(seoConfig, pathname)
+
+    // Replace placeholders with actual content
+    let result = html.replace(
+      "<!-- SEO_META_TAGS -->",
+      metaTags
+    )
+    result = result.replace(
+      "<!-- STRUCTURED_DATA -->",
+      `<script type="application/ld+json">${structuredData}</script>`
+    )
+
+    return result
+  } catch (error) {
+    log("ERROR", "Failed to inject SEO meta tags", error)
+    return html
+  }
 }
 
 // Verify volume persistence (critical for production data)
@@ -251,9 +282,24 @@ if (isDev) {
       const url = new URL(req.url)
       log("INFO", `${req.method} ${url.pathname}`)
 
-      // Serve index.html for root
+      // Serve robots.txt
+      if (url.pathname === "/robots.txt") {
+        return new Response(generateRobotsTxt(), {
+          headers: { "Content-Type": "text/plain" },
+        })
+      }
+
+      // Serve sitemap.xml
+      if (url.pathname === "/sitemap.xml") {
+        return new Response(generateSitemap(), {
+          headers: { "Content-Type": "application/xml" },
+        })
+      }
+
+      // Serve index.html for root with SEO meta tags
       if (url.pathname === "/" || url.pathname === "/index.html") {
-        const response = new Response(indexHtml, {
+        const htmlWithSEO = await injectSEOMetaTags(indexHtml, url.pathname)
+        const response = new Response(htmlWithSEO, {
           headers: { "Content-Type": "text/html" },
         })
         return addSecurityHeaders(response)
@@ -306,9 +352,10 @@ if (isDev) {
         }
       }
 
-      // SPA fallback - serve index.html for unmatched routes
+      // SPA fallback - serve index.html with dynamic SEO meta tags
       if (!url.pathname.startsWith("/api/")) {
-        const response = new Response(indexHtml, {
+        const htmlWithSEO = await injectSEOMetaTags(indexHtml, url.pathname)
+        const response = new Response(htmlWithSEO, {
           headers: { "Content-Type": "text/html" },
         })
         return addSecurityHeaders(response)

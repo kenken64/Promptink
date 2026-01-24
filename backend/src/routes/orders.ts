@@ -124,6 +124,9 @@ export const orderRoutes = {
           order.currency,
           order.orderNumber,
           {
+            product_name: "TRMNL E-ink Display Frame",
+            description: `TRMNL E-ink Display Frame (Qty: ${order.quantity})${hasExistingSubscription ? "" : " + Monthly Subscription"}`,
+            quantity: String(order.quantity),
             user_id: String(user.id),
             order_id: String(order.id),
           }
@@ -252,6 +255,8 @@ export const orderRoutes = {
           // Create subscription if we have a customer
           if (customerId) {
             const subscriptionResult = await createSubscription(customerId, undefined, undefined, {
+              product_name: "PromptInk Monthly Subscription",
+              description: "Monthly subscription for TRMNL E-ink Display service",
               user_id: String(user.id),
               order_id: String(orderId),
             })

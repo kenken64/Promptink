@@ -2,13 +2,14 @@
 
 ## Overview
 
-PromptInk is a full-stack application that generates AI images using OpenAI's DALL-E 3 and syncs them to TRMNL e-ink displays. The application features JWT authentication, per-user settings, SQLite persistence, a complete e-commerce system with Razorpay payment integration, subscription management, social sharing, and an image gallery.
+PromptInk is a full-stack application that generates AI images using OpenAI's DALL-E 3 and syncs them to TRMNL e-ink displays. The application features JWT authentication, per-user settings, SQLite persistence, a complete e-commerce system with Razorpay payment integration, subscription management, social sharing, an image gallery, infographic generation from GitHub repositories, and an admin dashboard for data management.
 
 **Components:**
 1. **Backend** - Bun API server with SQLite database
 2. **Frontend** - React-based chat interface with voice input support
 3. **trmnl-plugin** - TRMNL plugin for displaying synced images on e-ink devices
 4. **E-commerce** - Device purchases and subscriptions via Razorpay
+5. **Admin Dashboard** - Data export/import, user management, and URL migration
 
 ---
 
@@ -74,12 +75,13 @@ PromptInk/
 │   │   │   └── auth.ts        # JWT authentication middleware
 │   │   ├── routes/            # API route handlers
 │   │   │   ├── index.ts       # Route aggregation
+│   │   │   ├── admin.ts       # Admin dashboard endpoints
 │   │   │   ├── auth.ts        # Authentication endpoints
 │   │   │   ├── settings.ts    # User settings endpoints
 │   │   │   ├── display.ts     # Display endpoints
 │   │   │   ├── plugins.ts     # Plugin management
 │   │   │   ├── device.ts      # Device info
-│   │   │   ├── images.ts      # Image generation
+│   │   │   ├── images.ts      # Image generation + infographic
 │   │   │   ├── sync.ts        # TRMNL sync & webhook
 │   │   │   ├── share.ts       # Social sharing
 │   │   │   ├── gallery.ts     # Image gallery
@@ -99,7 +101,8 @@ PromptInk/
 │   │   │   ├── subscription-service.ts
 │   │   │   ├── razorpay-service.ts
 │   │   │   ├── scheduler-service.ts # Background job scheduler
-│   │   │   └── batch-service.ts     # Batch image generation
+│   │   │   ├── batch-service.ts     # Batch image generation
+│   │   │   └── repomix-service.ts   # GitHub repo summarization
 │   │   ├── utils/             # Utility functions
 │   │   │   ├── index.ts
 │   │   │   └── logger.ts
@@ -133,6 +136,7 @@ PromptInk/
 │   │   │   ├── useGallery.ts      # Gallery state management
 │   │   │   └── useSuggestions.ts  # AI-generated suggestions
 │   │   ├── pages/             # Page components
+│   │   │   ├── AdminPage.tsx      # Admin dashboard
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterPage.tsx
 │   │   │   ├── SettingsPage.tsx
@@ -469,6 +473,133 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 
 ---
 
+### 12. Admin Dashboard with Data Export/Import
+
+**Problem**: Administrators need to backup application data, migrate between servers, and manage users without direct database access.
+
+**Solution**: Password-protected admin dashboard with ZIP-based data export/import and user management.
+
+**Implementation**:
+- **Admin Authentication**: Custom JWT implementation with separate admin password
+- **Data Export**: Recursively collects all files from `/app/data` directory into a ZIP file
+- **Data Import**: Accepts ZIP upload, extracts and restores files to `/app/data`
+- **User Management**: Paginated user list with subscription status badges
+- **Stats Dashboard**: Real-time counts for users, images, orders, and subscriptions
+
+**Features**:
+- ZIP creation implemented natively (no external dependencies)
+- CRC-32 validation for data integrity
+- Progress tracking with MB display for upload/download
+- Blocking overlay during operations to prevent concurrent actions
+- Retro flip-counter UI for statistics display
+
+**Flow**:
+```
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   Admin Login   │───►│  Verify Password │───►│  Generate JWT     │
+│  (POST /login)  │    │                  │    │  (admin-specific) │
+└─────────────────┘    └──────────────────┘    └───────────────────┘
+
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   Export Data   │───►│  Collect Files   │───►│  Create ZIP       │
+│  (GET /export)  │    │  from /app/data  │    │  (stored format)  │
+└─────────────────┘    └──────────────────┘    └───────────────────┘
+
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   Import Data   │───►│  Parse ZIP       │───►│  Restore Files    │
+│  (POST /import) │    │  entries         │    │  + URL Migration  │
+└─────────────────┘    └──────────────────┘    └───────────────────┘
+```
+
+**Code locations**:
+- `backend/src/routes/admin.ts` - Admin endpoints, ZIP implementation, URL migration
+- `backend/src/config/index.ts` - Admin password and JWT secret configuration
+- `frontend/src/pages/AdminPage.tsx` - Admin dashboard UI with progress tracking
+
+---
+
+### 13. URL Migration for Database Import
+
+**Problem**: When migrating data between servers, image URLs stored in the database still reference the old server domain.
+
+**Solution**: Automatic URL replacement during data import that updates all image URLs to the new server domain.
+
+**Implementation**:
+- Accepts old URL and new URL parameters during import
+- Updates three database tables using SQL REPLACE:
+  - `generated_images.image_url`
+  - `synced_images.image_url`
+  - `orders.tracking_url` (with error handling for missing column)
+- Returns count of updated records for transparency
+
+**Usage**:
+1. Export data from old server
+2. Import ZIP on new server
+3. Provide old server URL (e.g., `https://old-server.railway.app`)
+4. Provide new server URL (e.g., `https://new-server.railway.app`)
+5. All image URLs are automatically updated
+
+**Code locations**:
+- `backend/src/routes/admin.ts` - `migrateUrls()` function (lines 357-387)
+- `frontend/src/pages/AdminPage.tsx` - URL migration input fields
+
+---
+
+### 14. Infographic Generation with Repomix
+
+**Problem**: Users want to create visual infographics from text content or GitHub repositories without manually summarizing the content.
+
+**Solution**: Integration with Repomix to summarize GitHub repositories, combined with GPT-4 for prompt generation and DALL-E 3 for image creation.
+
+**Implementation**:
+- **Repomix Integration**: Executes `npx repomix --remote <url> --style markdown` to summarize repositories
+- **Smart URL Detection**: Distinguishes between full repository URLs and file URLs
+  - Repository URLs: Uses Repomix for comprehensive summarization
+  - File URLs (blob): Direct fetch of markdown content
+- **GPT-4 Prompt Generation**: Converts content into DALL-E-friendly infographic prompts
+- **Wide Format Output**: Generates 1792x1024 images optimized for infographics
+
+**Flow**:
+```
+┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐
+│   User Input    │───►│  Detect Type     │───►│  GitHub Repo?     │
+│  (URL or text)  │    │  (repo vs file)  │    │                   │
+└─────────────────┘    └──────────────────┘    └─────────┬─────────┘
+                                                         │
+                       ┌─────────────────────────────────┴──────────┐
+                       │                                            │
+                       ▼                                            ▼
+              ┌────────────────┐                          ┌────────────────┐
+              │  Repomix       │                          │  Direct Fetch  │
+              │  (summarize)   │                          │  (markdown)    │
+              └───────┬────────┘                          └───────┬────────┘
+                      │                                           │
+                      └─────────────────┬─────────────────────────┘
+                                        ▼
+                              ┌────────────────┐
+                              │  GPT-4         │
+                              │  (gen prompt)  │
+                              └───────┬────────┘
+                                      ▼
+                              ┌────────────────┐
+                              │  DALL-E 3      │
+                              │  (1792x1024)   │
+                              └────────────────┘
+```
+
+**Usage Examples**:
+- "infographic about https://github.com/user/repo" - Summarizes entire repo
+- Direct GitHub .md URL - Fetches and visualizes markdown content
+- "infographic about machine learning concepts" - Text-based infographic
+
+**Code locations**:
+- `backend/src/services/repomix-service.ts` - GitHub repo summarization via Repomix
+- `backend/src/services/openai-service.ts` - `isGitHubRepoUrl()` and `fetchUrlContent()` helpers
+- `backend/src/routes/images.ts` - `/api/images/infographic` endpoint
+- `frontend/src/App.tsx` - `isInfographicRequest()` detection and routing
+
+---
+
 ## Database Schema
 
 ### users table
@@ -785,6 +916,22 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 | POST | `/api/auth/logout` | Yes | Logout user |
 | POST | `/api/auth/refresh` | No | Refresh access token |
 
+### Admin
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/admin/login` | No | Admin login with password |
+| GET | `/api/admin/verify` | Admin | Verify admin token |
+| GET | `/api/admin/stats` | Admin | Get dashboard statistics |
+| GET | `/api/admin/users` | Admin | List users (paginated) |
+| GET | `/api/admin/export` | Admin | Export data as ZIP |
+| POST | `/api/admin/import` | Admin | Import data from ZIP |
+
+**Import Parameters (multipart/form-data):**
+- `file` - ZIP file to import
+- `oldUrl` - Optional: Old server URL for migration
+- `newUrl` - Optional: New server URL for migration
+
 ### User Settings
 
 | Method | Endpoint | Auth | Description |
@@ -798,7 +945,12 @@ The backend pushes image data to TRMNL's custom plugin webhook API when syncing.
 |--------|----------|------|-------------|
 | POST | `/api/images/generate` | Yes | Generate image from prompt |
 | POST | `/api/images/edit` | Yes | Edit existing image |
+| POST | `/api/images/infographic` | Optional | Generate infographic from content/URL |
 | GET | `/api/images/synced/:userId` | No | Serve synced image file |
+
+**Infographic Parameters:**
+- `content` - Text/markdown content to visualize
+- `url` - GitHub URL (repo or file) to summarize and visualize
 
 ### TRMNL Sync
 
@@ -1156,6 +1308,10 @@ DB_PATH=./data/promptink.db
 BASE_URL=https://promptink-production.up.railway.app
 IMAGES_DIR=/app/data/images
 
+# Admin Dashboard
+ADMIN_PASSWORD=your-admin-password
+ADMIN_JWT_SECRET=your-admin-jwt-secret  # Falls back to JWT_SECRET if not set
+
 # TRMNL (optional for admin operations)
 TRMNL_USER_API_KEY=...
 TRMNL_CUSTOM_PLUGIN_UUID=...
@@ -1381,6 +1537,9 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 - [x] Image style presets
 - [x] Scheduled image generation
 - [x] Batch image generation
+- [x] Admin dashboard with data export/import
+- [x] URL migration for server transfers
+- [x] Infographic generation from GitHub repos (Repomix integration)
 
 ## Future Enhancements
 

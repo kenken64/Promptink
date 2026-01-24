@@ -162,7 +162,7 @@ export function SubscriptionPage({ onNavigate, onLogout }: SubscriptionPageProps
       key: keyId,
       subscription_id: subscriptionId,
       name: "PromptInk",
-      description: "Monthly Subscription - $6.53/month (incl. GST)",
+      description: "PromptInk Monthly Subscription - TRMNL E-ink Display Service",
       image: `${window.location.origin}/api/logo.svg`,
       handler: onSuccess,
       prefill: {

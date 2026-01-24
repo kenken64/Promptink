@@ -18,7 +18,9 @@ import {
   Check,
   RefreshCw,
   Monitor,
-}from "lucide-react"
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -112,7 +114,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {/* Prompt */}
       <div>
         <label className="block text-sm font-medium mb-1">{t.schedule?.prompt || "Prompt"}</label>
@@ -182,12 +184,16 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {scheduleType !== "once" && (
         <div>
           <label className="block text-sm font-medium mb-1">{t.schedule?.scheduleTime || "Time"}</label>
-          <Input
-            type="time"
-            value={scheduleTime}
-            onChange={e => setScheduleTime(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={e => setScheduleTime(e.target.value)}
+              className="pl-10 cursor-pointer"
+              required
+            />
+          </div>
         </div>
       )}
 
@@ -218,13 +224,17 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       {scheduleType === "once" && (
         <div>
           <label className="block text-sm font-medium mb-1">{t.schedule?.scheduledAt || "Date & Time"}</label>
-          <Input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={e => setScheduledAt(e.target.value)}
-            min={getLocalDatetimeString(new Date().toISOString())}
-            required
-          />
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={e => setScheduledAt(e.target.value)}
+              min={getLocalDatetimeString(new Date().toISOString())}
+              className="pl-10 cursor-pointer"
+              required
+            />
+          </div>
         </div>
       )}
 
@@ -360,7 +370,9 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
 
 export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { t } = useLanguage()
-  const { jobs, total, limit, isLoading, error, createJob, updateJob, deleteJob, toggleJob } = useSchedule()
+  const { jobs, pagination, maxJobsAllowed, isLoading, error, createJob, updateJob, deleteJob, toggleJob, nextPage, prevPage } = useSchedule()
+  const total = pagination?.total ?? 0
+  const limit = maxJobsAllowed
   const [showForm, setShowForm] = useState(false)
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null)
   const [duplicatingJob, setDuplicatingJob] = useState<ScheduledJob | null>(null)
@@ -513,37 +525,68 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {jobs.map(job => (
-            <div key={job.id} className="relative">
-              <ScheduleCard
-                job={job}
-                onEdit={() => setEditingJob(job)}
-                onDuplicate={() => setDuplicatingJob(job)}
-                onDelete={() => setDeleteConfirm(job.id)}
-                onToggle={() => handleToggle(job.id)}
-              />
-              {/* Delete Confirmation */}
-              {deleteConfirm === job.id && (
-                <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center rounded-lg">
-                  <div className="text-center p-4">
-                    <p className="font-medium mb-3">{t.schedule?.confirmDelete || "Delete this schedule?"}</p>
-                    <div className="flex gap-2 justify-center">
-                      <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)}>
-                        <X className="h-4 w-4 mr-1" />
-                        {t.schedule?.cancel || "Cancel"}
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(job.id)}>
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        {t.schedule?.delete || "Delete"}
-                      </Button>
+        <>
+          <div className="space-y-3">
+            {jobs.map(job => (
+              <div key={job.id} className="relative">
+                <ScheduleCard
+                  job={job}
+                  onEdit={() => setEditingJob(job)}
+                  onDuplicate={() => setDuplicatingJob(job)}
+                  onDelete={() => setDeleteConfirm(job.id)}
+                  onToggle={() => handleToggle(job.id)}
+                />
+                {/* Delete Confirmation */}
+                {deleteConfirm === job.id && (
+                  <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center rounded-lg">
+                    <div className="text-center p-4">
+                      <p className="font-medium mb-3">{t.schedule?.confirmDelete || "Delete this schedule?"}</p>
+                      <div className="flex gap-2 justify-center">
+                        <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)}>
+                          <X className="h-4 w-4 mr-1" />
+                          {t.schedule?.cancel || "Cancel"}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(job.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          {t.schedule?.delete || "Delete"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                {t.schedule?.showingPage || "Page"} {pagination.page} {t.schedule?.of || "of"} {pagination.totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={prevPage}
+                  disabled={pagination.page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t.schedule?.previous || "Previous"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={nextPage}
+                  disabled={!pagination.hasMore}
+                >
+                  {t.schedule?.next || "Next"}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
       </div>
     </div>
