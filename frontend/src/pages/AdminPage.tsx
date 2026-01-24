@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight, Monitor, Plus, Trash2, Edit2, X, Star, Save, Eye, EyeOff } from "lucide-react"
+import { Lock, RefreshCw, Users, Image, CreditCard, Crown, ChevronLeft, ChevronRight, Mail, Calendar, Download, Upload, Database, AlertCircle, CheckCircle, ArrowRight, Monitor, Plus, Trash2, Edit2, X, Star, Save, Eye, EyeOff, DollarSign, Cpu, ImageIcon, Zap, Sparkles, MessageSquare, Loader2 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 
@@ -8,6 +8,14 @@ interface AdminStats {
   totalImages: number
   paidOrders: number
   activeSubscriptions: number
+}
+
+interface OpenAIUsage {
+  images: { total: number; byModel: Record<string, number>; bySize: Record<string, number> }
+  costs: { total: number; currency: string; byLineItem: Record<string, number> }
+  completions: { inputTokens: number; outputTokens: number; requests: number }
+  period: { start: string; end: string }
+  error?: string
 }
 
 interface Device {
@@ -199,6 +207,10 @@ export function AdminPage() {
   })
   const [isSavingDevice, setIsSavingDevice] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  
+  // OpenAI usage state
+  const [openaiUsage, setOpenaiUsage] = useState<OpenAIUsage | null>(null)
+  const [isLoadingOpenaiUsage, setIsLoadingOpenaiUsage] = useState(false)
 
   // Check if any blocking operation is in progress
   const isBlocking = isExporting || isImporting
@@ -220,6 +232,7 @@ export function AdminPage() {
         setToken(tokenToVerify)
         setIsAuthenticated(true)
         fetchStats(tokenToVerify)
+        fetchOpenAIUsage(tokenToVerify)
         fetchUsers(tokenToVerify, 1)
       } else {
         localStorage.removeItem("admin_token")
@@ -251,6 +264,7 @@ export function AdminPage() {
       setToken(data.token)
       setIsAuthenticated(true)
       fetchStats(data.token)
+      fetchOpenAIUsage(data.token)
       fetchUsers(data.token, 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
@@ -270,6 +284,23 @@ export function AdminPage() {
       }
     } catch (err) {
       console.error("Failed to fetch stats:", err)
+    }
+  }
+
+  const fetchOpenAIUsage = async (authToken: string) => {
+    setIsLoadingOpenaiUsage(true)
+    try {
+      const response = await fetch("/api/admin/openai-usage", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setOpenaiUsage(data)
+      }
+    } catch (err) {
+      console.error("Failed to fetch OpenAI usage:", err)
+    } finally {
+      setIsLoadingOpenaiUsage(false)
     }
   }
 
@@ -294,7 +325,9 @@ export function AdminPage() {
   const handleRefresh = () => {
     if (token) {
       setStats(null)
+      setOpenaiUsage(null)
       setTimeout(() => fetchStats(token), 100)
+      fetchOpenAIUsage(token)
       fetchUsers(token, currentPage)
     }
   }
@@ -811,6 +844,125 @@ export function AdminPage() {
             label="Active Subscriptions"
             icon={Crown}
           />
+        </div>
+
+        {/* OpenAI Usage & Costs */}
+        <div className="mt-8 bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              OpenAI Usage & Costs
+              {openaiUsage?.period?.start && (
+                <span className="text-xs font-normal text-zinc-500 ml-2">
+                  ({new Date(openaiUsage.period.start).toLocaleDateString()} - {new Date(openaiUsage.period.end).toLocaleDateString()})
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="p-6">
+            {isLoadingOpenaiUsage ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+                <span className="ml-2 text-zinc-500">Loading OpenAI usage...</span>
+              </div>
+            ) : openaiUsage?.error ? (
+              <div className="bg-red-500/20 text-red-400 p-4 rounded-lg">
+                <p className="text-sm">{openaiUsage.error}</p>
+                <p className="text-xs mt-1 text-red-500">Make sure OPENAI_ADMIN_KEY is set in your environment.</p>
+              </div>
+            ) : openaiUsage ? (
+              <div className="space-y-6">
+                {/* Costs Summary */}
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Costs This Period
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                      <div className="text-2xl font-bold text-emerald-400">
+                        ${openaiUsage.costs.total.toFixed(4)}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-1">Total Cost ({openaiUsage.costs.currency.toUpperCase()})</div>
+                    </div>
+                    {Object.entries(openaiUsage.costs.byLineItem).map(([item, cost]) => (
+                      <div key={item} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                        <div className="text-lg font-semibold text-zinc-200">
+                          ${(cost as number).toFixed(4)}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">{item}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Images Usage */}
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+                    <Image className="h-4 w-4" />
+                    Images Generated
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-zinc-800/50 rounded-xl p-4 border border-purple-500/30">
+                      <div className="text-2xl font-bold text-purple-400">
+                        {openaiUsage.images.total}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-1">Total Images</div>
+                    </div>
+                    {Object.entries(openaiUsage.images.byModel).map(([model, count]) => (
+                      <div key={model} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                        <div className="text-lg font-semibold text-zinc-200">{count as number}</div>
+                        <div className="text-xs text-zinc-500 mt-1">{model}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {Object.keys(openaiUsage.images.bySize).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {Object.entries(openaiUsage.images.bySize).map(([size, count]) => (
+                        <span key={size} className="px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-400">
+                          {size}: {count as number}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Completions Usage */}
+                {openaiUsage.completions.inputTokens > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Completions (GPT)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                        <div className="text-lg font-semibold text-blue-400">
+                          {openaiUsage.completions.inputTokens.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">Input Tokens</div>
+                      </div>
+                      <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                        <div className="text-lg font-semibold text-teal-400">
+                          {openaiUsage.completions.outputTokens.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">Output Tokens</div>
+                      </div>
+                      <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                        <div className="text-lg font-semibold text-zinc-200">
+                          {(openaiUsage.completions.inputTokens + openaiUsage.completions.outputTokens).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">Total Tokens</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-zinc-500 text-sm">
+                No OpenAI usage data available. Ensure OPENAI_ADMIN_KEY is configured.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Data Backup & Restore */}

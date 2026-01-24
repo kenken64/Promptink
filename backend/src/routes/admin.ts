@@ -104,6 +104,138 @@ function getAdminStats() {
   }
 }
 
+// Fetch OpenAI usage and costs data
+async function getOpenAIUsage(): Promise<{
+  images: { total: number; byModel: Record<string, number>; bySize: Record<string, number> }
+  costs: { total: number; currency: string; byLineItem: Record<string, number> }
+  completions: { inputTokens: number; outputTokens: number; requests: number }
+  period: { start: string; end: string }
+  error?: string
+}> {
+  const adminKey = config.openai.adminKey
+  
+  if (!adminKey) {
+    return {
+      images: { total: 0, byModel: {}, bySize: {} },
+      costs: { total: 0, currency: "usd", byLineItem: {} },
+      completions: { inputTokens: 0, outputTokens: 0, requests: 0 },
+      period: { start: "", end: "" },
+      error: "OPENAI_ADMIN_KEY not configured",
+    }
+  }
+
+  // Get start of current month
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startTime = Math.floor(startOfMonth.getTime() / 1000)
+  const endTime = Math.floor(now.getTime() / 1000)
+
+  const headers = {
+    "Authorization": `Bearer ${adminKey}`,
+    "Content-Type": "application/json",
+  }
+
+  try {
+    // Fetch images usage
+    const imagesResponse = await fetch(
+      `https://api.openai.com/v1/organization/usage/images?start_time=${startTime}&end_time=${endTime}&group_by=model&group_by=size&limit=31`,
+      { headers }
+    )
+    
+    // Fetch costs
+    const costsResponse = await fetch(
+      `https://api.openai.com/v1/organization/costs?start_time=${startTime}&end_time=${endTime}&group_by=line_item&limit=31`,
+      { headers }
+    )
+
+    // Fetch completions usage (for GPT usage tracking)
+    const completionsResponse = await fetch(
+      `https://api.openai.com/v1/organization/usage/completions?start_time=${startTime}&end_time=${endTime}&limit=31`,
+      { headers }
+    )
+
+    const result = {
+      images: { total: 0, byModel: {} as Record<string, number>, bySize: {} as Record<string, number> },
+      costs: { total: 0, currency: "usd", byLineItem: {} as Record<string, number> },
+      completions: { inputTokens: 0, outputTokens: 0, requests: 0 },
+      period: { 
+        start: startOfMonth.toISOString().split("T")[0]!, 
+        end: now.toISOString().split("T")[0]!
+      },
+    }
+
+    // Process images data
+    if (imagesResponse.ok) {
+      const imagesData = await imagesResponse.json() as { 
+        data?: Array<{ results?: Array<{ images?: number; model?: string; size?: string }> }> 
+      }
+      
+      for (const bucket of imagesData.data || []) {
+        for (const r of bucket.results || []) {
+          result.images.total += r.images || 0
+          if (r.model) {
+            result.images.byModel[r.model] = (result.images.byModel[r.model] || 0) + (r.images || 0)
+          }
+          if (r.size) {
+            result.images.bySize[r.size] = (result.images.bySize[r.size] || 0) + (r.images || 0)
+          }
+        }
+      }
+    } else {
+      log("WARN", "Failed to fetch OpenAI images usage", { status: imagesResponse.status })
+    }
+
+    // Process costs data
+    if (costsResponse.ok) {
+      const costsData = await costsResponse.json() as { 
+        data?: Array<{ results?: Array<{ amount?: { value?: number; currency?: string }; line_item?: string }> }> 
+      }
+      
+      for (const bucket of costsData.data || []) {
+        for (const r of bucket.results || []) {
+          const amount = r.amount?.value || 0
+          result.costs.total += amount
+          result.costs.currency = r.amount?.currency || "usd"
+          if (r.line_item) {
+            result.costs.byLineItem[r.line_item] = (result.costs.byLineItem[r.line_item] || 0) + amount
+          }
+        }
+      }
+      result.costs.total = Math.round(result.costs.total * 100) / 100 // Round to 2 decimals
+    } else {
+      log("WARN", "Failed to fetch OpenAI costs", { status: costsResponse.status })
+    }
+
+    // Process completions data
+    if (completionsResponse.ok) {
+      const completionsData = await completionsResponse.json() as { 
+        data?: Array<{ results?: Array<{ input_tokens?: number; output_tokens?: number; num_model_requests?: number }> }> 
+      }
+      
+      for (const bucket of completionsData.data || []) {
+        for (const r of bucket.results || []) {
+          result.completions.inputTokens += r.input_tokens || 0
+          result.completions.outputTokens += r.output_tokens || 0
+          result.completions.requests += r.num_model_requests || 0
+        }
+      }
+    } else {
+      log("WARN", "Failed to fetch OpenAI completions usage", { status: completionsResponse.status })
+    }
+
+    return result
+  } catch (error) {
+    log("ERROR", "Failed to fetch OpenAI usage data", error)
+    return {
+      images: { total: 0, byModel: {}, bySize: {} },
+      costs: { total: 0, currency: "usd", byLineItem: {} },
+      completions: { inputTokens: 0, outputTokens: 0, requests: 0 },
+      period: { start: "", end: "" },
+      error: String(error),
+    }
+  }
+}
+
 // Get paginated users list
 function getPaginatedUsers(page: number, limit: number) {
   const offset = (page - 1) * limit
@@ -180,6 +312,22 @@ export const adminRoutes = {
       } catch (error) {
         log("ERROR", "Failed to get admin stats", error)
         return Response.json({ error: "Failed to get stats" }, { status: 500 })
+      }
+    },
+  },
+
+  // Get OpenAI usage and costs
+  "/api/admin/openai-usage": {
+    GET: async (req: Request) => {
+      const authError = await requireAdminAuth(req)
+      if (authError) return authError
+
+      try {
+        const usage = await getOpenAIUsage()
+        return Response.json(usage)
+      } catch (error) {
+        log("ERROR", "Failed to get OpenAI usage", error)
+        return Response.json({ error: "Failed to get OpenAI usage" }, { status: 500 })
       }
     },
   },
