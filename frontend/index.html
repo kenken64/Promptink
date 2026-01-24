@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="theme-color" content="#1a1b1e" />
+    <meta name="theme-color" content="#14b8a6" />
     <link rel="icon" type="image/svg+xml" href="/public/favicon.svg" />
-    <link rel="apple-touch-icon" href="/public/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/public/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/public/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/public/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/icons/icon-192.png" />
+    <link rel="manifest" href="/public/manifest.json" />
     <title>PromptInk - AI Image Generator for TRMNL E-ink Displays</title>
     <meta name="description" content="Generate stunning AI images with DALL-E 3 and sync them to your TRMNL e-ink display. Create, share, and display your AI art." />
     <meta name="keywords" content="AI image generator, DALL-E 3, e-ink display, TRMNL, AI art, text to image" />
@@ -240,5 +244,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="./src/index.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/public/sw.js')
+            .then((registration) => {
+              console.log('SW registered:', registration.scope)
+            })
+            .catch((error) => {
+              console.log('SW registration failed:', error)
+            })
+        })
+      }
+    </script>
   </body>
 </html>
