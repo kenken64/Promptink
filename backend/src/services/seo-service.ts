@@ -88,7 +88,9 @@ export async function getSEOConfig(pathname: string): Promise<SEOConfig> {
   // Check for dynamic share route
   if (pathname.startsWith("/share/")) {
     const shareId = pathname.split("/")[2]
-    return await getSharePageSEO(shareId)
+    if (shareId) {
+      return await getSharePageSEO(shareId)
+    }
   }
 
   // Check for static route config

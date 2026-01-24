@@ -39,7 +39,7 @@ export const scheduleRoutes = {
         const totalPages = Math.ceil(total / limit)
 
         // Parse schedule_days from JSON string to array
-        const formattedJobs = jobs.map(job => ({
+        const formattedJobs = jobs.map((job: ScheduledJob) => ({
           ...job,
           schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
         }))

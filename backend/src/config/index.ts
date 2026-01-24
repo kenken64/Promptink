@@ -8,6 +8,7 @@ export const config = {
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY!,
+    adminKey: process.env.OPENAI_ADMIN_KEY, // Optional: for usage/billing API access
   },
   server: {
     port: parseInt(process.env.PORT || "3000"),

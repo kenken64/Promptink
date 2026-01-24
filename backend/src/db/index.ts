@@ -668,6 +668,7 @@ let _scheduledJobQueries: {
   findById: Statement<ScheduledJob, [number]>
   findByIdAndUserId: Statement<ScheduledJob, [number, number]>
   findAllByUserId: Statement<ScheduledJob, [number]>
+  findAllByUserIdPaginated: Statement<ScheduledJob, [number, number, number]>
   findDueJobs: Statement<ScheduledJob, [string]>
   countByUserId: Statement<{ count: number }, [number]>
   create: Statement<ScheduledJob, [number, string, string, string | null, string, string, string | null, string | null, string, number, number, string | null]>
@@ -681,10 +682,14 @@ let _batchJobQueries: {
   findById: Statement<BatchJob, [number]>
   findByIdAndUserId: Statement<BatchJob, [number, number]>
   findAllByUserId: Statement<BatchJob, [number]>
+  findAllByUserIdPaginated: Statement<BatchJob, [number, number, number]>
+  countByUserId: Statement<{ count: number }, [number]>
   findPending: Statement<BatchJob, []>
   create: Statement<BatchJob, [number, string | null, number, string, string | null, number]>
   updateStatus: Statement<void, [string, number]>
   updateProgress: Statement<void, [number, number, number]>
+  incrementCompleted: Statement<void, [number]>
+  incrementFailed: Statement<void, [number]>
   updateStarted: Statement<void, [number]>
   updateCompleted: Statement<void, [string, number]>
   delete: Statement<void, [number, number]>

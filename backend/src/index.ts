@@ -216,7 +216,7 @@ function addSecurityHeaders(response: Response): Response {
   headers.set(
     "Content-Security-Policy",
     "default-src 'self'; " +
-    "script-src 'self' https://checkout.razorpay.com; " +
+    "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob: https:; " +
     "font-src 'self' data:; " +
