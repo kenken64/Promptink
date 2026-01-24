@@ -12,6 +12,7 @@ export const settingsRoutes = {
         trmnl_device_api_key: settings?.trmnl_device_api_key || null,
         trmnl_mac_address: settings?.trmnl_mac_address || null,
         trmnl_background_color: settings?.trmnl_background_color || "black",
+        timezone: settings?.timezone || "UTC",
       })
     }),
 
@@ -34,10 +35,19 @@ export const settingsRoutes = {
           ? body.trmnl_background_color
           : currentSettings?.trmnl_background_color || "black"
 
-        // Update settings
+        // Update TRMNL settings
         userQueries.updateSettings.run(newApiKey, newMacAddress, newBackgroundColor, user.id)
 
-        log("INFO", "User settings updated", { userId: user.id, backgroundColor: newBackgroundColor })
+        // Update timezone if provided
+        if (body.timezone !== undefined) {
+          userQueries.updateTimezone.run(body.timezone, user.id)
+        }
+
+        const newTimezone = body.timezone !== undefined
+          ? body.timezone
+          : currentSettings?.timezone || "UTC"
+
+        log("INFO", "User settings updated", { userId: user.id, backgroundColor: newBackgroundColor, timezone: newTimezone })
 
         return Response.json({
           success: true,
@@ -45,6 +55,7 @@ export const settingsRoutes = {
             trmnl_device_api_key: newApiKey,
             trmnl_mac_address: newMacAddress,
             trmnl_background_color: newBackgroundColor,
+            timezone: newTimezone,
           },
         })
       } catch (error) {

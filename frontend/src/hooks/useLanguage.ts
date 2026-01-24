@@ -171,6 +171,12 @@ export const translations = {
         passwordMismatch: "Passwords do not match",
         passwordTooShort: "Password must be at least 8 characters",
       },
+      timezone: {
+        title: "Timezone",
+        description: "Set your timezone for scheduled image generation",
+        detectFromBrowser: "Detect from browser",
+        detected: "Detected",
+      },
     },
     subscription: {
       title: "Subscription",
@@ -373,6 +379,7 @@ export const translations = {
       delete: "Delete",
       prompt: "Prompt",
       enterPrompt: "Enter your image prompt...",
+      timezone: "Timezone",
     },
     batch: {
       title: "Batch",
@@ -581,6 +588,12 @@ export const translations = {
         passwordMismatch: "两次输入的密码不一致",
         passwordTooShort: "密码至少需要8个字符",
       },
+      timezone: {
+        title: "时区",
+        description: "设置您的时区以进行定时图片生成",
+        detectFromBrowser: "从浏览器检测",
+        detected: "已检测",
+      },
     },
     subscription: {
       title: "订阅",
@@ -783,6 +796,7 @@ export const translations = {
       delete: "删除",
       prompt: "提示词",
       enterPrompt: "输入您的图片提示词...",
+      timezone: "时区",
     },
     batch: {
       title: "批量生成",
