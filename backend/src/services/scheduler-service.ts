@@ -59,8 +59,8 @@ function getNowInTimezone(timezone: string): Date {
 // Convert a local datetime string in user's timezone to UTC ISO string
 function localDatetimeToUTC(localDatetime: string, timezone: string): string {
   // localDatetime is like "2026-01-18T14:36" (no timezone info)
-  // We need to interpret this as being in the user's timezone
-  
+  // We need to interpret this as being in the user's timezone and convert to UTC
+
   // Parse the local datetime
   const [datePart, timePart] = localDatetime.split('T')
   if (!datePart || !timePart) {
@@ -73,65 +73,49 @@ function localDatetimeToUTC(localDatetime: string, timezone: string): string {
   const day = dateParts[2] ?? 1
   const hours = timeParts[0] ?? 0
   const minutes = timeParts[1] ?? 0
-  
-  // Create a formatter to find the UTC offset for this datetime in the target timezone
-  const testDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
-  
-  // Get the offset by comparing UTC time with the timezone's local time
-  const formatter = new Intl.DateTimeFormat('en-US', {
+
+  // Strategy: Find the timezone offset for this specific date/time in the target timezone
+  // This correctly handles DST because we check the offset for the actual date being scheduled
+
+  // First, create a UTC date with these values (treating them as UTC for now)
+  const guessUtc = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0))
+
+  // Format this UTC time AS IF it were in the target timezone to see what local time it shows
+  const tzFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',
-    month: '2-digit', 
+    month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
     hour12: false
   })
-  
-  // Use a simpler approach: construct the date string with timezone
-  // and let Date parse it
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
-  
-  // Create Date in user's timezone by using the timezone in formatting
-  // This is a workaround since JS doesn't have great timezone support
-  const utcDate = new Date(dateStr + 'Z') // Treat as UTC first
-  
-  // Get the timezone offset
-  const utcFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'UTC',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false
-  })
-  const tzFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit', 
-    hour: '2-digit', minute: '2-digit', hour12: false
-  })
-  
-  // Find offset by checking what UTC time corresponds to the local time
-  // We want to find the UTC time such that when displayed in `timezone`, it shows `localDatetime`
-  // Start with assuming the input IS in UTC, then adjust
-  const localInTz = tzFormatter.format(utcDate)
-  const localParts = localInTz.match(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+)/)
-  if (!localParts) {
-    return utcDate.toISOString()
-  }
-  
-  const tzMonth = parseInt(localParts[1] ?? '1', 10)
-  const tzDay = parseInt(localParts[2] ?? '1', 10)
-  const tzYear = parseInt(localParts[3] ?? '2000', 10)
-  const tzHour = parseInt(localParts[4] ?? '0', 10)
-  const tzMinute = parseInt(localParts[5] ?? '0', 10)
-  
-  // Calculate difference
-  const diffMinutes = (hours - tzHour) * 60 + (minutes - tzMinute) + 
-                      (day - tzDay) * 24 * 60 +
-                      (month - tzMonth) * 30 * 24 * 60 + 
-                      (year - tzYear) * 365 * 24 * 60
-  
-  // Adjust UTC date by the difference
-  const adjustedUtc = new Date(utcDate.getTime() + diffMinutes * 60 * 1000)
-  
+
+  // Get what time this UTC timestamp shows in the target timezone
+  const parts = tzFormatter.formatToParts(guessUtc)
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0'
+
+  const tzYear = parseInt(get('year'))
+  const tzMonth = parseInt(get('month'))
+  const tzDay = parseInt(get('day'))
+  const tzHour = parseInt(get('hour'))
+  const tzMinute = parseInt(get('minute'))
+
+  // Create Date objects to compute the difference properly
+  // tzDate represents what the guessUtc shows as in timezone (treating it as local components)
+  // targetDate represents what we actually want in the timezone (the input values)
+  const tzDate = new Date(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, 0)
+  const targetDate = new Date(year, month - 1, day, hours, minutes, 0)
+
+  // The difference tells us how much we need to adjust
+  // If tzDate < targetDate, the timezone is behind UTC, so we add the difference to guessUtc
+  // If tzDate > targetDate, the timezone is ahead of UTC, so we subtract the difference
+  const diffMs = targetDate.getTime() - tzDate.getTime()
+
+  // Adjust the UTC time by the difference
+  const adjustedUtc = new Date(guessUtc.getTime() + diffMs)
+
   return adjustedUtc.toISOString()
 }
 

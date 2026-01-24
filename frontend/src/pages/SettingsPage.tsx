@@ -1,9 +1,10 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X, User, Mail } from "lucide-react"
+import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X, User, Mail, Globe, MapPin } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
 import { useAuth } from "../hooks/useAuth"
+import { TIMEZONE_OPTIONS, detectBrowserTimezone, getTimezoneLabel } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -43,6 +44,12 @@ interface SettingsPageProps {
       error: string
       passwordMismatch: string
       passwordTooShort: string
+    }
+    timezone?: {
+      title: string
+      description: string
+      detectFromBrowser: string
+      detected: string
     }
     devices?: {
       title: string
@@ -94,6 +101,11 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // Timezone state
+  const [timezone, setTimezone] = useState<string>("UTC")
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false)
+  const [timezoneMessage, setTimezoneMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
   // Device translations with fallbacks
   const dt = t.devices || {
     title: "TRMNL Devices",
@@ -125,6 +137,22 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
       }
     }
     fetchDevices()
+  }, [authFetch])
+
+  // Fetch settings (including timezone)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await authFetch("/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          setTimezone(data.timezone || "UTC")
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error)
+      }
+    }
+    fetchSettings()
   }, [authFetch])
 
   const handleAddDevice = async (e: FormEvent) => {
@@ -305,6 +333,45 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
     }
   }
 
+  // Timezone translations with fallbacks
+  const tz = t.timezone || {
+    title: "Timezone",
+    description: "Set your timezone for scheduled image generation",
+    detectFromBrowser: "Detect from browser",
+    detected: "Detected",
+  }
+
+  const handleTimezoneChange = async (newTimezone: string) => {
+    setTimezone(newTimezone)
+    setIsSavingTimezone(true)
+    setTimezoneMessage(null)
+
+    try {
+      const response = await authFetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: newTimezone }),
+      })
+
+      if (response.ok) {
+        setTimezoneMessage({ type: "success", text: t.saveSuccess })
+        setTimeout(() => setTimezoneMessage(null), 3000)
+      } else {
+        const error = await response.json()
+        setTimezoneMessage({ type: "error", text: error.error || t.saveError })
+      }
+    } catch (error) {
+      setTimezoneMessage({ type: "error", text: t.saveError })
+    } finally {
+      setIsSavingTimezone(false)
+    }
+  }
+
+  const handleDetectTimezone = () => {
+    const detected = detectBrowserTimezone()
+    handleTimezoneChange(detected)
+  }
+
   if (isLoadingDevices) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -360,6 +427,61 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
                     <p className="text-foreground">{user.name}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Timezone Section */}
+              <div className="mb-8 p-4 bg-muted/50 rounded-xl border border-border">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-2">
+                  <Globe className="h-5 w-5 text-teal-500" />
+                  {tz.title}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">{tz.description}</p>
+
+                {timezoneMessage && (
+                  <div
+                    className={cn(
+                      "mb-4 p-2 rounded-lg text-sm text-center animate-in fade-in slide-in-from-top-2 duration-300",
+                      timezoneMessage.type === "success"
+                        ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                        : "bg-red-500/10 border border-red-500/20 text-red-400"
+                    )}
+                  >
+                    {timezoneMessage.text}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <select
+                    value={timezone}
+                    onChange={(e) => handleTimezoneChange(e.target.value)}
+                    disabled={isSavingTimezone}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-teal-500/50 disabled:opacity-50"
+                  >
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label} ({tz.offset})
+                      </option>
+                    ))}
+                    {/* Include current timezone if not in list */}
+                    {!TIMEZONE_OPTIONS.find(o => o.value === timezone) && (
+                      <option value={timezone}>
+                        {getTimezoneLabel(timezone)}
+                      </option>
+                    )}
+                  </select>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDetectTimezone}
+                    disabled={isSavingTimezone}
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {tz.detectFromBrowser}
+                    {isSavingTimezone && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+                  </Button>
+                </div>
               </div>
 
               {/* Device Message */}

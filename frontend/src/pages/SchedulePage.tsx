@@ -1,10 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { PageHeader } from "../components/PageHeader"
 import { useSchedule, CreateScheduledJobInput, ScheduledJob } from "../hooks/useSchedule"
 import { useLanguage } from "../hooks/useLanguage"
+import { useAuth } from "../hooks/useAuth"
+import { detectBrowserTimezone, getTimezoneLabel } from "../utils"
 import {
   Calendar,
   Clock,
@@ -56,9 +58,10 @@ interface ScheduleFormProps {
   onSubmit: (data: CreateScheduledJobInput) => Promise<void>
   onCancel: () => void
   isSubmitting: boolean
+  userTimezone: string
 }
 
-function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: ScheduleFormProps) {
+function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting, userTimezone }: ScheduleFormProps) {
   const { t } = useLanguage()
   const [prompt, setPrompt] = useState(initialData?.prompt || "")
   const [size, setSize] = useState(initialData?.size || "1024x1024")
@@ -106,7 +109,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
       scheduleTime: scheduleType !== "once" ? scheduleTime : undefined,
       scheduleDays: scheduleType === "weekly" ? scheduleDays : undefined,
       scheduledAt: scheduleType === "once" ? scheduledAt : undefined,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: userTimezone,
       autoSyncTrmnl,
     }
 
@@ -253,6 +256,12 @@ function ScheduleForm({ initialData, onSubmit, onCancel, isSubmitting }: Schedul
         </label>
       </div>
 
+      {/* Timezone indicator */}
+      <div className="text-xs text-muted-foreground flex items-center gap-1 pt-1">
+        <Clock className="h-3 w-3" />
+        <span>{t.schedule?.timezone || "Timezone"}: {getTimezoneLabel(userTimezone)}</span>
+      </div>
+
       {/* Actions */}
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
@@ -370,6 +379,7 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
 
 export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { t } = useLanguage()
+  const { authFetch } = useAuth()
   const { jobs, pagination, maxJobsAllowed, isLoading, error, createJob, updateJob, deleteJob, toggleJob, nextPage, prevPage } = useSchedule()
   const total = pagination?.total ?? 0
   const limit = maxJobsAllowed
@@ -378,6 +388,25 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const [duplicatingJob, setDuplicatingJob] = useState<ScheduledJob | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
+
+  // Fetch user's saved timezone
+  useEffect(() => {
+    const fetchTimezone = async () => {
+      try {
+        const response = await authFetch("/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.timezone) {
+            setUserTimezone(data.timezone)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch timezone:", error)
+      }
+    }
+    fetchTimezone()
+  }, [authFetch])
 
   const handleCreate = async (data: CreateScheduledJobInput) => {
     setIsSubmitting(true)
@@ -456,6 +485,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
               onSubmit={handleCreate}
               onCancel={() => setShowForm(false)}
               isSubmitting={isSubmitting}
+              userTimezone={userTimezone}
             />
           </CardContent>
         </Card>
@@ -473,6 +503,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
               onSubmit={handleUpdate}
               onCancel={() => setEditingJob(null)}
               isSubmitting={isSubmitting}
+              userTimezone={userTimezone}
             />
           </CardContent>
         </Card>
@@ -494,6 +525,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
               onSubmit={handleCreate}
               onCancel={() => setDuplicatingJob(null)}
               isSubmitting={isSubmitting}
+              userTimezone={userTimezone}
             />
           </CardContent>
         </Card>

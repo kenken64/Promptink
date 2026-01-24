@@ -113,6 +113,7 @@ export interface UserSettings {
   trmnl_device_api_key: string | null
   trmnl_mac_address: string | null
   trmnl_background_color: "black" | "white"
+  timezone: string
 }
 
 // Synced image type
@@ -293,6 +294,9 @@ export function initDatabase() {
   } catch {}
   try {
     db.run(`ALTER TABLE users ADD COLUMN owns_trmnl_device INTEGER DEFAULT 0`)
+  } catch {}
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN timezone TEXT DEFAULT 'UTC'`)
   } catch {}
 
   // Orders table
@@ -618,6 +622,7 @@ let _userQueries: {
   updatePassword: Statement<void, [string, number]>
   updateSettings: Statement<void, [string | null, string | null, string, number]>
   getSettings: Statement<UserSettings, [number]>
+  updateTimezone: Statement<void, [string, number]>
   getSubscriptionStatus: Statement<UserSubscriptionStatus, [number]>
   updateRazorpayCustomerId: Statement<void, [string, number]>
   updateSubscription: Statement<void, [string, string, string | null, number]>
@@ -761,7 +766,10 @@ function initPreparedStatements() {
       "UPDATE users SET trmnl_device_api_key = ?, trmnl_mac_address = ?, trmnl_background_color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     getSettings: db.prepare<UserSettings, [number]>(
-      "SELECT trmnl_device_api_key, trmnl_mac_address, COALESCE(trmnl_background_color, 'black') as trmnl_background_color FROM users WHERE id = ?"
+      "SELECT trmnl_device_api_key, trmnl_mac_address, COALESCE(trmnl_background_color, 'black') as trmnl_background_color, COALESCE(timezone, 'UTC') as timezone FROM users WHERE id = ?"
+    ),
+    updateTimezone: db.prepare<void, [string, number]>(
+      "UPDATE users SET timezone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
     getSubscriptionStatus: db.prepare<UserSubscriptionStatus, [number]>(
       "SELECT COALESCE(subscription_status, 'none') as subscription_status, subscription_id, subscription_current_period_end, razorpay_customer_id, first_order_id, COALESCE(owns_trmnl_device, 0) as owns_trmnl_device FROM users WHERE id = ?"
@@ -1096,6 +1104,7 @@ export const userQueries = {
   get updatePassword() { return _userQueries.updatePassword },
   get updateSettings() { return _userQueries.updateSettings },
   get getSettings() { return _userQueries.getSettings },
+  get updateTimezone() { return _userQueries.updateTimezone },
   get getSubscriptionStatus() { return _userQueries.getSubscriptionStatus },
   get updateRazorpayCustomerId() { return _userQueries.updateRazorpayCustomerId },
   get updateSubscription() { return _userQueries.updateSubscription },
