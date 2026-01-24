@@ -537,7 +537,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   )
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-y-auto">
       {/* Standardized Header */}
       <PageHeader
         title={t.batch?.title || "Batch Generation"}
@@ -546,7 +546,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
         onLogout={onLogout}
       />
 
-      <div className="container mx-auto p-4 max-w-2xl">
+      <div className="container mx-auto p-4 max-w-2xl pb-24">
         {/* Description and New Batch button */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-muted-foreground">

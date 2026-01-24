@@ -417,7 +417,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const canCreateMore = total < limit
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-y-auto">
       {/* Standardized Header */}
       <PageHeader
         title={t.schedule?.title || "Schedule"}
