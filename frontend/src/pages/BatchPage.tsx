@@ -1,9 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { PageHeader } from "../components/PageHeader"
 import { useBatch, BatchJob, BatchJobWithItems, CreateBatchJobInput, BatchStatus } from "../hooks/useBatch"
 import { useLanguage } from "../hooks/useLanguage"
+import { useAuth } from "../hooks/useAuth"
+import { detectBrowserTimezone, formatDateTimeInTimezone } from "../utils"
 import {
   Layers,
   Plus,
@@ -234,9 +236,10 @@ interface BatchCardProps {
   onCancel: () => void
   onDelete: () => void
   onDuplicate: () => void
+  userTimezone?: string
 }
 
-function BatchCard({ batch, onView, onCancel, onDelete, onDuplicate }: BatchCardProps) {
+function BatchCard({ batch, onView, onCancel, onDelete, onDuplicate, userTimezone }: BatchCardProps) {
   const { t } = useLanguage()
 
   const getStatusIcon = () => {
@@ -314,7 +317,15 @@ function BatchCard({ batch, onView, onCancel, onDelete, onDuplicate }: BatchCard
             )}
 
             <p className="text-xs text-muted-foreground mt-1">
-              {t.batch?.created || "Created"}: {new Date(batch.created_at).toLocaleString()}
+              {t.batch?.created || "Created"}: {userTimezone
+                ? formatDateTimeInTimezone(batch.created_at, userTimezone, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : new Date(batch.created_at).toLocaleString()}
             </p>
           </div>
 
@@ -450,6 +461,7 @@ function BatchDetailModal({ batch, onClose }: BatchDetailModalProps) {
 
 export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   const { t } = useLanguage()
+  const { authFetch } = useAuth()
   const {
     batches,
     currentBatch,
@@ -472,6 +484,25 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
   const [showDetail, setShowDetail] = useState(false)
   const [pollingBatchId, setPollingBatchId] = useState<number | null>(null)
   const [duplicatingBatch, setDuplicatingBatch] = useState<BatchJobWithItems | null>(null)
+  const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
+
+  // Fetch user's saved timezone
+  useEffect(() => {
+    const fetchTimezone = async () => {
+      try {
+        const response = await authFetch("/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.timezone) {
+            setUserTimezone(data.timezone)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch timezone:", error)
+      }
+    }
+    fetchTimezone()
+  }, [authFetch])
 
   const handleCreate = async (data: CreateBatchJobInput) => {
     setIsSubmitting(true)
@@ -638,6 +669,7 @@ export default function BatchPage({ onNavigate, onLogout }: BatchPageProps) {
                 onCancel={() => handleCancel(batch)}
                 onDelete={() => handleDelete(batch)}
                 onDuplicate={() => handleDuplicate(batch)}
+                userTimezone={userTimezone}
               />
             ))}
           </div>

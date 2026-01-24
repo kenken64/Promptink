@@ -6,7 +6,7 @@ import { PageHeader } from "../components/PageHeader"
 import { useSchedule, CreateScheduledJobInput, ScheduledJob } from "../hooks/useSchedule"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
-import { detectBrowserTimezone, getTimezoneLabel } from "../utils"
+import { detectBrowserTimezone, getTimezoneLabel, formatDateInTimezone, formatDateTimeInTimezone } from "../utils"
 import {
   Calendar,
   Clock,
@@ -286,9 +286,10 @@ interface ScheduleCardProps {
   onDuplicate: () => void
   onDelete: () => void
   onToggle: () => void
+  userTimezone?: string
 }
 
-function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: ScheduleCardProps) {
+function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezone }: ScheduleCardProps) {
   const { t } = useLanguage()
   const isEnabled = !!job.is_enabled
 
@@ -302,14 +303,27 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
     if (diffMs < 60000) return t.schedule?.soon || "Soon"
     if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m`
     if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h`
+    // Use user timezone for date display
+    if (userTimezone) {
+      return formatDateInTimezone(dateStr, userTimezone)
+    }
     return date.toLocaleDateString()
   }
 
   const getScheduleDescription = () => {
     if (job.schedule_type === "once") {
-      return job.scheduled_at
-        ? new Date(job.scheduled_at).toLocaleString()
-        : "-"
+      if (!job.scheduled_at) return "-"
+      // Use user timezone for datetime display
+      if (userTimezone) {
+        return formatDateTimeInTimezone(job.scheduled_at, userTimezone, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      }
+      return new Date(job.scheduled_at).toLocaleString()
     }
     if (job.schedule_type === "daily") {
       return `${t.schedule?.daily || "Daily"} @ ${job.schedule_time}`
@@ -567,6 +581,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
                   onDuplicate={() => setDuplicatingJob(job)}
                   onDelete={() => setDeleteConfirm(job.id)}
                   onToggle={() => handleToggle(job.id)}
+                  userTimezone={userTimezone}
                 />
                 {/* Delete Confirmation */}
                 {deleteConfirm === job.id && (
