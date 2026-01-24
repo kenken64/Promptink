@@ -11,6 +11,8 @@ interface GeneratedImage {
 interface ImageGenerationResponse {
   created: number
   data: GeneratedImage[]
+  galleryId?: number
+  galleryUrl?: string
 }
 
 interface AuthHeaders {

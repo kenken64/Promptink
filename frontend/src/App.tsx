@@ -302,7 +302,8 @@ export default function App() {
         result = await generateImage({ prompt, language, size: selectedSize, stylePreset: selectedStyle })
       }
 
-      const imageUrl = result.data[0]?.url
+      // Prefer permanent gallery URL over temporary OpenAI URL (which expires after ~1 hour)
+      const imageUrl = result.galleryUrl || result.data[0]?.url
       const revisedPrompt = result.data[0]?.revised_prompt
 
       setMessages((prev) =>
