@@ -755,7 +755,8 @@ export function AdminPage() {
 
   // Admin dashboard
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 sm:p-8 overflow-y-auto">
+    <div className="h-screen bg-zinc-950 overflow-y-auto">
+      <div className="min-h-full p-4 sm:p-8">
       {/* Blocking overlay with progress bar */}
       {isBlocking && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -1531,6 +1532,7 @@ export function AdminPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )
