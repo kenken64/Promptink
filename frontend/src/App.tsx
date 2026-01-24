@@ -8,6 +8,7 @@ import { ThemeToggle } from "./components/ThemeToggle"
 import { LanguageToggle } from "./components/LanguageToggle"
 import { AuthGuard } from "./components/AuthGuard"
 import { PromptEnhanceModal } from "./components/PromptEnhanceModal"
+import { OfflineIndicator } from "./components/OfflineIndicator"
 import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
@@ -999,13 +1000,16 @@ export default function App() {
   }
 
   return (
-    <AuthGuard
-      isAuthenticated={isAuthenticated}
-      isLoading={authLoading}
-      fallback={renderAuthPage()}
-      forceShowFallback={authPage === 'reset-password' || authPage === 'forgot-password'}
-    >
-      {renderCurrentPage()}
-    </AuthGuard>
+    <>
+      <OfflineIndicator />
+      <AuthGuard
+        isAuthenticated={isAuthenticated}
+        isLoading={authLoading}
+        fallback={renderAuthPage()}
+        forceShowFallback={authPage === 'reset-password' || authPage === 'forgot-password'}
+      >
+        {renderCurrentPage()}
+      </AuthGuard>
+    </>
   )
 }
