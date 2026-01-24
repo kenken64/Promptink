@@ -317,6 +317,51 @@ if (isDev) {
         }
       }
 
+      // Serve PWA manifest
+      if (url.pathname === "/manifest.json") {
+        const manifestPath = join(import.meta.dir, "../../frontend/public/manifest.json")
+        const file = Bun.file(manifestPath)
+        if (await file.exists()) {
+          const response = new Response(file, {
+            headers: { 
+              "Content-Type": "application/manifest+json",
+              "Cache-Control": "public, max-age=86400",
+            },
+          })
+          return addSecurityHeaders(response)
+        }
+      }
+
+      // Serve service worker
+      if (url.pathname === "/sw.js") {
+        const swPath = join(import.meta.dir, "../../frontend/public/sw.js")
+        const file = Bun.file(swPath)
+        if (await file.exists()) {
+          const response = new Response(file, {
+            headers: { 
+              "Content-Type": "application/javascript",
+              "Cache-Control": "no-cache", // Service worker should not be cached
+            },
+          })
+          return addSecurityHeaders(response)
+        }
+      }
+
+      // Serve PWA icons
+      if (url.pathname.startsWith("/icons/")) {
+        const iconPath = join(import.meta.dir, "../../frontend/public/icons", url.pathname.replace("/icons/", ""))
+        const file = Bun.file(iconPath)
+        if (await file.exists()) {
+          const response = new Response(file, {
+            headers: { 
+              "Content-Type": "image/png",
+              "Cache-Control": "public, max-age=31536000",
+            },
+          })
+          return addSecurityHeaders(response)
+        }
+      }
+
       // Serve CSS
       if (url.pathname === "/assets/styles.css") {
         const response = new Response(stylesCSS, {

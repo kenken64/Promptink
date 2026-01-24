@@ -35,6 +35,8 @@ interface GalleryState {
   stats: GalleryStats | null
   isLoading: boolean
   error: string | null
+  isOffline: boolean
+  isFromCache: boolean
 }
 
 export function useGallery() {
@@ -45,6 +47,8 @@ export function useGallery() {
     stats: null,
     isLoading: false,
     error: null,
+    isOffline: false,
+    isFromCache: false,
   })
   const [filter, setFilter] = useState<"all" | "favorites">("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -88,7 +92,22 @@ export function useGallery() {
 
       const response = await authFetch(`/api/gallery?${params}`)
 
+      // Check if response is from service worker cache
+      const isFromCache = response.headers.get("X-From-Cache") === "true"
+
       const data = await response.json()
+
+      // Handle offline response from service worker
+      if (data.offline) {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          isOffline: true,
+          isFromCache: false,
+          error: "You're offline. Showing cached images.",
+        }))
+        return
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch gallery")
@@ -99,15 +118,23 @@ export function useGallery() {
         images: append ? [...prev.images, ...data.images] : data.images,
         pagination: data.pagination,
         isLoading: false,
+        isOffline: false,
+        isFromCache,
       }))
     } catch (err) {
+      // Check if it's a network error (offline)
+      const isNetworkError = err instanceof TypeError && err.message.includes("fetch")
+      
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch gallery",
+        isOffline: isNetworkError || !navigator.onLine,
+        error: isNetworkError 
+          ? "You're offline. Showing cached images if available."
+          : err instanceof Error ? err.message : "Failed to fetch gallery",
       }))
     }
-  }, [isAuthenticated, authFetch, filter, searchQuery])
+  }, [isAuthenticated, authFetch, filter, debouncedSearchQuery])
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -255,6 +282,8 @@ export function useGallery() {
     stats: state.stats,
     isLoading: state.isLoading,
     error: state.error,
+    isOffline: state.isOffline,
+    isFromCache: state.isFromCache,
     filter,
     setFilter,
     searchQuery,
