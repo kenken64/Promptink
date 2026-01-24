@@ -881,14 +881,14 @@ export function AdminPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
                       <div className="text-2xl font-bold text-emerald-400">
-                        ${openaiUsage.costs.total.toFixed(4)}
+                        ${(openaiUsage.costs.total ?? 0).toFixed(4)}
                       </div>
-                      <div className="text-xs text-zinc-500 mt-1">Total Cost ({openaiUsage.costs.currency.toUpperCase()})</div>
+                      <div className="text-xs text-zinc-500 mt-1">Total Cost ({(openaiUsage.costs.currency ?? 'usd').toUpperCase()})</div>
                     </div>
-                    {Object.entries(openaiUsage.costs.byLineItem).map(([item, cost]) => (
+                    {Object.entries(openaiUsage.costs.byLineItem || {}).map(([item, cost]) => (
                       <div key={item} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
                         <div className="text-lg font-semibold text-zinc-200">
-                          ${(cost as number).toFixed(4)}
+                          ${((cost as number) ?? 0).toFixed(4)}
                         </div>
                         <div className="text-xs text-zinc-500 mt-1">{item}</div>
                       </div>
