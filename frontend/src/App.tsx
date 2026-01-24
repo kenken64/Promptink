@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, lazy, Suspense } from "react"
-import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw, Calendar, Layers } from "lucide-react"
+import { useState, useRef, useEffect, lazy, Suspense, useCallback } from "react"
+import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw, Calendar, Layers, ChevronDown } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { ChatMessage } from "./components/ChatMessage"
@@ -105,6 +105,27 @@ export default function App() {
   const { subscription, isLoading: subscriptionLoading, needsToPurchase, needsToReactivate, hasFullAccess } = useSubscription()
   const { suggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSuggestions(language)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+  // Scroll to bottom function
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior,
+      })
+    }
+  }, [])
+
+  // Track scroll position to show/hide FAB
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+      // Show FAB if more than 200px from bottom
+      setShowScrollToBottom(distanceFromBottom > 200)
+    }
+  }, [])
 
   // Update SEO meta tags when page changes
   useSEO()
@@ -146,11 +167,18 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    scrollToBottom("auto")
+  }, [messages, scrollToBottom])
+
+  // Scroll to bottom when navigating back to chat page
+  useEffect(() => {
+    if (appPage === "chat" && messages.length > 0) {
+      // Small delay to ensure DOM is rendered
+      setTimeout(() => scrollToBottom("auto"), 50)
     }
-  }, [messages])
+  }, [appPage, scrollToBottom, messages.length])
 
   // Persist messages to localStorage when they change
   useEffect(() => {
@@ -757,7 +785,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <ScrollArea ref={scrollRef} className="h-full">
+          <ScrollArea ref={scrollRef} className="h-full" onScroll={handleScroll}>
             <div className="pb-32">
               {messages.map((message) => (
                 <ChatMessage
@@ -790,6 +818,17 @@ export default function App() {
               ))}
             </div>
           </ScrollArea>
+        )}
+
+        {/* Scroll to bottom FAB */}
+        {showScrollToBottom && messages.length > 0 && appPage === "chat" && (
+          <button
+            onClick={() => scrollToBottom("smooth")}
+            className="absolute bottom-4 right-4 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-teal-500 text-white shadow-lg hover:bg-teal-600 transition-all hover:scale-105 active:scale-95"
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
         )}
       </main>
 
