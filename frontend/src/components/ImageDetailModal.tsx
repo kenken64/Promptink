@@ -5,6 +5,7 @@ import { useLanguage } from "../hooks/useLanguage"
 import { ShareButton } from "./ShareButton"
 import { useAuth } from "../hooks/useAuth"
 import { useTrmnlSync } from "../hooks/useTrmnlSync"
+import { formatDateTimeInTimezone } from "../utils"
 
 // Fallback placeholder component for modal
 function ModalImagePlaceholder() {
@@ -38,6 +39,7 @@ interface ImageDetailModalProps {
   onNavigate?: (direction: "prev" | "next") => void
   hasPrev?: boolean
   hasNext?: boolean
+  userTimezone?: string
 }
 
 export function ImageDetailModal({
@@ -49,6 +51,7 @@ export function ImageDetailModal({
   onNavigate,
   hasPrev = false,
   hasNext = false,
+  userTimezone,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
   const { accessToken: token } = useAuth()
@@ -188,6 +191,17 @@ export function ImageDetailModal({
   }
 
   const formatDate = (dateStr: string) => {
+    if (userTimezone) {
+      return formatDateTimeInTimezone(dateStr, userTimezone, {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    }
+    // Fallback to browser timezone
     const date = new Date(dateStr)
     return date.toLocaleDateString(undefined, {
       weekday: "long",

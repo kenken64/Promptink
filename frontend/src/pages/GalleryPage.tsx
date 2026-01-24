@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
@@ -6,7 +6,9 @@ import { ImageDetailModal } from "../components/ImageDetailModal"
 import { PageHeader } from "../components/PageHeader"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
+import { useAuth } from "../hooks/useAuth"
 import { RefreshCw, Upload } from "lucide-react"
+import { detectBrowserTimezone } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -17,6 +19,7 @@ interface GalleryPageProps {
 
 export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const { t } = useLanguage()
+  const { authFetch } = useAuth()
   const {
     images,
     pagination,
@@ -40,6 +43,25 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
+
+  // Fetch user's saved timezone
+  useEffect(() => {
+    const fetchTimezone = async () => {
+      try {
+        const response = await authFetch("/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.timezone) {
+            setUserTimezone(data.timezone)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch timezone:", error)
+      }
+    }
+    fetchTimezone()
+  }, [authFetch])
 
   const handleSelectImage = useCallback((image: GalleryImage) => {
     setSelectedImage(image)
@@ -377,6 +399,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                   onSelect={handleSelectImage}
                   onToggleFavorite={toggleFavorite}
                   onDelete={deleteImage}
+                  userTimezone={userTimezone}
                 />
               ))}
             </div>
@@ -439,6 +462,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         onNavigate={handleNavigate}
         hasPrev={currentIndex > 0}
         hasNext={currentIndex < images.length - 1}
+        userTimezone={userTimezone}
       />
     </div>
   )
