@@ -3,6 +3,7 @@ import { Card } from "./ui/card"
 import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
+import { formatDateInTimezone } from "../utils"
 
 // Fallback placeholder component
 function ImagePlaceholder() {
@@ -32,6 +33,7 @@ interface GalleryCardProps {
   onSelect: (image: GalleryImage) => void
   onToggleFavorite: (imageId: number) => Promise<boolean>
   onDelete: (imageId: number) => Promise<boolean>
+  userTimezone?: string
 }
 
 export const GalleryCard = memo(function GalleryCard({
@@ -39,6 +41,7 @@ export const GalleryCard = memo(function GalleryCard({
   onSelect,
   onToggleFavorite,
   onDelete,
+  userTimezone,
 }: GalleryCardProps) {
   const { t } = useLanguage()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -76,8 +79,8 @@ export const GalleryCard = memo(function GalleryCard({
   }
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString(undefined, {
+    // Function handles fallback to browser timezone when userTimezone is empty
+    return formatDateInTimezone(dateStr, userTimezone || "", {
       month: "short",
       day: "numeric",
       year: "numeric",

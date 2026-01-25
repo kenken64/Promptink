@@ -87,3 +87,60 @@ export function getTimezoneOffset(timezone: string): string {
     return ''
   }
 }
+
+// Format a date string in a specific timezone
+export function formatDateInTimezone(
+  dateStr: string,
+  timezone: string,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  try {
+    const date = new Date(dateStr)
+    // Always use an explicit timezone - if not provided or UTC, detect from browser
+    const effectiveTimezone = (timezone && timezone !== "UTC")
+      ? timezone
+      : detectBrowserTimezone()
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      timeZone: effectiveTimezone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      ...options
+    }
+    return date.toLocaleDateString(undefined, defaultOptions)
+  } catch {
+    // Fallback to simple date string
+    const date = new Date(dateStr)
+    return date.toLocaleDateString()
+  }
+}
+
+// Format a date string with time in a specific timezone
+export function formatDateTimeInTimezone(
+  dateStr: string,
+  timezone: string,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  try {
+    const date = new Date(dateStr)
+    // Always use an explicit timezone - if not provided or UTC, detect from browser
+    const effectiveTimezone = (timezone && timezone !== "UTC")
+      ? timezone
+      : detectBrowserTimezone()
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      timeZone: effectiveTimezone,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      ...options
+    }
+    return date.toLocaleString(undefined, defaultOptions)
+  } catch {
+    // Fallback to simple date string
+    const date = new Date(dateStr)
+    return date.toLocaleString()
+  }
+}

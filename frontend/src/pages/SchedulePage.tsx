@@ -6,7 +6,7 @@ import { PageHeader } from "../components/PageHeader"
 import { useSchedule, CreateScheduledJobInput, ScheduledJob } from "../hooks/useSchedule"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
-import { detectBrowserTimezone, getTimezoneLabel } from "../utils"
+import { detectBrowserTimezone, getTimezoneLabel, formatDateInTimezone, formatDateTimeInTimezone } from "../utils"
 import {
   Calendar,
   Clock,
@@ -22,6 +22,7 @@ import {
   Monitor,
   ChevronLeft,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -286,9 +287,10 @@ interface ScheduleCardProps {
   onDuplicate: () => void
   onDelete: () => void
   onToggle: () => void
+  userTimezone?: string
 }
 
-function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: ScheduleCardProps) {
+function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezone }: ScheduleCardProps) {
   const { t } = useLanguage()
   const isEnabled = !!job.is_enabled
 
@@ -302,14 +304,23 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
     if (diffMs < 60000) return t.schedule?.soon || "Soon"
     if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m`
     if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h`
-    return date.toLocaleDateString()
+    // Use user timezone for date display (function handles fallback to browser timezone)
+    return formatDateInTimezone(dateStr, userTimezone || "")
   }
 
   const getScheduleDescription = () => {
     if (job.schedule_type === "once") {
-      return job.scheduled_at
-        ? new Date(job.scheduled_at).toLocaleString()
-        : "-"
+      if (!job.scheduled_at) return "-"
+      // scheduled_at is stored as LOCAL time (user's input), display as-is without timezone conversion
+      const date = new Date(job.scheduled_at)
+      return date.toLocaleString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     }
     if (job.schedule_type === "daily") {
       return `${t.schedule?.daily || "Daily"} @ ${job.schedule_time}`
@@ -352,6 +363,18 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle }: Schedule
                 <span>{job.run_count} {t.schedule?.runs || "runs"}</span>
               )}
             </div>
+            {/* Error display */}
+            {job.last_error && (
+              <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                <div className="flex items-start gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">{t.schedule?.lastError || "Last error"}</p>
+                    <p className="text-xs mt-1 break-words">{job.last_error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={onToggle} title={isEnabled ? "Disable" : "Enable"}>
@@ -390,14 +413,16 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
 
-  // Fetch user's saved timezone
+  // Fetch user's saved timezone (only use if explicitly set, not default UTC)
   useEffect(() => {
     const fetchTimezone = async () => {
       try {
         const response = await authFetch("/api/settings")
         if (response.ok) {
           const data = await response.json()
-          if (data.timezone) {
+          // Only use saved timezone if it's not the default UTC
+          // This allows browser timezone to be used for users who haven't set a preference
+          if (data.timezone && data.timezone !== "UTC") {
             setUserTimezone(data.timezone)
           }
         }
@@ -567,6 +592,7 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
                   onDuplicate={() => setDuplicatingJob(job)}
                   onDelete={() => setDeleteConfirm(job.id)}
                   onToggle={() => handleToggle(job.id)}
+                  userTimezone={userTimezone}
                 />
                 {/* Delete Confirmation */}
                 {deleteConfirm === job.id && (

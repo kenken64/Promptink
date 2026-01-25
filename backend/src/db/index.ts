@@ -159,6 +159,8 @@ export interface ScheduledJob {
   last_run_at: string | null
   next_run_at: string | null
   run_count: number
+  last_error: string | null // Error message from last failed run
+  last_error_at: string | null // When the last error occurred
   created_at: string
   updated_at: string
 }
@@ -432,6 +434,14 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_next_run_at ON scheduled_jobs(next_run_at)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_is_enabled ON scheduled_jobs(is_enabled)`)
 
+  // Migration: Add error tracking columns to scheduled_jobs
+  try {
+    db.run(`ALTER TABLE scheduled_jobs ADD COLUMN last_error TEXT`)
+  } catch { /* column already exists */ }
+  try {
+    db.run(`ALTER TABLE scheduled_jobs ADD COLUMN last_error_at DATETIME`)
+  } catch { /* column already exists */ }
+
   // Batch jobs table
   db.run(`
     CREATE TABLE IF NOT EXISTS batch_jobs (
@@ -680,6 +690,8 @@ let _scheduledJobQueries: {
   update: Statement<void, [string, string, string | null, string, string, string | null, string | null, string, number, number, string | null, number, number]>
   updateEnabled: Statement<void, [number, number, number]>
   updateLastRun: Statement<void, [string, string | null, number]>
+  updateError: Statement<void, [string, number]>
+  clearError: Statement<void, [number]>
   delete: Statement<void, [number, number]>
 }
 
@@ -930,6 +942,12 @@ function initPreparedStatements() {
     updateLastRun: db.prepare<void, [string, string | null, number]>(
       "UPDATE scheduled_jobs SET last_run_at = ?, next_run_at = ?, run_count = run_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
     ),
+    updateError: db.prepare<void, [string, number]>(
+      "UPDATE scheduled_jobs SET last_error = ?, last_error_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ),
+    clearError: db.prepare<void, [number]>(
+      "UPDATE scheduled_jobs SET last_error = NULL, last_error_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ),
     delete: db.prepare<void, [number, number]>(
       "DELETE FROM scheduled_jobs WHERE id = ? AND user_id = ?"
     ),
@@ -1162,6 +1180,8 @@ export const scheduledJobQueries = {
   get update() { return _scheduledJobQueries.update },
   get updateEnabled() { return _scheduledJobQueries.updateEnabled },
   get updateLastRun() { return _scheduledJobQueries.updateLastRun },
+  get updateError() { return _scheduledJobQueries.updateError },
+  get clearError() { return _scheduledJobQueries.clearError },
   get delete() { return _scheduledJobQueries.delete },
 }
 

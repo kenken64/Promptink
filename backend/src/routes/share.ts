@@ -1,4 +1,4 @@
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { db } from "../db"
 import { config } from "../config"
@@ -209,7 +209,7 @@ export const shareRoutes = {
           shareId: sharedImage.share_id,
           imageUrl: sharedImage.image_url,
           prompt: sharedImage.prompt,
-          createdAt: sharedImage.created_at,
+          createdAt: toISODate(sharedImage.created_at),
           viewCount: sharedImage.view_count + 1,
         })
       } catch (error) {
@@ -298,8 +298,8 @@ export const shareRoutes = {
             shareUrl: getSharePageUrl(img.share_id),
             imageUrl: img.image_url,
             prompt: img.prompt,
-            createdAt: img.created_at,
-            expiresAt: img.expires_at,
+            createdAt: toISODate(img.created_at),
+            expiresAt: toISODate(img.expires_at),
             viewCount: img.view_count,
           })),
           count: sharedImages.length,

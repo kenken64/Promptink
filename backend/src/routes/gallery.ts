@@ -1,4 +1,4 @@
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { generatedImageQueries, type GeneratedImage } from "../db"
 import { config } from "../config"
@@ -91,7 +91,7 @@ function transformImage(img: GeneratedImage) {
     isEdit: Boolean(img.is_edit),
     parentImageId: img.parent_image_id,
     isFavorite: Boolean(img.is_favorite),
-    createdAt: img.created_at,
+    createdAt: toISODate(img.created_at),
   }
 }
 
@@ -558,7 +558,7 @@ export const galleryRoutes = {
             fileExists,
             filePath,
             imageUrl: img.image_url?.substring(0, 60) + "...",
-            createdAt: img.created_at,
+            createdAt: toISODate(img.created_at),
           }
         })
 
