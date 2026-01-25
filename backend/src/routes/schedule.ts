@@ -25,11 +25,15 @@ interface ScheduleRequestBody {
 }
 
 // Transform scheduled job dates to ISO format with UTC indicator
+// Note: scheduled_at is stored as LOCAL time (user's input), not UTC
+// We return it as-is so frontend can display without timezone conversion
 function transformScheduledJob(job: ScheduledJob) {
   return {
     ...job,
     schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
-    scheduled_at: toISODate(job.scheduled_at),
+    // scheduled_at is LOCAL time - don't add Z suffix
+    scheduled_at: job.scheduled_at,
+    // These are UTC times - add Z suffix
     last_run_at: toISODate(job.last_run_at),
     next_run_at: toISODate(job.next_run_at),
     created_at: toISODate(job.created_at),

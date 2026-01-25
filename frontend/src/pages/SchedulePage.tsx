@@ -310,8 +310,10 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezo
   const getScheduleDescription = () => {
     if (job.schedule_type === "once") {
       if (!job.scheduled_at) return "-"
-      // Use user timezone for datetime display (function handles fallback to browser timezone)
-      return formatDateTimeInTimezone(job.scheduled_at, userTimezone || "", {
+      // scheduled_at is stored as LOCAL time (user's input), display as-is without timezone conversion
+      const date = new Date(job.scheduled_at)
+      return date.toLocaleString(undefined, {
+        weekday: "long",
         month: "short",
         day: "numeric",
         year: "numeric",
