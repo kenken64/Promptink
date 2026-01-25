@@ -3,8 +3,8 @@ import { withAuth } from "../middleware/auth"
 import { scheduledJobQueries, type ScheduledJob } from "../db"
 import { calculateNextRunTime, validateScheduleInput } from "../services/scheduler-service"
 
-// Maximum scheduled jobs per user
-const MAX_JOBS_PER_USER = 10
+// Maximum scheduled jobs per user (configurations, not concurrent runs)
+const MAX_JOBS_PER_USER = 100
 
 // Default pagination settings
 const DEFAULT_PAGE_SIZE = 10
