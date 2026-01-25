@@ -17,6 +17,8 @@ export interface ScheduledJob {
   last_run_at: string | null
   next_run_at: string | null
   run_count: number
+  last_error: string | null
+  last_error_at: string | null
   created_at: string
   updated_at: string
 }

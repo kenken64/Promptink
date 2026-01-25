@@ -276,6 +276,9 @@ async function executeScheduledJob(job: ScheduledJob): Promise<void> {
       job.id
     )
 
+    // Clear any previous error on successful execution
+    scheduledJobQueries.clearError.run(job.id)
+
     // If no next run (one-time job completed), disable it
     if (!nextRunAt) {
       scheduledJobQueries.updateEnabled.run(0, job.id, job.user_id)
@@ -283,7 +286,34 @@ async function executeScheduledJob(job: ScheduledJob): Promise<void> {
     }
 
   } catch (error) {
-    log("ERROR", "Failed to execute scheduled job", { jobId: job.id, error: String(error) })
+    const errorMessage = String(error).replace(/^Error:\s*/, '')
+    log("ERROR", "Failed to execute scheduled job", { jobId: job.id, error: errorMessage })
+
+    // Save the error to the database
+    scheduledJobQueries.updateError.run(errorMessage, job.id)
+
+    // Calculate next run time even on failure (for recurring jobs)
+    const nextRunAt = calculateNextRunTime(
+      job.schedule_type,
+      job.schedule_time,
+      job.schedule_days,
+      job.scheduled_at,
+      job.timezone
+    )
+
+    // Update next run time so the job can retry
+    if (nextRunAt) {
+      scheduledJobQueries.updateLastRun.run(
+        new Date().toISOString(),
+        nextRunAt,
+        job.id
+      )
+    } else {
+      // One-time job failed - disable it
+      scheduledJobQueries.updateEnabled.run(0, job.id, job.user_id)
+      log("INFO", "One-time scheduled job failed and disabled", { jobId: job.id })
+    }
+
     throw error
   }
 }

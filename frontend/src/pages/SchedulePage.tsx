@@ -22,6 +22,7 @@ import {
   Monitor,
   ChevronLeft,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -362,6 +363,18 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezo
                 <span>{job.run_count} {t.schedule?.runs || "runs"}</span>
               )}
             </div>
+            {/* Error display */}
+            {job.last_error && (
+              <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                <div className="flex items-start gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">{t.schedule?.lastError || "Last error"}</p>
+                    <p className="text-xs mt-1 break-words">{job.last_error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={onToggle} title={isEnabled ? "Disable" : "Enable"}>

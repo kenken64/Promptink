@@ -380,6 +380,7 @@ export const translations = {
       prompt: "Prompt",
       enterPrompt: "Enter your image prompt...",
       timezone: "Timezone",
+      lastError: "Last error",
     },
     batch: {
       title: "Batch",
@@ -797,6 +798,7 @@ export const translations = {
       prompt: "提示词",
       enterPrompt: "输入您的图片提示词...",
       timezone: "时区",
+      lastError: "上次错误",
     },
     batch: {
       title: "批量生成",

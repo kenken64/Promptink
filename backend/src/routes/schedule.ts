@@ -36,6 +36,7 @@ function transformScheduledJob(job: ScheduledJob) {
     // These are UTC times - add Z suffix
     last_run_at: toISODate(job.last_run_at),
     next_run_at: toISODate(job.next_run_at),
+    last_error_at: toISODate(job.last_error_at),
     created_at: toISODate(job.created_at),
     updated_at: toISODate(job.updated_at),
   }
