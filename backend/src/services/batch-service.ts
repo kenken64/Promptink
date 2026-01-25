@@ -1,4 +1,4 @@
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 import {
   batchJobQueries,
   batchJobItemQueries,
@@ -9,6 +9,25 @@ import {
 import { generateImage, type GenerateImageOptions } from "./openai-service"
 import { saveImageToGallery, getGalleryImageUrl } from "../routes/gallery"
 import { syncToTrmnl } from "../routes/sync"
+
+// Transform batch job dates to ISO format with UTC indicator
+function transformBatchJob(batch: BatchJob): BatchJob {
+  return {
+    ...batch,
+    created_at: toISODate(batch.created_at) || batch.created_at,
+    started_at: toISODate(batch.started_at),
+    completed_at: toISODate(batch.completed_at),
+  }
+}
+
+// Transform batch job item dates to ISO format with UTC indicator
+function transformBatchItem(item: BatchJobItem): BatchJobItem {
+  return {
+    ...item,
+    created_at: toISODate(item.created_at) || item.created_at,
+    completed_at: toISODate(item.completed_at),
+  }
+}
 
 // Style preset definitions (same as in images.ts)
 const stylePresets: Record<string, string> = {
@@ -361,15 +380,15 @@ export function createBatchJob(input: CreateBatchJobInput): BatchJob | null {
     batchJobItemQueries.create.get(batch.id, prompt.trim())
   }
 
-  log("INFO", "Batch job created", { 
-    batchId: batch.id, 
+  log("INFO", "Batch job created", {
+    batchId: batch.id,
     userId,
     totalPrompts: validPrompts.length,
     stylePreset,
     autoSyncTrmnl
   })
 
-  return batch
+  return transformBatchJob(batch)
 }
 
 // Get batch job with items
@@ -384,12 +403,15 @@ export function getBatchJobWithItems(batchId: number, userId: number): BatchJobW
   }
 
   const items = batchJobItemQueries.findByBatchId.all(batch.id)
-  return { ...batch, items }
+  return {
+    ...transformBatchJob(batch),
+    items: items.map(transformBatchItem),
+  }
 }
 
 // Get all batch jobs for a user
 export function getUserBatchJobs(userId: number): BatchJob[] {
-  return batchJobQueries.findAllByUserId.all(userId)
+  return batchJobQueries.findAllByUserId.all(userId).map(transformBatchJob)
 }
 
 // Get batch jobs for a user with pagination
@@ -398,7 +420,7 @@ export function getUserBatchJobsPaginated(
   limit: number,
   offset: number
 ): { batches: BatchJob[]; total: number } {
-  const batches = batchJobQueries.findAllByUserIdPaginated.all(userId, limit, offset)
+  const batches = batchJobQueries.findAllByUserIdPaginated.all(userId, limit, offset).map(transformBatchJob)
   const countResult = batchJobQueries.countByUserId.get(userId)
   const total = countResult?.count || 0
   return { batches, total }

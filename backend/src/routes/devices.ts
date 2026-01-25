@@ -1,6 +1,6 @@
 import { userDeviceQueries, type UserDevice } from "../db"
 import { withAuth } from "../middleware/auth"
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 
 // Device response type (includes webhook URL)
 interface DeviceResponse {
@@ -25,8 +25,8 @@ function toDeviceResponse(device: UserDevice): DeviceResponse {
     is_default: device.is_default === 1,
     mac_address: device.mac_address,
     device_api_key: device.device_api_key,
-    created_at: device.created_at,
-    updated_at: device.updated_at,
+    created_at: toISODate(device.created_at) || device.created_at,
+    updated_at: toISODate(device.updated_at) || device.updated_at,
   }
 }
 

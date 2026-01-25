@@ -1,4 +1,4 @@
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 import { withAuth } from "../middleware/auth"
 import { scheduledJobQueries, type ScheduledJob } from "../db"
 import { calculateNextRunTime, validateScheduleInput } from "../services/scheduler-service"
@@ -24,6 +24,19 @@ interface ScheduleRequestBody {
   autoSyncTrmnl?: boolean
 }
 
+// Transform scheduled job dates to ISO format with UTC indicator
+function transformScheduledJob(job: ScheduledJob) {
+  return {
+    ...job,
+    schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
+    scheduled_at: toISODate(job.scheduled_at),
+    last_run_at: toISODate(job.last_run_at),
+    next_run_at: toISODate(job.next_run_at),
+    created_at: toISODate(job.created_at),
+    updated_at: toISODate(job.updated_at),
+  }
+}
+
 export const scheduleRoutes = {
   // List all scheduled jobs for user (with pagination)
   "/api/schedule": {
@@ -38,11 +51,8 @@ export const scheduleRoutes = {
         const total = scheduledJobQueries.countByUserId.get(user.id)?.count || 0
         const totalPages = Math.ceil(total / limit)
 
-        // Parse schedule_days from JSON string to array
-        const formattedJobs = jobs.map((job: ScheduledJob) => ({
-          ...job,
-          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
-        }))
+        // Transform jobs with proper date formats
+        const formattedJobs = jobs.map((job: ScheduledJob) => transformScheduledJob(job))
 
         return Response.json({
           jobs: formattedJobs,
@@ -113,10 +123,7 @@ export const scheduleRoutes = {
 
         log("INFO", "Scheduled job created", { jobId: job.id, userId: user.id })
 
-        return Response.json({
-          ...job,
-          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
-        }, { status: 201 })
+        return Response.json(transformScheduledJob(job), { status: 201 })
       } catch (error) {
         log("ERROR", "Failed to create scheduled job", error)
         return Response.json({ error: "Failed to create scheduled job" }, { status: 500 })
@@ -136,10 +143,7 @@ export const scheduleRoutes = {
           return Response.json({ error: "Scheduled job not found" }, { status: 404 })
         }
 
-        return Response.json({
-          ...job,
-          schedule_days: job.schedule_days ? JSON.parse(job.schedule_days) : null,
-        })
+        return Response.json(transformScheduledJob(job))
       } catch (error) {
         log("ERROR", "Failed to get scheduled job", error)
         return Response.json({ error: "Failed to get scheduled job" }, { status: 500 })
@@ -196,10 +200,7 @@ export const scheduleRoutes = {
 
         log("INFO", "Scheduled job updated", { jobId: id, userId: user.id })
 
-        return Response.json({
-          ...updated,
-          schedule_days: updated?.schedule_days ? JSON.parse(updated.schedule_days) : null,
-        })
+        return Response.json(updated ? transformScheduledJob(updated) : null)
       } catch (error) {
         log("ERROR", "Failed to update scheduled job", error)
         return Response.json({ error: "Failed to update scheduled job" }, { status: 500 })
@@ -271,10 +272,7 @@ export const scheduleRoutes = {
         // Fetch updated job
         const updated = scheduledJobQueries.findByIdAndUserId.get(id, user.id)
 
-        return Response.json({
-          ...updated,
-          schedule_days: updated?.schedule_days ? JSON.parse(updated.schedule_days) : null,
-        })
+        return Response.json(updated ? transformScheduledJob(updated) : null)
       } catch (error) {
         log("ERROR", "Failed to toggle scheduled job", error)
         return Response.json({ error: "Failed to toggle scheduled job" }, { status: 500 })
@@ -294,7 +292,7 @@ export const scheduleRoutes = {
           prompt: job.prompt.substring(0, 50),
           schedule_type: job.schedule_type,
           is_enabled: job.is_enabled,
-          next_run_at: job.next_run_at,
+          next_run_at: toISODate(job.next_run_at),
           timezone: job.timezone,
           is_due: job.is_enabled === 1 && job.next_run_at && job.next_run_at <= now,
           server_time_utc: now,

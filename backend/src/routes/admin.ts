@@ -1,6 +1,6 @@
 import { config } from "../config"
 import { db, userDeviceQueries, type UserDevice } from "../db"
-import { log } from "../utils"
+import { log, toISODate } from "../utils"
 import { readdir, stat } from "node:fs/promises"
 import { join, relative } from "node:path"
 import { createWriteStream, existsSync, mkdirSync, rmSync } from "node:fs"
@@ -532,8 +532,8 @@ export const adminRoutes = {
             is_default: d.is_default === 1,
             mac_address: d.mac_address,
             device_api_key: d.device_api_key,
-            created_at: d.created_at,
-            updated_at: d.updated_at,
+            created_at: toISODate(d.created_at),
+            updated_at: toISODate(d.updated_at),
           })),
         })
       } catch (error) {
@@ -601,8 +601,8 @@ export const adminRoutes = {
             is_default: device.is_default === 1,
             mac_address: device.mac_address,
             device_api_key: device.device_api_key,
-            created_at: device.created_at,
-            updated_at: device.updated_at,
+            created_at: toISODate(device.created_at),
+            updated_at: toISODate(device.updated_at),
           },
         })
       } catch (error) {
@@ -667,8 +667,8 @@ export const adminRoutes = {
             is_default: updatedDevice.is_default === 1,
             mac_address: updatedDevice.mac_address,
             device_api_key: updatedDevice.device_api_key,
-            created_at: updatedDevice.created_at,
-            updated_at: updatedDevice.updated_at,
+            created_at: toISODate(updatedDevice.created_at),
+            updated_at: toISODate(updatedDevice.updated_at),
           } : null,
         })
       } catch (error) {
