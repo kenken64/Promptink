@@ -91,6 +91,75 @@ export function ImageDetailModal({
     setSelectedDevices([])
   }, [image?.id])
 
+  // Action callbacks (must be before early return since they are hooks)
+  const handleExport = useCallback(async (format: "png" | "jpg" | "webp") => {
+    if (!token || isExporting || !image) return
+    setIsExporting(true)
+    setShowExportMenu(false)
+
+    try {
+      const response = await fetch(
+        `/api/gallery/export/${image.id}?format=${format}&quality=90`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Export failed")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+
+      // Extract filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get("Content-Disposition")
+      let filename = `promptink-${image.id}.${format}`
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/)
+        if (match) filename = match[1]
+      }
+
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Export failed:", err)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [token, isExporting, image])
+
+  const handleDownload = useCallback(async () => {
+    await handleExport("png")
+  }, [handleExport])
+
+  const handleFavorite = useCallback(async () => {
+    if (!image) return
+    try {
+      await onToggleFavorite(image.id)
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err)
+    }
+  }, [image, onToggleFavorite])
+
+  const handleDelete = useCallback(async () => {
+    if (!image) return
+    if (!confirm(t.gallery.confirmDelete)) return
+    try {
+      await onDelete(image.id)
+      onClose()
+    } catch (err) {
+      console.error("Failed to delete:", err)
+    }
+  }, [image, t.gallery.confirmDelete, onDelete, onClose])
+
   // Handle keyboard navigation and shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return
@@ -161,75 +230,6 @@ export function ImageDetailModal({
   }, [isOpen])
 
   if (!isOpen || !image) return null
-
-  const handleExport = useCallback(async (format: "png" | "jpg" | "webp") => {
-    if (!token || isExporting || !image) return
-    setIsExporting(true)
-    setShowExportMenu(false)
-
-    try {
-      const response = await fetch(
-        `/api/gallery/export/${image.id}?format=${format}&quality=90`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error("Export failed")
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-
-      // Extract filename from Content-Disposition header or generate one
-      const contentDisposition = response.headers.get("Content-Disposition")
-      let filename = `promptink-${image.id}.${format}`
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/)
-        if (match) filename = match[1]
-      }
-
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error("Export failed:", err)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [token, isExporting, image])
-
-  const handleDownload = useCallback(async () => {
-    // Default to PNG for backward compatibility
-    await handleExport("png")
-  }, [handleExport])
-
-  const handleFavorite = useCallback(async () => {
-    if (!image) return
-    try {
-      await onToggleFavorite(image.id)
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err)
-    }
-  }, [image, onToggleFavorite])
-
-  const handleDelete = useCallback(async () => {
-    if (!image) return
-    if (!confirm(t.gallery.confirmDelete)) return
-    try {
-      await onDelete(image.id)
-      onClose()
-    } catch (err) {
-      console.error("Failed to delete:", err)
-    }
-  }, [image, t.gallery.confirmDelete, onDelete, onClose])
 
   const formatDate = (dateStr: string) => {
     // Function handles fallback to browser timezone when userTimezone is empty
