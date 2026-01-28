@@ -395,6 +395,8 @@ export const translations = {
       calendarView: "Calendar",
       today: "Today",
       noJobsOnDay: "No scheduled jobs on this day",
+      error: "Error",
+      disabled: "Disabled",
     },
     batch: {
       title: "Batch",
@@ -871,6 +873,8 @@ export const translations = {
       calendarView: "日历",
       today: "今天",
       noJobsOnDay: "当天没有定时任务",
+      error: "错误",
+      disabled: "已禁用",
     },
     batch: {
       title: "批量生成",

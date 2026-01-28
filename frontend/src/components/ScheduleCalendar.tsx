@@ -172,7 +172,7 @@ function DayPopover({ cell, language, onClose, anchorRect }: DayPopoverProps) {
     }
   }, [onClose])
 
-  // Desktop: position near anchor
+  // Desktop: position near anchor, flip above if not enough room below
   const style: React.CSSProperties = isMobile
     ? {
         position: "fixed",
@@ -184,20 +184,36 @@ function DayPopover({ cell, language, onClose, anchorRect }: DayPopoverProps) {
       }
     : (() => {
         if (!anchorRect) return { position: "absolute" as const, zIndex: 50 }
-        const top = anchorRect.bottom + 8
-        let left = anchorRect.left
-        // Keep popover on screen
         const popoverWidth = 320
+        const popoverEstimatedHeight = Math.min(
+          cell.jobs.length === 0 ? 120 : 80 + cell.jobs.length * 72,
+          400
+        )
+        const spaceBelow = window.innerHeight - anchorRect.bottom - 16
+        const spaceAbove = anchorRect.top - 16
+        // Flip above if not enough room below and more room above
+        let top: number
+        if (spaceBelow >= popoverEstimatedHeight || spaceBelow >= spaceAbove) {
+          top = anchorRect.bottom + 8
+        } else {
+          top = anchorRect.top - popoverEstimatedHeight - 8
+          if (top < 16) top = 16
+        }
+        let left = anchorRect.left
         if (left + popoverWidth > window.innerWidth - 16) {
           left = window.innerWidth - popoverWidth - 16
         }
         if (left < 16) left = 16
+        const maxH = top >= anchorRect.top
+          ? window.innerHeight - top - 16
+          : anchorRect.top - 8 - top
         return {
           position: "fixed" as const,
           top,
           left,
           zIndex: 50,
           width: popoverWidth,
+          maxHeight: Math.max(maxH, 200),
         }
       })()
 
@@ -403,26 +419,26 @@ export function ScheduleCalendar({ jobs, userTimezone: _userTimezone }: Schedule
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
+      <div className="relative z-[51] flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1">
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
           {t.schedule?.once || "One-time"}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-teal-500" />
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
           {t.schedule?.daily || "Daily"}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-violet-500" />
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
           {t.schedule?.weekly || "Weekly"}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-red-500" />
-          {t.schedule?.lastError ? "Error" : "Error"}
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
+          {t.schedule?.error || "Error"}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-          Disabled
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
+          {t.schedule?.disabled || "Disabled"}
         </span>
       </div>
 
