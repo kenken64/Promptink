@@ -242,8 +242,8 @@ export const GalleryCard = memo(function GalleryCard({
           isOpen={showCollectionPicker}
           onClose={() => {
             setShowCollectionPicker(false)
-            onCollectionsChange?.()
           }}
+          onChange={onCollectionsChange}
         />
       )}
     </Card>

@@ -712,8 +712,8 @@ export function ImageDetailModal({
           isOpen={showCollectionPicker}
           onClose={() => {
             setShowCollectionPicker(false)
-            onCollectionsChange?.()
           }}
+          onChange={onCollectionsChange}
         />
       )}
     </div>

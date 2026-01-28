@@ -8,9 +8,10 @@ interface CollectionPickerProps {
   imageId: number
   isOpen: boolean
   onClose: () => void
+  onChange?: () => void
 }
 
-export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerProps) {
+export function CollectionPicker({ imageId, isOpen, onClose, onChange }: CollectionPickerProps) {
   const { t } = useLanguage()
   const {
     collections,
@@ -75,6 +76,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
         await addImageToCollection(collection.id, imageId)
         setImageCollectionIds((prev) => [...prev, collection.id])
       }
+      onChange?.()
     } catch {
       // Error already logged in hook
     } finally {
@@ -93,6 +95,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
         setImageCollectionIds((prev) => [...prev, created.id])
       }
       setNewName("")
+      onChange?.()
     } catch {
       // Error already logged
     } finally {
