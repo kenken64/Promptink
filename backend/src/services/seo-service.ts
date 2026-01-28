@@ -207,7 +207,7 @@ export function generateStructuredData(seo: SEOConfig, pathname: string): string
 }
 
 // Escape HTML special characters
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

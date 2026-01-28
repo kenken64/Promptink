@@ -63,13 +63,13 @@ const getInitialPage = (): AppPage => {
   return "chat"
 }
 
-// Storage key for chat messages
-const CHAT_MESSAGES_KEY = "promptink_chat_messages"
+// Storage key for chat messages - scoped per user
+const getChatMessagesKey = (userId: number) => `promptink_chat_messages_${userId}`
 
-// Load messages from localStorage
-const loadMessagesFromStorage = (): Message[] => {
+// Load messages from localStorage for a specific user
+const loadMessagesForUser = (userId: number): Message[] => {
   try {
-    const stored = localStorage.getItem(CHAT_MESSAGES_KEY)
+    const stored = localStorage.getItem(getChatMessagesKey(userId))
     if (stored) {
       const parsed = JSON.parse(stored)
       // Filter out any loading messages that may have been persisted during generation
@@ -82,7 +82,7 @@ const loadMessagesFromStorage = (): Message[] => {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>(loadMessagesFromStorage)
+  const [messages, setMessages] = useState<Message[]>([])
   const [authPage, setAuthPage] = useState<AuthPage>("login")
   const [appPage, setAppPage] = useState<AppPage>(getInitialPage)
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
@@ -180,16 +180,26 @@ export default function App() {
     }
   }, [appPage, scrollToBottom, messages.length])
 
-  // Persist messages to localStorage when they change
+  // Load user-specific messages when user changes
   useEffect(() => {
+    if (user?.id) {
+      setMessages(loadMessagesForUser(user.id))
+    } else {
+      setMessages([])
+    }
+  }, [user?.id])
+
+  // Persist messages to localStorage when they change (scoped per user)
+  useEffect(() => {
+    if (!user?.id) return
     try {
       // Only persist non-loading messages
       const messagesToPersist = messages.filter(msg => !msg.isLoading)
-      localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messagesToPersist))
+      localStorage.setItem(getChatMessagesKey(user.id), JSON.stringify(messagesToPersist))
     } catch (e) {
       console.error("Failed to save messages to storage:", e)
     }
-  }, [messages])
+  }, [messages, user?.id])
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -424,7 +434,9 @@ export default function App() {
 
   const handleNewChat = () => {
     setMessages([])
-    localStorage.removeItem(CHAT_MESSAGES_KEY)
+    if (user?.id) {
+      localStorage.removeItem(getChatMessagesKey(user.id))
+    }
   }
 
   const handleLogin = async (email: string, password: string) => {
