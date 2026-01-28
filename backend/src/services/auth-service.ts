@@ -420,20 +420,25 @@ export async function registerUser(
   userAgent?: string
 ): Promise<{ user: AuthUser; tokens: TokenPair } | { error: string }> {
   try {
+    log("INFO", "Registration attempt", { email: email.toLowerCase(), hasName: !!name, ipAddress })
+
     // Check if user already exists
     const existingUser = userQueries.findByEmail.get(email.toLowerCase())
     if (existingUser) {
-      return { error: "Registration failed. Please try again." } // Generic error to prevent email enumeration
+      log("WARN", "Registration blocked: email already exists", { email: email.toLowerCase() })
+      return { error: "EMAIL_ALREADY_EXISTS" }
     }
 
     // Validate email format
     if (!isValidEmail(email)) {
+      log("WARN", "Registration blocked: invalid email format", { email })
       return { error: "Invalid email format" }
     }
 
     // Validate password strength
     const passwordValidation = validatePasswordStrength(password)
     if (!passwordValidation.valid) {
+      log("WARN", "Registration blocked: weak password", { email: email.toLowerCase(), reason: passwordValidation.error })
       return { error: passwordValidation.error! }
     }
 
@@ -443,6 +448,7 @@ export async function registerUser(
     // Create user
     const user = userQueries.create.get(email.toLowerCase(), passwordHash, name || null)
     if (!user) {
+      log("ERROR", "Registration blocked: user creation returned null", { email: email.toLowerCase() })
       return { error: "Failed to create user" }
     }
 

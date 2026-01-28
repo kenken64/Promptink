@@ -209,6 +209,25 @@ export interface UserDevice {
   updated_at: string
 }
 
+// Collection type
+export interface Collection {
+  id: number
+  user_id: number
+  name: string
+  description: string | null
+  cover_image_id: number | null
+  created_at: string
+  updated_at: string
+}
+
+// Collection image join type
+export interface CollectionImage {
+  id: number
+  collection_id: number
+  image_id: number
+  added_at: string
+}
+
 // Password reset token type
 export interface PasswordResetToken {
   id: number
@@ -608,6 +627,39 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_webhook_uuid ON user_devices(webhook_uuid)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_devices_is_default ON user_devices(is_default)`)
 
+  // Collections table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS collections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      cover_image_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (cover_image_id) REFERENCES generated_images(id) ON DELETE SET NULL
+    )
+  `)
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_collections_user_id ON collections(user_id)`)
+
+  // Collection images join table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS collection_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      collection_id INTEGER NOT NULL,
+      image_id INTEGER NOT NULL,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+      FOREIGN KEY (image_id) REFERENCES generated_images(id) ON DELETE CASCADE,
+      UNIQUE(collection_id, image_id)
+    )
+  `)
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_collection_images_collection_id ON collection_images(collection_id)`)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_collection_images_image_id ON collection_images(image_id)`)
+
   // Initialize prepared statements after tables are created
   initPreparedStatements()
 
@@ -744,6 +796,24 @@ let _refreshTokenQueries: {
   revoke: Statement<void, [number]>
   revokeAllByUserId: Statement<void, [number]>
   deleteExpired: Statement<void, [string]>
+}
+
+let _collectionQueries: {
+  findById: Statement<Collection, [number]>
+  findByIdAndUserId: Statement<Collection, [number, number]>
+  findAllByUserId: Statement<Collection & { image_count: number }, [number]>
+  countByUserId: Statement<{ count: number }, [number]>
+  create: Statement<Collection, [number, string, string | null]>
+  update: Statement<void, [string, string | null, number, number]>
+  delete: Statement<void, [number, number]>
+}
+
+let _collectionImageQueries: {
+  addImage: Statement<CollectionImage, [number, number]>
+  removeImage: Statement<void, [number, number]>
+  findImagesByCollectionId: Statement<GeneratedImage, [number, number, number]>
+  countImagesByCollectionId: Statement<{ count: number }, [number]>
+  findCollectionsForImage: Statement<{ collection_id: number }, [number, number]>
 }
 
 let _userDeviceQueries: {
@@ -1077,6 +1147,59 @@ function initPreparedStatements() {
     ),
   }
 
+  _collectionQueries = {
+    findById: db.prepare<Collection, [number]>(
+      "SELECT * FROM collections WHERE id = ?"
+    ),
+    findByIdAndUserId: db.prepare<Collection, [number, number]>(
+      "SELECT * FROM collections WHERE id = ? AND user_id = ?"
+    ),
+    findAllByUserId: db.prepare<Collection & { image_count: number }, [number]>(
+      `SELECT c.*, COALESCE(ci.cnt, 0) as image_count
+       FROM collections c
+       LEFT JOIN (SELECT collection_id, COUNT(*) as cnt FROM collection_images GROUP BY collection_id) ci
+       ON ci.collection_id = c.id
+       WHERE c.user_id = ?
+       ORDER BY c.updated_at DESC`
+    ),
+    countByUserId: db.prepare<{ count: number }, [number]>(
+      "SELECT COUNT(*) as count FROM collections WHERE user_id = ?"
+    ),
+    create: db.prepare<Collection, [number, string, string | null]>(
+      "INSERT INTO collections (user_id, name, description) VALUES (?, ?, ?) RETURNING *"
+    ),
+    update: db.prepare<void, [string, string | null, number, number]>(
+      "UPDATE collections SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?"
+    ),
+    delete: db.prepare<void, [number, number]>(
+      "DELETE FROM collections WHERE id = ? AND user_id = ?"
+    ),
+  }
+
+  _collectionImageQueries = {
+    addImage: db.prepare<CollectionImage, [number, number]>(
+      "INSERT OR IGNORE INTO collection_images (collection_id, image_id) VALUES (?, ?) RETURNING *"
+    ),
+    removeImage: db.prepare<void, [number, number]>(
+      "DELETE FROM collection_images WHERE collection_id = ? AND image_id = ?"
+    ),
+    findImagesByCollectionId: db.prepare<GeneratedImage, [number, number, number]>(
+      `SELECT gi.* FROM generated_images gi
+       INNER JOIN collection_images ci ON ci.image_id = gi.id
+       WHERE ci.collection_id = ? AND gi.is_deleted = 0
+       ORDER BY ci.added_at DESC
+       LIMIT ? OFFSET ?`
+    ),
+    countImagesByCollectionId: db.prepare<{ count: number }, [number]>(
+      `SELECT COUNT(*) as count FROM collection_images ci
+       INNER JOIN generated_images gi ON gi.id = ci.image_id
+       WHERE ci.collection_id = ? AND gi.is_deleted = 0`
+    ),
+    findCollectionsForImage: db.prepare<{ collection_id: number }, [number, number]>(
+      "SELECT collection_id FROM collection_images WHERE image_id = ? AND collection_id IN (SELECT id FROM collections WHERE user_id = ?)"
+    ),
+  }
+
   _userDeviceQueries = {
     findById: db.prepare<UserDevice, [number]>(
       "SELECT * FROM user_devices WHERE id = ?"
@@ -1234,6 +1357,24 @@ export const refreshTokenQueries = {
   get revoke() { return _refreshTokenQueries.revoke },
   get revokeAllByUserId() { return _refreshTokenQueries.revokeAllByUserId },
   get deleteExpired() { return _refreshTokenQueries.deleteExpired },
+}
+
+export const collectionQueries = {
+  get findById() { return _collectionQueries.findById },
+  get findByIdAndUserId() { return _collectionQueries.findByIdAndUserId },
+  get findAllByUserId() { return _collectionQueries.findAllByUserId },
+  get countByUserId() { return _collectionQueries.countByUserId },
+  get create() { return _collectionQueries.create },
+  get update() { return _collectionQueries.update },
+  get delete() { return _collectionQueries.delete },
+}
+
+export const collectionImageQueries = {
+  get addImage() { return _collectionImageQueries.addImage },
+  get removeImage() { return _collectionImageQueries.removeImage },
+  get findImagesByCollectionId() { return _collectionImageQueries.findImagesByCollectionId },
+  get countImagesByCollectionId() { return _collectionImageQueries.countImagesByCollectionId },
+  get findCollectionsForImage() { return _collectionImageQueries.findCollectionsForImage },
 }
 
 export const userDeviceQueries = {

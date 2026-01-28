@@ -3,6 +3,7 @@ import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { ShareButton } from "./ShareButton"
+import { CollectionPicker } from "./CollectionPicker"
 import { useAuth } from "../hooks/useAuth"
 import { useTrmnlSync } from "../hooks/useTrmnlSync"
 import { formatDateTimeInTimezone } from "../utils"
@@ -40,6 +41,7 @@ interface ImageDetailModalProps {
   hasPrev?: boolean
   hasNext?: boolean
   userTimezone?: string
+  onCollectionsChange?: () => void
 }
 
 export function ImageDetailModal({
@@ -52,6 +54,7 @@ export function ImageDetailModal({
   hasPrev = false,
   hasNext = false,
   userTimezone,
+  onCollectionsChange,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
   const { accessToken: token } = useAuth()
@@ -62,6 +65,7 @@ export function ImageDetailModal({
   const [syncSuccess, setSyncSuccess] = useState(false)
   const [showDeviceMenu, setShowDeviceMenu] = useState(false)
   const [selectedDevices, setSelectedDevices] = useState<number[]>([])
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
   const deviceMenuRef = useRef<HTMLDivElement>(null)
 
@@ -87,9 +91,88 @@ export function ImageDetailModal({
     setSelectedDevices([])
   }, [image?.id])
 
-  // Handle keyboard navigation
+  // Action callbacks (must be before early return since they are hooks)
+  const handleExport = useCallback(async (format: "png" | "jpg" | "webp") => {
+    if (!token || isExporting || !image) return
+    setIsExporting(true)
+    setShowExportMenu(false)
+
+    try {
+      const response = await fetch(
+        `/api/gallery/export/${image.id}?format=${format}&quality=90`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Export failed")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+
+      // Extract filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get("Content-Disposition")
+      let filename = `promptink-${image.id}.${format}`
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/)
+        if (match) filename = match[1]
+      }
+
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Export failed:", err)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [token, isExporting, image])
+
+  const handleDownload = useCallback(async () => {
+    await handleExport("png")
+  }, [handleExport])
+
+  const handleFavorite = useCallback(async () => {
+    if (!image) return
+    try {
+      await onToggleFavorite(image.id)
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err)
+    }
+  }, [image, onToggleFavorite])
+
+  const handleDelete = useCallback(async () => {
+    if (!image) return
+    if (!confirm(t.gallery.confirmDelete)) return
+    try {
+      await onDelete(image.id)
+      onClose()
+    } catch (err) {
+      console.error("Failed to delete:", err)
+    }
+  }, [image, t.gallery.confirmDelete, onDelete, onClose])
+
+  // Handle keyboard navigation and shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return
+
+    // Skip single-key shortcuts when focus is in an input (e.g. collection picker)
+    const inInput = (() => {
+      const el = document.activeElement
+      if (!el) return false
+      const tag = el.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return true
+      if ((el as HTMLElement).isContentEditable) return true
+      return false
+    })()
 
     switch (e.key) {
       case "Escape":
@@ -101,8 +184,33 @@ export function ImageDetailModal({
       case "ArrowRight":
         if (hasNext && onNavigate) onNavigate("next")
         break
+      case "f":
+      case "F":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleFavorite()
+        break
+      case "d":
+      case "D":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleDelete()
+        break
+      case "c":
+      case "C":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        if (showCollectionPicker) break
+        e.preventDefault()
+        setShowCollectionPicker(true)
+        break
+      case "e":
+      case "E":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleDownload()
+        break
     }
-  }, [isOpen, onClose, onNavigate, hasPrev, hasNext])
+  }, [isOpen, onClose, onNavigate, hasPrev, hasNext, handleFavorite, handleDelete, handleDownload, showCollectionPicker])
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
@@ -122,73 +230,6 @@ export function ImageDetailModal({
   }, [isOpen])
 
   if (!isOpen || !image) return null
-
-  const handleExport = async (format: "png" | "jpg" | "webp") => {
-    if (!token || isExporting) return
-    setIsExporting(true)
-    setShowExportMenu(false)
-    
-    try {
-      const response = await fetch(
-        `/api/gallery/export/${image.id}?format=${format}&quality=90`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error("Export failed")
-      }
-      
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      
-      // Extract filename from Content-Disposition header or generate one
-      const contentDisposition = response.headers.get("Content-Disposition")
-      let filename = `promptink-${image.id}.${format}`
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/)
-        if (match) filename = match[1]
-      }
-      
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error("Export failed:", err)
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleDownload = async () => {
-    // Default to PNG for backward compatibility
-    await handleExport("png")
-  }
-
-  const handleFavorite = async () => {
-    try {
-      await onToggleFavorite(image.id)
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm(t.gallery.confirmDelete)) return
-    try {
-      await onDelete(image.id)
-      onClose()
-    } catch (err) {
-      console.error("Failed to delete:", err)
-    }
-  }
 
   const formatDate = (dateStr: string) => {
     // Function handles fallback to browser timezone when userTimezone is empty
@@ -650,6 +691,18 @@ export function ImageDetailModal({
               )}
             </div>
 
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setShowCollectionPicker(true)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+              </svg>
+              {t.collections.addToCollection}
+            </Button>
+
             <div className="flex gap-2">
               <ShareButton
                 imageUrl={image.imageUrl}
@@ -688,6 +741,18 @@ export function ImageDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Collection picker modal */}
+      {showCollectionPicker && image && (
+        <CollectionPicker
+          imageId={image.id}
+          isOpen={showCollectionPicker}
+          onClose={() => {
+            setShowCollectionPicker(false)
+          }}
+          onChange={onCollectionsChange}
+        />
+      )}
     </div>
   )
 }

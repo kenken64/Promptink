@@ -5,6 +5,7 @@ import { config } from "../config"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { randomBytes } from "crypto"
+import { escapeHtml } from "../services/seo-service"
 
 // Shared image type
 export interface SharedImage {
@@ -331,7 +332,7 @@ export const shareRoutes = {
         sharedImageQueries.incrementViewCount.run(shareId)
 
         const title = "AI-Generated Image | PromptInk"
-        const description = sharedImage.prompt || "An image created with PromptInk's AI-powered image generator"
+        const description = escapeHtml(sharedImage.prompt || "An image created with PromptInk's AI-powered image generator")
         const imageUrl = sharedImage.image_url
         const pageUrl = getSharePageUrl(shareId)
 
@@ -432,7 +433,7 @@ export const shareRoutes = {
     <div class="image-container">
       <img src="${imageUrl}" alt="AI-Generated Image">
     </div>
-    ${sharedImage.prompt ? `<p class="prompt">"${sharedImage.prompt}"</p>` : ''}
+    ${sharedImage.prompt ? `<p class="prompt">"${escapeHtml(sharedImage.prompt)}"</p>` : ''}
     <a href="${config.server.baseUrl}" class="cta">Create Your Own AI Images</a>
     <p class="views">${sharedImage.view_count + 1} views</p>
   </div>

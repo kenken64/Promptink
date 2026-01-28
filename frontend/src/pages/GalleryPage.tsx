@@ -1,14 +1,16 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
 import { ImageDetailModal } from "../components/ImageDetailModal"
+import { CollectionManager } from "../components/CollectionManager"
 import { PageHeader } from "../components/PageHeader"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
+import { useCollections } from "../hooks/useCollections"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
-import { RefreshCw, Upload } from "lucide-react"
-import { detectBrowserTimezone } from "../utils"
+import { RefreshCw, Upload, FolderOpen, Settings2 } from "lucide-react"
+import { detectBrowserTimezone, groupImagesByDate } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -18,7 +20,7 @@ interface GalleryPageProps {
 }
 
 export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { authFetch } = useAuth()
   const {
     images,
@@ -28,6 +30,8 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     error,
     filter,
     setFilter,
+    collectionId,
+    setCollectionId,
     searchQuery,
     setSearchQuery,
     toggleFavorite,
@@ -36,13 +40,16 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     loadMore,
     refresh,
   } = useGallery()
+  const { collections, refresh: refreshCollections } = useCollections()
 
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showCollectionManager, setShowCollectionManager] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
 
   // Fetch user's saved timezone (only use if explicitly set, not default UTC)
@@ -64,6 +71,44 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     }
     fetchTimezone()
   }, [authFetch])
+
+  // Gallery keyboard shortcuts: / to focus search, R to refresh
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip when modal or collection manager is open
+      if (isModalOpen || showCollectionManager) return
+
+      // Skip when focus is in an input/textarea
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return
+      if ((document.activeElement as HTMLElement)?.isContentEditable) return
+
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        return
+      }
+
+      if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        refresh()
+        return
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isModalOpen, showCollectionManager, refresh])
+
+  const dateGroups = useMemo(() => {
+    const locale = language === "zh" ? "zh-CN" : "en-US"
+    return groupImagesByDate(images, userTimezone, locale, {
+      today: t.gallery?.today || "Today",
+      yesterday: t.gallery?.yesterday || "Yesterday",
+      thisWeek: t.gallery?.thisWeek || "This Week",
+      thisMonth: t.gallery?.thisMonth || "This Month",
+    })
+  }, [images, userTimezone, language, t.gallery?.today, t.gallery?.yesterday, t.gallery?.thisWeek, t.gallery?.thisMonth])
 
   const handleSelectImage = useCallback((image: GalleryImage) => {
     setSelectedImage(image)
@@ -206,47 +251,92 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
           )}
 
           {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Filter tabs */}
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              <button
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  filter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => setFilter("all")}
-              >
-                {t.gallery?.allImages}
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium transition-colors border-l border-border ${
-                  filter === "favorites"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => setFilter("favorites")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-4 h-4 inline mr-1"
+          <div className="flex flex-col gap-3">
+            {/* Filter tabs + collection chips - horizontally scrollable on mobile */}
+            <div
+              className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`.gallery-chips-scroll::-webkit-scrollbar { display: none; }`}</style>
+              <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+                <button
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                    filter === "all" && !collectionId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  onClick={() => { setFilter("all"); setCollectionId(null) }}
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                {t.gallery?.favorites}
+                  {t.gallery?.allImages}
+                </button>
+                <button
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors border-l border-border whitespace-nowrap ${
+                    filter === "favorites" && !collectionId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  onClick={() => { setFilter("favorites"); setCollectionId(null) }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 inline mr-1"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {t.gallery?.favorites}
+                </button>
+              </div>
+
+              {/* Collection chips */}
+              {collections.map((c) => (
+                <button
+                  key={c.id}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap touch-manipulation ${
+                    collectionId === c.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-muted border-border"
+                  }`}
+                  onClick={() => {
+                    if (collectionId === c.id) {
+                      setCollectionId(null)
+                      setFilter("all")
+                    } else {
+                      setCollectionId(c.id)
+                    }
+                  }}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span className="max-w-[120px] truncate">{c.name}</span>
+                  <span className={`text-xs ${collectionId === c.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {c.imageCount}
+                  </span>
+                </button>
+              ))}
+
+              {/* Manage collections button - icon only on mobile, text on desktop */}
+              <button
+                className="shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted touch-manipulation"
+                onClick={() => setShowCollectionManager(true)}
+                title={t.collections.manageCollections}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {collections.length === 0 ? t.collections.title : t.collections.manageCollections}
+                </span>
               </button>
             </div>
 
             {/* Search */}
-            <form onSubmit={handleSearch} noValidate className="flex-1 flex gap-2 max-w-md">
+            <form onSubmit={handleSearch} noValidate className="flex gap-2 w-full sm:max-w-md">
               <div className="relative flex-1">
                 <Input
+                  ref={searchInputRef}
                   type="text"
                   placeholder={t.gallery?.searchPlaceholder}
                   value={localSearch}
@@ -374,7 +464,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                 ? t.gallery.noFavoritesHint
                 : t.gallery.noImagesHint}
             </p>
-            {(searchQuery || filter === "favorites") && (
+            {(searchQuery || filter === "favorites" || collectionId) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -382,6 +472,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                 onClick={() => {
                   clearSearch()
                   setFilter("all")
+                  setCollectionId(null)
                 }}
               >
                 {t.gallery.viewAllImages}
@@ -390,19 +481,35 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
           </div>
         )}
 
-        {/* Image grid */}
+        {/* Image grid - grouped by date */}
         {images.length > 0 && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {images.map((image) => (
-                <GalleryCard
-                  key={image.id}
-                  image={image}
-                  onSelect={handleSelectImage}
-                  onToggleFavorite={toggleFavorite}
-                  onDelete={deleteImage}
-                  userTimezone={userTimezone}
-                />
+            <div className="space-y-8">
+              {dateGroups.map((group) => (
+                <div key={group.labelKey}>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      ({group.images.length === 1
+                        ? (t.gallery?.imageCountSingular || "{count} image").replace("{count}", "1")
+                        : (t.gallery?.imageCount || "{count} images").replace("{count}", String(group.images.length))
+                      })
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {group.images.map((image) => (
+                      <GalleryCard
+                        key={image.id}
+                        image={image}
+                        onSelect={handleSelectImage}
+                        onToggleFavorite={toggleFavorite}
+                        onDelete={deleteImage}
+                        userTimezone={userTimezone}
+                        onCollectionsChange={refreshCollections}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -465,6 +572,16 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         hasPrev={currentIndex > 0}
         hasNext={currentIndex < images.length - 1}
         userTimezone={userTimezone}
+        onCollectionsChange={refreshCollections}
+      />
+
+      {/* Collection manager modal */}
+      <CollectionManager
+        isOpen={showCollectionManager}
+        onClose={() => {
+          setShowCollectionManager(false)
+          refreshCollections()
+        }}
       />
     </div>
   )

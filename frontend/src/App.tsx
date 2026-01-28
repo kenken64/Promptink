@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense, useCallback } from "react"
+import { useState, useRef, useEffect, lazy, Suspense, useCallback, useMemo } from "react"
 import { Sparkles, Plus, LogOut, Settings, ShoppingBag, CreditCard, Image, Menu, X, RefreshCw, Calendar, Layers, ChevronDown } from "lucide-react"
 import { Button } from "./components/ui/button"
 import { ScrollArea } from "./components/ui/scroll-area"
@@ -9,6 +9,7 @@ import { LanguageToggle } from "./components/LanguageToggle"
 import { AuthGuard } from "./components/AuthGuard"
 import { PromptEnhanceModal } from "./components/PromptEnhanceModal"
 import { OfflineIndicator } from "./components/OfflineIndicator"
+import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp"
 import { LoginPage } from "./pages/LoginPage"
 import { RegisterPage } from "./pages/RegisterPage"
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
@@ -16,6 +17,7 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage"
 import { PurchasePage } from "./pages/PurchasePage"
 import { OrderConfirmationPage } from "./pages/OrderConfirmationPage"
 import { OrdersPage } from "./pages/OrdersPage"
+import { KeyboardShortcutsPage } from "./pages/KeyboardShortcutsPage"
 import { SubscriptionPage } from "./pages/SubscriptionPage"
 import { useImageGeneration, type ImageStylePreset } from "./hooks/useImageGeneration"
 import { useTheme } from "./hooks/useTheme"
@@ -25,6 +27,8 @@ import { useAuth } from "./hooks/useAuth"
 import { useSubscription } from "./hooks/useSubscription"
 import { useSuggestions } from "./hooks/useSuggestions"
 import { useSEO } from "./hooks/useSEO"
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts"
+import type { ShortcutDef } from "./hooks/useKeyboardShortcuts"
 
 // Lazy load heavier pages for code splitting
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })))
@@ -48,11 +52,11 @@ interface Message {
 }
 
 type AuthPage = "login" | "register" | "forgot-password" | "reset-password"
-type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery" | "schedule" | "batch"
+type AppPage = "chat" | "settings" | "purchase" | "order-confirmation" | "orders" | "subscription" | "gallery" | "schedule" | "batch" | "keyboard-shortcuts"
 type ImageSize = "1024x1024" | "1792x1024" | "1024x1792"
 
 // Valid app pages that can be restored from URL hash
-const validAppPages: AppPage[] = ["chat", "settings", "orders", "subscription", "gallery", "schedule", "batch"]
+const validAppPages: AppPage[] = ["chat", "settings", "orders", "subscription", "gallery", "schedule", "batch", "keyboard-shortcuts"]
 
 // Get initial page from URL hash
 const getInitialPage = (): AppPage => {
@@ -63,13 +67,13 @@ const getInitialPage = (): AppPage => {
   return "chat"
 }
 
-// Storage key for chat messages
-const CHAT_MESSAGES_KEY = "promptink_chat_messages"
+// Storage key for chat messages - scoped per user
+const getChatMessagesKey = (userId: number) => `promptink_chat_messages_${userId}`
 
-// Load messages from localStorage
-const loadMessagesFromStorage = (): Message[] => {
+// Load messages from localStorage for a specific user
+const loadMessagesForUser = (userId: number): Message[] => {
   try {
-    const stored = localStorage.getItem(CHAT_MESSAGES_KEY)
+    const stored = localStorage.getItem(getChatMessagesKey(userId))
     if (stored) {
       const parsed = JSON.parse(stored)
       // Filter out any loading messages that may have been persisted during generation
@@ -82,7 +86,7 @@ const loadMessagesFromStorage = (): Message[] => {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>(loadMessagesFromStorage)
+  const [messages, setMessages] = useState<Message[]>([])
   const [authPage, setAuthPage] = useState<AuthPage>("login")
   const [appPage, setAppPage] = useState<AppPage>(getInitialPage)
   const [confirmationOrderId, setConfirmationOrderId] = useState<number | null>(null)
@@ -129,6 +133,26 @@ export default function App() {
 
   // Update SEO meta tags when page changes
   useSEO()
+
+  // Global keyboard shortcuts
+  const globalShortcuts: ShortcutDef[] = useMemo(() => [
+    {
+      key: "n",
+      ctrl: true,
+      handler: () => {
+        handleNewChat()
+        setAppPage("chat")
+      },
+      description: t.shortcuts.newChat,
+      category: t.shortcuts.navigation,
+      allowInInput: true,
+    },
+  ], [t.shortcuts.newChat, t.shortcuts.navigation])
+
+  const { isHelpOpen: isShortcutsHelpOpen, closeHelp: closeShortcutsHelp } = useKeyboardShortcuts(
+    globalShortcuts,
+    { enabled: isAuthenticated }
+  )
 
   // Check if user needs to be redirected to purchase page
   useEffect(() => {
@@ -180,16 +204,26 @@ export default function App() {
     }
   }, [appPage, scrollToBottom, messages.length])
 
-  // Persist messages to localStorage when they change
+  // Load user-specific messages when user changes
   useEffect(() => {
+    if (user?.id) {
+      setMessages(loadMessagesForUser(user.id))
+    } else {
+      setMessages([])
+    }
+  }, [user?.id])
+
+  // Persist messages to localStorage when they change (scoped per user)
+  useEffect(() => {
+    if (!user?.id) return
     try {
       // Only persist non-loading messages
       const messagesToPersist = messages.filter(msg => !msg.isLoading)
-      localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messagesToPersist))
+      localStorage.setItem(getChatMessagesKey(user.id), JSON.stringify(messagesToPersist))
     } catch (e) {
       console.error("Failed to save messages to storage:", e)
     }
-  }, [messages])
+  }, [messages, user?.id])
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -424,7 +458,9 @@ export default function App() {
 
   const handleNewChat = () => {
     setMessages([])
-    localStorage.removeItem(CHAT_MESSAGES_KEY)
+    if (user?.id) {
+      localStorage.removeItem(getChatMessagesKey(user.id))
+    }
   }
 
   const handleLogin = async (email: string, password: string) => {
@@ -1032,6 +1068,8 @@ export default function App() {
         return renderSchedulePage()
       case "batch":
         return renderBatchPage()
+      case "keyboard-shortcuts":
+        return <KeyboardShortcutsPage onNavigate={(page) => setAppPage(page)} onLogout={logout} />
       case "chat":
       default:
         return renderChatApp()
@@ -1049,6 +1087,10 @@ export default function App() {
       >
         {renderCurrentPage()}
       </AuthGuard>
+      <KeyboardShortcutsHelp
+        isOpen={isShortcutsHelpOpen}
+        onClose={closeShortcutsHelp}
+      />
     </>
   )
 }

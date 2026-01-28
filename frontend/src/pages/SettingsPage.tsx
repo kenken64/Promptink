@@ -1,12 +1,13 @@
 import { useState, useEffect, FormEvent } from "react"
-import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X, User, Mail, Globe, MapPin } from "lucide-react"
+import { Settings, Loader2, Check, Copy, ExternalLink, Eye, EyeOff, Monitor, Lock, Plus, Trash2, Star, StarOff, Edit2, X, User, Mail, Globe, MapPin, Keyboard, ChevronRight } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { PageHeader } from "../components/PageHeader"
 import { cn } from "../lib/utils"
 import { useAuth } from "../hooks/useAuth"
+import { useLanguage } from "../hooks/useLanguage"
 import { TIMEZONE_OPTIONS, detectBrowserTimezone, getTimezoneLabel } from "../utils"
 
-type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
+type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings" | "keyboard-shortcuts"
 
 interface SettingsPageProps {
   userId: number
@@ -79,6 +80,7 @@ interface Device {
 
 export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: SettingsPageProps) {
   const { authFetch, user } = useAuth()
+  const { t: fullT } = useLanguage()
 
   // Devices state
   const [devices, setDevices] = useState<Device[]>([])
@@ -829,6 +831,30 @@ export function SettingsPage({ userId, onNavigate, onLogout, translations: t }: 
                   </Button>
                 </form>
               </div>
+
+              {/* Divider */}
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+              </div>
+
+              {/* Keyboard Shortcuts Link */}
+              <button
+                onClick={() => onNavigate("keyboard-shortcuts")}
+                className="w-full flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border hover:bg-muted transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <Keyboard className="h-5 w-5 text-teal-500" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{fullT.shortcuts.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {fullT.shortcuts.showShortcuts}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
 
             <p className="text-center text-muted-foreground text-xs mt-6 mb-4">

@@ -4,6 +4,7 @@ import { Button } from "./ui/button"
 import { GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { formatDateInTimezone } from "../utils"
+import { CollectionPicker } from "./CollectionPicker"
 
 // Fallback placeholder component
 function ImagePlaceholder() {
@@ -34,6 +35,7 @@ interface GalleryCardProps {
   onToggleFavorite: (imageId: number) => Promise<boolean>
   onDelete: (imageId: number) => Promise<boolean>
   userTimezone?: string
+  onCollectionsChange?: () => void
 }
 
 export const GalleryCard = memo(function GalleryCard({
@@ -42,12 +44,14 @@ export const GalleryCard = memo(function GalleryCard({
   onToggleFavorite,
   onDelete,
   userTimezone,
+  onCollectionsChange,
 }: GalleryCardProps) {
   const { t } = useLanguage()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isFavoriting, setIsFavoriting] = useState(false)
   const [showActions, setShowActions] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false)
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -149,6 +153,20 @@ export const GalleryCard = memo(function GalleryCard({
             size="sm"
             variant="ghost"
             className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowCollectionPicker(true)
+            }}
+            title={t.collections.addToCollection}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+            </svg>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white"
             onClick={handleFavorite}
             disabled={isFavoriting}
           >
@@ -216,6 +234,18 @@ export const GalleryCard = memo(function GalleryCard({
           </div>
         </div>
       </div>
+
+      {/* Collection picker modal */}
+      {showCollectionPicker && (
+        <CollectionPicker
+          imageId={image.id}
+          isOpen={showCollectionPicker}
+          onClose={() => {
+            setShowCollectionPicker(false)
+          }}
+          onChange={onCollectionsChange}
+        />
+      )}
     </Card>
   )
 })

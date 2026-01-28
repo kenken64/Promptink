@@ -23,6 +23,7 @@ export const authRoutes = {
         const { email, password, name } = text ? JSON.parse(text) : {}
 
         if (!email || !password) {
+          log("WARN", "Registration missing credentials", { email: email || "(empty)", hasPassword: !!password })
           return Response.json(
             { error: "Email and password are required" },
             { status: 400 }
@@ -33,6 +34,7 @@ export const authRoutes = {
         const result = await registerUser(email, password, name, ipAddress, userAgent)
 
         if ("error" in result) {
+          log("WARN", "Registration rejected", { email, error: result.error })
           return Response.json({ error: result.error }, { status: 400 })
         }
 

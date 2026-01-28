@@ -1540,24 +1540,27 @@ k6 run -e BASE_URL=https://promptink-production.up.railway.app k6/scripts/load-t
 - [x] Admin dashboard with data export/import
 - [x] URL migration for server transfers
 - [x] Infographic generation from GitHub repos (Repomix integration)
+- [x] Image collections/folders for gallery organization
+- [x] Prompt enhancement AI (GPT-powered prompt improvement)
+- [x] Keyboard shortcuts with help overlay and dedicated settings page
 
 ## Future Enhancements
 
 ### Quick Wins
 - [ ] **Image templates** - Pre-defined prompt templates users can customize (e.g., "Profile picture", "Product photo", "Book cover")
 - [ ] **Prompt history autocomplete** - Suggest previously used prompts as user types
-- [ ] **Keyboard shortcuts** - Quick actions (Ctrl+Enter to generate, Ctrl+S to sync, etc.)
+- [x] **Keyboard shortcuts** - Global shortcuts (`Ctrl+N` new chat, `?` help overlay), gallery shortcuts (`/` focus search, `R` refresh), image modal shortcuts (`F` favorite, `D` delete, `C` collection, `E` export). Dedicated shortcuts page accessible from Settings. *(Implemented: `useKeyboardShortcuts` hook, `KeyboardShortcutsHelp` overlay, `KeyboardShortcutsPage`)*
 - [ ] **Image comparison view** - Side-by-side comparison of original vs edited images
 
 ### User Experience
-- [ ] **Collections/folders** - Organize gallery images into custom collections
+- [x] **Collections/folders** - Organize gallery images into custom collections with create, rename, delete, and per-image add/remove. Collection chips in gallery filter bar. *(Implemented: `CollectionPicker`, `CollectionManager`, `useCollections` hook)*
 - [ ] **Bulk operations** - Select multiple gallery images for batch delete, export, or share
 - [ ] **Image tagging** - Add custom tags to images for better organization and search
-- [ ] **Generation history timeline** - Visual timeline view of all generated images
+- [ ] **Generation history timeline** - A vertical, chronologically-ordered timeline view as an alternative to the current date-grouped gallery grid. Each entry would show the timestamp on a vertical line, image thumbnail, full prompt, and metadata (model, size, style, source: manual/batch/scheduled). The timeline would surface the *progression* of a user's creative work — how prompts evolved across a session, which edits branched from which originals — whereas the gallery focuses on browsing and finding images. This is essentially a journal/narrative view of the generation history, complementing the existing portfolio/library view.
 - [ ] **Undo/redo for edits** - Track edit history and allow reverting changes
 
 ### Advanced Features
-- [ ] **Prompt enhancement AI** - Use GPT to improve user prompts before generation
+- [x] **Prompt enhancement AI** - GPT-powered prompt improvement before generation. Shows original vs enhanced side-by-side in a modal, letting the user choose. *(Implemented: `PromptEnhanceModal`, `/api/prompt/enhance` endpoint)*
 - [ ] **Image upscaling** - AI-powered upscaling for higher resolution exports
 - [ ] **Background removal** - Automatic background removal tool
 - [ ] **Inpainting improvements** - Better mask drawing tools with brush sizes
