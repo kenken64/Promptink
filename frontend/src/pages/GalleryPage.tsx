@@ -222,94 +222,89 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
           )}
 
           {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Filter tabs */}
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              <button
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  filter === "all" && !collectionId
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => { setFilter("all"); setCollectionId(null) }}
-              >
-                {t.gallery?.allImages}
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium transition-colors border-l border-border ${
-                  filter === "favorites" && !collectionId
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => { setFilter("favorites"); setCollectionId(null) }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-4 h-4 inline mr-1"
+          <div className="flex flex-col gap-3">
+            {/* Filter tabs + collection chips - horizontally scrollable on mobile */}
+            <div
+              className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`.gallery-chips-scroll::-webkit-scrollbar { display: none; }`}</style>
+              <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+                <button
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                    filter === "all" && !collectionId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  onClick={() => { setFilter("all"); setCollectionId(null) }}
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                {t.gallery?.favorites}
+                  {t.gallery?.allImages}
+                </button>
+                <button
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors border-l border-border whitespace-nowrap ${
+                    filter === "favorites" && !collectionId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  onClick={() => { setFilter("favorites"); setCollectionId(null) }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 inline mr-1"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {t.gallery?.favorites}
+                </button>
+              </div>
+
+              {/* Collection chips */}
+              {collections.map((c) => (
+                <button
+                  key={c.id}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap touch-manipulation ${
+                    collectionId === c.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-muted border-border"
+                  }`}
+                  onClick={() => {
+                    if (collectionId === c.id) {
+                      setCollectionId(null)
+                      setFilter("all")
+                    } else {
+                      setCollectionId(c.id)
+                    }
+                  }}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span className="max-w-[120px] truncate">{c.name}</span>
+                  <span className={`text-xs ${collectionId === c.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {c.imageCount}
+                  </span>
+                </button>
+              ))}
+
+              {/* Manage collections button - icon only on mobile, text on desktop */}
+              <button
+                className="shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted touch-manipulation"
+                onClick={() => setShowCollectionManager(true)}
+                title={t.collections.manageCollections}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {collections.length === 0 ? t.collections.title : t.collections.manageCollections}
+                </span>
               </button>
             </div>
 
-            {/* Collection filter dropdown */}
-            {collections.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <select
-                    value={collectionId ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === "") {
-                        setCollectionId(null)
-                        setFilter("all")
-                      } else {
-                        setCollectionId(parseInt(val, 10))
-                      }
-                    }}
-                    className="h-9 rounded-lg border border-border bg-background px-3 pr-8 text-sm font-medium transition-colors hover:bg-muted appearance-none cursor-pointer"
-                  >
-                    <option value="">{t.collections.title}</option>
-                    {collections.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.imageCount})
-                      </option>
-                    ))}
-                  </select>
-                  <FolderOpen className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowCollectionManager(true)}
-                  title={t.collections.manageCollections}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            {collections.length === 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setShowCollectionManager(true)}
-              >
-                <FolderOpen className="h-4 w-4 mr-1" />
-                {t.collections.title}
-              </Button>
-            )}
-
             {/* Search */}
-            <form onSubmit={handleSearch} noValidate className="flex-1 flex gap-2 max-w-md">
+            <form onSubmit={handleSearch} noValidate className="flex gap-2 w-full sm:max-w-md">
               <div className="relative flex-1">
                 <Input
                   type="text"
@@ -359,22 +354,6 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
               </Button>
             </form>
           </div>
-
-          {/* Active collection indicator */}
-          {collectionId && (
-            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-              <FolderOpen className="h-3.5 w-3.5" />
-              <span>
-                {t.collections.title}: <strong>{collections.find(c => c.id === collectionId)?.name}</strong>
-              </span>
-              <button
-                className="text-primary hover:underline"
-                onClick={() => { setCollectionId(null); setFilter("all") }}
-              >
-                {t.gallery?.clearSearch}
-              </button>
-            </div>
-          )}
 
           {/* Active search indicator */}
           {searchQuery && (

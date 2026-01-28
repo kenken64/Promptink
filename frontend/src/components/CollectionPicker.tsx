@@ -101,18 +101,23 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-sm bg-background border border-border rounded-lg shadow-2xl overflow-hidden"
+        className="relative z-10 w-full sm:max-w-sm sm:mx-4 bg-background border border-border rounded-t-2xl sm:rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:fade-in duration-200"
       >
+        {/* Drag handle for mobile */}
+        <div className="flex justify-center pt-2 pb-0 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="text-sm font-semibold">{t.collections.addToCollection}</h3>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-muted transition-colors"
+            className="p-2 -m-1 rounded-lg hover:bg-muted transition-colors touch-manipulation"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -121,7 +126,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
         </div>
 
         {/* Collection list */}
-        <div className="max-h-64 overflow-y-auto">
+        <div className="max-h-[50vh] sm:max-h-64 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           {isLoadingIds ? (
             <div className="flex items-center justify-center py-8">
               <svg className="animate-spin h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -141,14 +146,14 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
               return (
                 <label
                   key={collection.id}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted cursor-pointer transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 sm:py-2.5 hover:bg-muted active:bg-muted cursor-pointer transition-colors touch-manipulation"
                 >
                   <input
                     type="checkbox"
                     checked={isInCollection}
                     onChange={() => handleToggle(collection)}
                     disabled={isToggling}
-                    className="rounded border-border h-4 w-4 shrink-0"
+                    className="rounded border-border h-5 w-5 sm:h-4 sm:w-4 shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{collection.name}</p>
@@ -171,7 +176,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
         </div>
 
         {/* Create new collection */}
-        <div className="p-3 border-t border-border">
+        <div className="p-3 sm:p-3 pb-safe border-t border-border">
           <div className="flex gap-2">
             <Input
               type="text"
@@ -187,6 +192,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
               size="sm"
               onClick={handleCreate}
               disabled={isCreating || !newName.trim()}
+              className="touch-manipulation"
             >
               {isCreating ? "..." : t.collections.create}
             </Button>
