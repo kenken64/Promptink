@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
@@ -8,7 +8,7 @@ import { useGallery, GalleryImage } from "../hooks/useGallery"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
 import { RefreshCw, Upload } from "lucide-react"
-import { detectBrowserTimezone } from "../utils"
+import { detectBrowserTimezone, groupImagesByDate } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
 
@@ -18,7 +18,7 @@ interface GalleryPageProps {
 }
 
 export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { authFetch } = useAuth()
   const {
     images,
@@ -64,6 +64,16 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     }
     fetchTimezone()
   }, [authFetch])
+
+  const dateGroups = useMemo(() => {
+    const locale = language === "zh" ? "zh-CN" : "en-US"
+    return groupImagesByDate(images, userTimezone, locale, {
+      today: t.gallery?.today || "Today",
+      yesterday: t.gallery?.yesterday || "Yesterday",
+      thisWeek: t.gallery?.thisWeek || "This Week",
+      thisMonth: t.gallery?.thisMonth || "This Month",
+    })
+  }, [images, userTimezone, language, t.gallery?.today, t.gallery?.yesterday, t.gallery?.thisWeek, t.gallery?.thisMonth])
 
   const handleSelectImage = useCallback((image: GalleryImage) => {
     setSelectedImage(image)
@@ -390,19 +400,34 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
           </div>
         )}
 
-        {/* Image grid */}
+        {/* Image grid - grouped by date */}
         {images.length > 0 && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {images.map((image) => (
-                <GalleryCard
-                  key={image.id}
-                  image={image}
-                  onSelect={handleSelectImage}
-                  onToggleFavorite={toggleFavorite}
-                  onDelete={deleteImage}
-                  userTimezone={userTimezone}
-                />
+            <div className="space-y-8">
+              {dateGroups.map((group) => (
+                <div key={group.labelKey}>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      ({group.images.length === 1
+                        ? (t.gallery?.imageCountSingular || "{count} image").replace("{count}", "1")
+                        : (t.gallery?.imageCount || "{count} images").replace("{count}", String(group.images.length))
+                      })
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {group.images.map((image) => (
+                      <GalleryCard
+                        key={image.id}
+                        image={image}
+                        onSelect={handleSelectImage}
+                        onToggleFavorite={toggleFavorite}
+                        onDelete={deleteImage}
+                        userTimezone={userTimezone}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
