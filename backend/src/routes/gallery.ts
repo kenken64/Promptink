@@ -5,6 +5,7 @@ import { config } from "../config"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import sharp from "sharp"
+import JSZip from "jszip"
 
 // Supported export formats
 type ExportFormat = "png" | "jpg" | "webp"
@@ -540,6 +541,134 @@ export const galleryRoutes = {
         })
       } catch (error) {
         log("ERROR", "Failed to get gallery stats", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
+  },
+
+  // Bulk delete images
+  "/api/gallery/bulk-delete": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const text = await req.text()
+        const { ids } = text ? JSON.parse(text) : {}
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+          return Response.json({ error: "ids array is required" }, { status: 400 })
+        }
+
+        if (ids.length > 50) {
+          return Response.json({ error: "Maximum 50 images per bulk delete" }, { status: 400 })
+        }
+
+        if (!ids.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)) {
+          return Response.json({ error: "All ids must be positive integers" }, { status: 400 })
+        }
+
+        const deletedCount = generatedImageQueries.bulkSoftDelete(ids, user.id)
+
+        log("INFO", "Bulk deleted gallery images", { userId: user.id, requested: ids.length, deletedCount })
+
+        return Response.json({ success: true, deletedCount })
+      } catch (error) {
+        log("ERROR", "Failed to bulk delete gallery images", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
+  },
+
+  // Bulk export images as ZIP
+  "/api/gallery/bulk-export": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const text = await req.text()
+        const { ids, format: requestedFormat } = text ? JSON.parse(text) : {}
+        const format = (requestedFormat || "png") as ExportFormat
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+          return Response.json({ error: "ids array is required" }, { status: 400 })
+        }
+
+        if (ids.length > 20) {
+          return Response.json({ error: "Maximum 20 images per bulk export" }, { status: 400 })
+        }
+
+        if (!ids.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)) {
+          return Response.json({ error: "All ids must be positive integers" }, { status: 400 })
+        }
+
+        if (!SUPPORTED_FORMATS.includes(format)) {
+          return Response.json({
+            error: `Unsupported format. Supported: ${SUPPORTED_FORMATS.join(", ")}`
+          }, { status: 400 })
+        }
+
+        // Fetch images and verify ownership
+        const images = generatedImageQueries.findByIds(ids, user.id)
+
+        if (images.length === 0) {
+          return Response.json({ error: "No images found" }, { status: 404 })
+        }
+
+        const zip = new JSZip()
+
+        for (const image of images) {
+          const filePath = getGalleryImagePath(user.id, image.id)
+          const file = Bun.file(filePath)
+
+          if (!(await file.exists())) continue
+
+          const inputBuffer = Buffer.from(await file.arrayBuffer())
+
+          let outputBuffer: Buffer
+          let extension: string
+
+          switch (format) {
+            case "jpg":
+              outputBuffer = await sharp(inputBuffer).jpeg({ quality: 85 }).toBuffer()
+              extension = "jpg"
+              break
+            case "webp":
+              outputBuffer = await sharp(inputBuffer).webp({ quality: 85 }).toBuffer()
+              extension = "webp"
+              break
+            default:
+              outputBuffer = await sharp(inputBuffer).png().toBuffer()
+              extension = "png"
+          }
+
+          const promptSlug = image.original_prompt
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .substring(0, 30)
+            .replace(/-+$/, "")
+          const filename = `promptink-${image.id}-${promptSlug}.${extension}`
+
+          zip.file(filename, outputBuffer)
+        }
+
+        const zipBuffer = await zip.generateAsync({
+          type: "nodebuffer",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
+        })
+
+        log("INFO", "Bulk exported gallery images", {
+          userId: user.id,
+          imageCount: images.length,
+          format,
+          zipSize: zipBuffer.length,
+        })
+
+        return new Response(zipBuffer, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename="promptink-export-${Date.now()}.zip"`,
+            "Content-Length": zipBuffer.length.toString(),
+          },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to bulk export gallery images", error)
         return Response.json({ error: String(error) }, { status: 500 })
       }
     }),

@@ -46,11 +46,13 @@ export interface SchedulePagination {
 
 interface UseScheduleReturn {
   jobs: ScheduledJob[]
+  allJobs: ScheduledJob[]
   pagination: SchedulePagination | null
   maxJobsAllowed: number
   isLoading: boolean
   error: string | null
   fetchJobs: (page?: number, limit?: number) => Promise<void>
+  fetchAllJobs: () => Promise<void>
   createJob: (input: CreateScheduledJobInput) => Promise<ScheduledJob | null>
   updateJob: (id: number, input: CreateScheduledJobInput) => Promise<ScheduledJob | null>
   deleteJob: (id: number) => Promise<boolean>
@@ -62,6 +64,7 @@ interface UseScheduleReturn {
 
 export function useSchedule(): UseScheduleReturn {
   const [jobs, setJobs] = useState<ScheduledJob[]>([])
+  const [allJobs, setAllJobs] = useState<ScheduledJob[]>([])
   const [pagination, setPagination] = useState<SchedulePagination | null>(null)
   const [maxJobsAllowed, setMaxJobsAllowed] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
@@ -90,6 +93,18 @@ export function useSchedule(): UseScheduleReturn {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
+    }
+  }, [authFetch, isAuthenticated])
+
+  const fetchAllJobs = useCallback(async () => {
+    if (!isAuthenticated) return
+    try {
+      const response = await authFetch(`/api/schedule?page=1&limit=100`)
+      if (!response.ok) return
+      const data = await response.json()
+      setAllJobs(data.jobs || [])
+    } catch {
+      // silent — calendar is supplementary
     }
   }, [authFetch, isAuthenticated])
 
@@ -131,12 +146,13 @@ export function useSchedule(): UseScheduleReturn {
       setJobs(prev => [job, ...prev])
       // Update pagination total
       setPagination(prev => prev ? { ...prev, total: prev.total + 1, totalPages: Math.ceil((prev.total + 1) / prev.limit) } : null)
+      fetchAllJobs()
       return job
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [authFetch])
+  }, [authFetch, fetchAllJobs])
 
   const updateJob = useCallback(async (id: number, input: CreateScheduledJobInput): Promise<ScheduledJob | null> => {
     setError(null)
@@ -156,12 +172,13 @@ export function useSchedule(): UseScheduleReturn {
 
       const job = await response.json()
       setJobs(prev => prev.map(j => j.id === id ? job : j))
+      fetchAllJobs()
       return job
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [authFetch])
+  }, [authFetch, fetchAllJobs])
 
   const deleteJob = useCallback(async (id: number): Promise<boolean> => {
     setError(null)
@@ -177,12 +194,13 @@ export function useSchedule(): UseScheduleReturn {
       setJobs(prev => prev.filter(j => j.id !== id))
       // Update pagination total
       setPagination(prev => prev ? { ...prev, total: Math.max(0, prev.total - 1), totalPages: Math.ceil(Math.max(0, prev.total - 1) / prev.limit) } : null)
+      fetchAllJobs()
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
       return false
     }
-  }, [authFetch])
+  }, [authFetch, fetchAllJobs])
 
   const toggleJob = useCallback(async (id: number): Promise<ScheduledJob | null> => {
     setError(null)
@@ -197,27 +215,31 @@ export function useSchedule(): UseScheduleReturn {
 
       const job = await response.json()
       setJobs(prev => prev.map(j => j.id === id ? job : j))
+      fetchAllJobs()
       return job
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
       return null
     }
-  }, [authFetch])
+  }, [authFetch, fetchAllJobs])
 
   // Fetch jobs on mount (only after auth is loaded)
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       fetchJobs()
+      fetchAllJobs()
     }
-  }, [fetchJobs, authLoading, isAuthenticated])
+  }, [fetchJobs, fetchAllJobs, authLoading, isAuthenticated])
 
   return {
     jobs,
+    allJobs,
     pagination,
     maxJobsAllowed,
     isLoading,
     error,
     fetchJobs,
+    fetchAllJobs,
     createJob,
     updateJob,
     deleteJob,

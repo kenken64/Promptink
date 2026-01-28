@@ -36,6 +36,9 @@ interface GalleryCardProps {
   onDelete: (imageId: number) => Promise<boolean>
   userTimezone?: string
   onCollectionsChange?: () => void
+  isSelectMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (id: number) => void
 }
 
 export const GalleryCard = memo(function GalleryCard({
@@ -45,6 +48,9 @@ export const GalleryCard = memo(function GalleryCard({
   onDelete,
   userTimezone,
   onCollectionsChange,
+  isSelectMode,
+  isSelected,
+  onToggleSelect,
 }: GalleryCardProps) {
   const { t } = useLanguage()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -93,10 +99,20 @@ export const GalleryCard = memo(function GalleryCard({
 
   return (
     <Card
-      className="group relative overflow-hidden cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:shadow-lg"
-      onClick={() => onSelect(image)}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      className={`group relative overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg ${
+        isSelectMode && isSelected
+          ? "ring-2 ring-primary shadow-lg"
+          : "hover:ring-2 hover:ring-primary/50"
+      }`}
+      onClick={() => {
+        if (isSelectMode && onToggleSelect) {
+          onToggleSelect(image.id)
+        } else {
+          onSelect(image)
+        }
+      }}
+      onMouseEnter={() => { if (!isSelectMode) setShowActions(true) }}
+      onMouseLeave={() => { if (!isSelectMode) setShowActions(false) }}
     >
       {/* Image */}
       <div className="aspect-square overflow-hidden bg-muted">
@@ -116,8 +132,27 @@ export const GalleryCard = memo(function GalleryCard({
         )}
       </div>
 
-      {/* Favorite badge */}
-      {image.isFavorite && (
+      {/* Select mode checkbox */}
+      {isSelectMode && (
+        <div className="absolute top-2 left-2 z-10">
+          <div
+            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+              isSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "bg-background/80 border-muted-foreground/50"
+            }`}
+          >
+            {isSelected && (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Favorite badge - hide in select mode */}
+      {!isSelectMode && image.isFavorite && (
         <div className="absolute top-2 left-2 bg-yellow-500 text-white rounded-full p-1">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -135,13 +170,14 @@ export const GalleryCard = memo(function GalleryCard({
       )}
 
       {/* Edit badge */}
-      {image.isEdit && (
+      {!isSelectMode && image.isEdit && (
         <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
           {t.gallery.edited}
         </div>
       )}
 
-      {/* Actions overlay */}
+      {/* Actions overlay - hidden in select mode */}
+      {!isSelectMode && (
       <div
         className={`absolute inset-0 bg-black/60 transition-opacity duration-200 flex flex-col justify-between p-3 ${
           showActions ? "opacity-100" : "opacity-0"
@@ -234,6 +270,7 @@ export const GalleryCard = memo(function GalleryCard({
           </div>
         </div>
       </div>
+      )}
 
       {/* Collection picker modal */}
       {showCollectionPicker && (
