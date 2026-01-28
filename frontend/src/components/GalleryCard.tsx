@@ -35,6 +35,7 @@ interface GalleryCardProps {
   onToggleFavorite: (imageId: number) => Promise<boolean>
   onDelete: (imageId: number) => Promise<boolean>
   userTimezone?: string
+  onCollectionsChange?: () => void
 }
 
 export const GalleryCard = memo(function GalleryCard({
@@ -43,6 +44,7 @@ export const GalleryCard = memo(function GalleryCard({
   onToggleFavorite,
   onDelete,
   userTimezone,
+  onCollectionsChange,
 }: GalleryCardProps) {
   const { t } = useLanguage()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -238,7 +240,10 @@ export const GalleryCard = memo(function GalleryCard({
         <CollectionPicker
           imageId={image.id}
           isOpen={showCollectionPicker}
-          onClose={() => setShowCollectionPicker(false)}
+          onClose={() => {
+            setShowCollectionPicker(false)
+            onCollectionsChange?.()
+          }}
         />
       )}
     </Card>

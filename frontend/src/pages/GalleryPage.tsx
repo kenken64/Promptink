@@ -40,7 +40,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     loadMore,
     refresh,
   } = useGallery()
-  const { collections } = useCollections()
+  const { collections, refresh: refreshCollections } = useCollections()
 
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -475,6 +475,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                         onToggleFavorite={toggleFavorite}
                         onDelete={deleteImage}
                         userTimezone={userTimezone}
+                        onCollectionsChange={refreshCollections}
                       />
                     ))}
                   </div>
@@ -541,12 +542,16 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         hasPrev={currentIndex > 0}
         hasNext={currentIndex < images.length - 1}
         userTimezone={userTimezone}
+        onCollectionsChange={refreshCollections}
       />
 
       {/* Collection manager modal */}
       <CollectionManager
         isOpen={showCollectionManager}
-        onClose={() => setShowCollectionManager(false)}
+        onClose={() => {
+          setShowCollectionManager(false)
+          refreshCollections()
+        }}
       />
     </div>
   )

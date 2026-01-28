@@ -41,6 +41,7 @@ interface ImageDetailModalProps {
   hasPrev?: boolean
   hasNext?: boolean
   userTimezone?: string
+  onCollectionsChange?: () => void
 }
 
 export function ImageDetailModal({
@@ -53,6 +54,7 @@ export function ImageDetailModal({
   hasPrev = false,
   hasNext = false,
   userTimezone,
+  onCollectionsChange,
 }: ImageDetailModalProps) {
   const { t } = useLanguage()
   const { accessToken: token } = useAuth()
@@ -708,7 +710,10 @@ export function ImageDetailModal({
         <CollectionPicker
           imageId={image.id}
           isOpen={showCollectionPicker}
-          onClose={() => setShowCollectionPicker(false)}
+          onClose={() => {
+            setShowCollectionPicker(false)
+            onCollectionsChange?.()
+          }}
         />
       )}
     </div>
