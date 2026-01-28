@@ -120,6 +120,23 @@ function computeCalendarCells(year: number, month: number, jobs: ScheduledJob[])
   return cells
 }
 
+/** Count how many distinct jobs have at least one run in the given month. */
+function countJobsInMonth(year: number, month: number, jobs: ScheduledJob[]): number {
+  let count = 0
+  for (const job of jobs) {
+    if (job.schedule_type === "daily") {
+      count++
+    } else if (job.schedule_type === "weekly") {
+      if (job.schedule_days && job.schedule_days.length > 0) count++
+    } else if (job.schedule_type === "once") {
+      if (!job.scheduled_at) continue
+      const d = new Date(job.scheduled_at)
+      if (d.getFullYear() === year && d.getMonth() === month) count++
+    }
+  }
+  return count
+}
+
 function getDotColor(job: ScheduledJob): string {
   if (job.last_error) return "bg-red-500"
   if (!job.is_enabled) return "bg-muted-foreground/30"
@@ -343,22 +360,46 @@ export function ScheduleCalendar({ jobs, userTimezone: _userTimezone }: Schedule
     return year === now.getFullYear() && month === now.getMonth()
   }, [year, month])
 
+  const jobsThisMonth = useMemo(() => countJobsInMonth(year, month, jobs), [year, month, jobs])
+  const prevMonthNum = month === 0 ? 11 : month - 1
+  const prevYearNum = month === 0 ? year - 1 : year
+  const nextMonthNum = month === 11 ? 0 : month + 1
+  const nextYearNum = month === 11 ? year + 1 : year
+  const hasPrevMonthJobs = useMemo(() => countJobsInMonth(prevYearNum, prevMonthNum, jobs) > 0, [prevYearNum, prevMonthNum, jobs])
+  const hasNextMonthJobs = useMemo(() => countJobsInMonth(nextYearNum, nextMonthNum, jobs) > 0, [nextYearNum, nextMonthNum, jobs])
+
   return (
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold capitalize">{monthLabel}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold capitalize">{monthLabel}</h3>
+          {jobsThisMonth > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              {jobsThisMonth} {jobsThisMonth === 1
+                ? (t.schedule?.scheduledSingular || "job")
+                : (t.schedule?.scheduledPlural || "jobs")}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {!isCurrentMonthToday && (
             <Button size="sm" variant="outline" onClick={goToToday} className="text-xs h-8 px-2">
               {t.schedule?.today || "Today"}
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={goPrev} className="h-8 w-8 p-0">
+          <Button size="sm" variant="ghost" onClick={goPrev} className="relative h-8 w-8 p-0">
             <ChevronLeft className="h-4 w-4" />
+            {hasPrevMonthJobs && (
+              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary" />
+            )}
           </Button>
-          <Button size="sm" variant="ghost" onClick={goNext} className="h-8 w-8 p-0">
+          <Button size="sm" variant="ghost" onClick={goNext} className="relative h-8 w-8 p-0">
             <ChevronRight className="h-4 w-4" />
+            {hasNextMonthJobs && (
+              <span className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full bg-primary" />
+            )}
           </Button>
         </div>
       </div>

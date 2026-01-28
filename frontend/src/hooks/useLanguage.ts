@@ -397,6 +397,8 @@ export const translations = {
       noJobsOnDay: "No scheduled jobs on this day",
       error: "Error",
       disabled: "Disabled",
+      scheduledSingular: "job",
+      scheduledPlural: "jobs",
     },
     batch: {
       title: "Batch",
@@ -875,6 +877,8 @@ export const translations = {
       noJobsOnDay: "当天没有定时任务",
       error: "错误",
       disabled: "已禁用",
+      scheduledSingular: "个任务",
+      scheduledPlural: "个任务",
     },
     batch: {
       title: "批量生成",
