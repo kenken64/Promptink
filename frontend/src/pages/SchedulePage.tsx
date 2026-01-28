@@ -335,66 +335,70 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezo
   return (
     <Card className={`transition-opacity ${!isEnabled ? "opacity-50" : ""}`}>
       <CardContent className="p-4">
+        {/* Header: prompt + actions */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{job.prompt}</p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <Calendar className="h-3 w-3" />
-              <span>{getScheduleDescription()}</span>
-            </div>
-            {isEnabled && job.next_run_at && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                <Clock className="h-3 w-3" />
-                <span>
-                  {t.schedule?.nextRun || "Next"}: {formatNextRun(job.next_run_at)}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-              <span>{job.size}</span>
-              {job.style_preset && <span>{job.style_preset}</span>}
-              {job.auto_sync_trmnl && (
-                <span className="flex items-center gap-1">
-                  <Monitor className="h-3 w-3" />
-                  TRMNL
-                </span>
-              )}
-              {job.run_count > 0 && (
-                <span>{job.run_count} {t.schedule?.runs || "runs"}</span>
-              )}
-            </div>
-            {/* Error display */}
-            {job.last_error && (
-              <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-                <div className="flex items-start gap-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">{t.schedule?.lastError || "Last error"}</p>
-                    <p className="text-xs mt-1 break-words">{job.last_error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={onToggle} title={isEnabled ? "Disable" : "Enable"}>
+          <p className="font-medium truncate flex-1 min-w-0">{job.prompt}</p>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button size="sm" variant="ghost" onClick={onToggle} title={isEnabled ? "Disable" : "Enable"} className="h-8 w-8 p-0">
               {isEnabled ? (
                 <Power className="h-4 w-4 text-green-500" />
               ) : (
                 <PowerOff className="h-4 w-4 text-muted-foreground" />
               )}
             </Button>
-            <Button size="sm" variant="ghost" onClick={onEdit} title={t.schedule?.edit || "Edit"}>
+            <Button size="sm" variant="ghost" onClick={onEdit} title={t.schedule?.edit || "Edit"} className="h-8 w-8 p-0">
               <Edit2 className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={onDuplicate} title={t.schedule?.duplicate || "Duplicate"}>
+            <Button size="sm" variant="ghost" onClick={onDuplicate} title={t.schedule?.duplicate || "Duplicate"} className="h-8 w-8 p-0">
               <Copy className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={onDelete} title={t.schedule?.delete || "Delete"}>
+            <Button size="sm" variant="ghost" onClick={onDelete} title={t.schedule?.delete || "Delete"} className="h-8 w-8 p-0">
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
         </div>
+
+        {/* Schedule info */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+          <Calendar className="h-3 w-3 shrink-0" />
+          <span>{getScheduleDescription()}</span>
+        </div>
+        {isEnabled && job.next_run_at && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Clock className="h-3 w-3 shrink-0" />
+            <span>
+              {t.schedule?.nextRun || "Next"}: {formatNextRun(job.next_run_at)}
+            </span>
+          </div>
+        )}
+
+        {/* Metadata */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
+          <span>{job.size}</span>
+          {job.style_preset && <span>{job.style_preset}</span>}
+          {job.auto_sync_trmnl && (
+            <span className="flex items-center gap-1">
+              <Monitor className="h-3 w-3" />
+              TRMNL
+            </span>
+          )}
+          {job.run_count > 0 && (
+            <span>{job.run_count} {t.schedule?.runs || "runs"}</span>
+          )}
+        </div>
+
+        {/* Error display */}
+        {job.last_error && (
+          <div className="mt-3 p-2.5 bg-destructive/10 border border-destructive/20 rounded-md">
+            <div className="flex items-start gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t.schedule?.lastError || "Last error"}</p>
+                <p className="text-xs mt-1 break-words whitespace-pre-wrap">{job.last_error}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
