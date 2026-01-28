@@ -404,6 +404,30 @@ export function ScheduleCalendar({ jobs, userTimezone: _userTimezone }: Schedule
         </div>
       </div>
 
+      {/* Legend (above grid so the popover never overlaps it) */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+          {t.schedule?.once || "One-time"}
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+          {t.schedule?.daily || "Daily"}
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
+          {t.schedule?.weekly || "Weekly"}
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
+          {t.schedule?.error || "Error"}
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
+          {t.schedule?.disabled || "Disabled"}
+        </span>
+      </div>
+
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
         {/* Day name headers */}
@@ -457,30 +481,6 @@ export function ScheduleCalendar({ jobs, userTimezone: _userTimezone }: Schedule
             </button>
           )
         })}
-      </div>
-
-      {/* Legend */}
-      <div className="relative z-[51] flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1">
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-          {t.schedule?.once || "One-time"}
-        </span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
-          {t.schedule?.daily || "Daily"}
-        </span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
-          {t.schedule?.weekly || "Weekly"}
-        </span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
-          {t.schedule?.error || "Error"}
-        </span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="h-2 w-2 rounded-full bg-muted-foreground/30 shrink-0" />
-          {t.schedule?.disabled || "Disabled"}
-        </span>
       </div>
 
       {/* Day popover */}
