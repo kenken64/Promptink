@@ -478,22 +478,38 @@ export const shareRoutes = {
           return Response.json({ error: "No valid images found" }, { status: 404 })
         }
 
-        const shareId = generateShareId()
+        // Generate a unique share ID with collision retry
+        let shareId = ""
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const candidate = generateShareId()
+          const existing = db.prepare("SELECT 1 FROM shared_galleries WHERE share_id = ?").get(candidate)
+          if (!existing) {
+            shareId = candidate
+            break
+          }
+          log("WARN", "Share ID collision, retrying", { attempt, candidate })
+        }
+        if (!shareId) {
+          return Response.json({ error: "Failed to generate unique share ID" }, { status: 500 })
+        }
+
         const galleryTitle = title || "Shared Gallery"
 
-        // Insert gallery record
-        db.prepare(
-          "INSERT INTO shared_galleries (share_id, user_id, title) VALUES (?, ?, ?)"
-        ).run(shareId, user.id, galleryTitle)
+        // Use a transaction so the gallery record and its images are inserted atomically
+        const insertGallery = db.transaction(() => {
+          db.prepare(
+            "INSERT INTO shared_galleries (share_id, user_id, title) VALUES (?, ?, ?)"
+          ).run(shareId, user.id, galleryTitle)
 
-        // Insert gallery images with sort order
-        const insertImage = db.prepare(
-          "INSERT INTO shared_gallery_images (gallery_share_id, image_id, sort_order) VALUES (?, ?, ?)"
-        )
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i]!
-          insertImage.run(shareId, img.id, i)
-        }
+          const insertImage = db.prepare(
+            "INSERT INTO shared_gallery_images (gallery_share_id, image_id, sort_order) VALUES (?, ?, ?)"
+          )
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i]!
+            insertImage.run(shareId, img.id, i)
+          }
+        })
+        insertGallery()
 
         const shareUrl = `${config.server.baseUrl}/s/gallery/${shareId}`
 
