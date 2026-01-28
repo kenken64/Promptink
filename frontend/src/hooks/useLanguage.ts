@@ -391,6 +391,10 @@ export const translations = {
       enterPrompt: "Enter your image prompt...",
       timezone: "Timezone",
       lastError: "Last error",
+      listView: "List",
+      calendarView: "Calendar",
+      today: "Today",
+      noJobsOnDay: "No scheduled jobs on this day",
     },
     batch: {
       title: "Batch",
@@ -863,6 +867,10 @@ export const translations = {
       enterPrompt: "输入您的图片提示词...",
       timezone: "时区",
       lastError: "上次错误",
+      listView: "列表",
+      calendarView: "日历",
+      today: "今天",
+      noJobsOnDay: "当天没有定时任务",
     },
     batch: {
       title: "批量生成",

@@ -3,12 +3,14 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { PageHeader } from "../components/PageHeader"
+import { ScheduleCalendar } from "../components/ScheduleCalendar"
 import { useSchedule, CreateScheduledJobInput, ScheduledJob } from "../hooks/useSchedule"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
 import { detectBrowserTimezone, getTimezoneLabel, formatDateInTimezone, formatDateTimeInTimezone } from "../utils"
 import {
   Calendar,
+  CalendarDays,
   Clock,
   Plus,
   Trash2,
@@ -23,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  List,
 } from "lucide-react"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -407,9 +410,10 @@ function ScheduleCard({ job, onEdit, onDuplicate, onDelete, onToggle, userTimezo
 export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
   const { t } = useLanguage()
   const { authFetch } = useAuth()
-  const { jobs, pagination, maxJobsAllowed, isLoading, error, createJob, updateJob, deleteJob, toggleJob, nextPage, prevPage } = useSchedule()
+  const { jobs, allJobs, pagination, maxJobsAllowed, isLoading, error, createJob, updateJob, deleteJob, toggleJob, nextPage, prevPage } = useSchedule()
   const total = pagination?.total ?? 0
   const limit = maxJobsAllowed
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
   const [showForm, setShowForm] = useState(false)
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null)
   const [duplicatingJob, setDuplicatingJob] = useState<ScheduledJob | null>(null)
@@ -567,11 +571,42 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="text-sm text-muted-foreground mb-4">
-        {total} / {limit} {t.schedule?.schedulesUsed || "schedules"}
+      {/* Stats + View Toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-muted-foreground">
+          {total} / {limit} {t.schedule?.schedulesUsed || "schedules"}
+        </div>
+        <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              viewMode === "list"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="h-3.5 w-3.5" />
+            {t.schedule?.listView || "List"}
+          </button>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              viewMode === "calendar"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            {t.schedule?.calendarView || "Calendar"}
+          </button>
+        </div>
       </div>
 
+      {/* Calendar View */}
+      {viewMode === "calendar" ? (
+        <ScheduleCalendar jobs={allJobs} userTimezone={userTimezone} />
+      ) : (
+      <>
       {/* Jobs List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -649,6 +684,8 @@ export function SchedulePage({ onNavigate, onLogout }: SchedulePageProps) {
             </div>
           )}
         </>
+      )}
+      </>
       )}
       </div>
     </div>
