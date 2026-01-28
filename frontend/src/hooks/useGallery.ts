@@ -51,6 +51,7 @@ export function useGallery() {
     isFromCache: false,
   })
   const [filter, setFilter] = useState<"all" | "favorites">("all")
+  const [collectionId, setCollectionId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -82,7 +83,9 @@ export function useGallery() {
         limit: "20",
       })
 
-      if (filter === "favorites") {
+      if (collectionId) {
+        params.set("collection", collectionId.toString())
+      } else if (filter === "favorites") {
         params.set("favorites", "true")
       }
 
@@ -134,7 +137,7 @@ export function useGallery() {
           : err instanceof Error ? err.message : "Failed to fetch gallery",
       }))
     }
-  }, [isAuthenticated, authFetch, filter, debouncedSearchQuery])
+  }, [isAuthenticated, authFetch, filter, debouncedSearchQuery, collectionId])
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -274,7 +277,7 @@ export function useGallery() {
       fetchImages(1, false)
       fetchStats()
     }
-  }, [isAuthenticated, filter, debouncedSearchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, filter, debouncedSearchQuery, collectionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     images: state.images,
@@ -286,6 +289,8 @@ export function useGallery() {
     isFromCache: state.isFromCache,
     filter,
     setFilter,
+    collectionId,
+    setCollectionId,
     searchQuery,
     setSearchQuery,
     toggleFavorite,

@@ -23,6 +23,10 @@ interface RegisterPageProps {
     signIn: string
     passwordMismatch: string
     passwordTooShort: string
+    emailAlreadyExists: string
+    invalidEmail: string
+    weakPassword: string
+    genericError: string
   }
 }
 
@@ -35,6 +39,14 @@ export function RegisterPage({ onRegister, onSwitchToLogin, translations: t }: R
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Map backend error codes/messages to user-friendly translated strings
+  const mapErrorMessage = (error: string): string => {
+    if (error === "EMAIL_ALREADY_EXISTS") return t.emailAlreadyExists
+    if (error === "Invalid email format") return t.invalidEmail
+    if (error.includes("Password must be")) return t.weakPassword
+    return t.genericError
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -57,7 +69,7 @@ export function RegisterPage({ onRegister, onSwitchToLogin, translations: t }: R
     const result = await onRegister(email, password, name || undefined)
 
     if (!result.success) {
-      setError(result.error || "Registration failed")
+      setError(mapErrorMessage(result.error || ""))
     }
     setIsLoading(false)
   }

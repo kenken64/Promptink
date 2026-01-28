@@ -3,11 +3,13 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
 import { ImageDetailModal } from "../components/ImageDetailModal"
+import { CollectionManager } from "../components/CollectionManager"
 import { PageHeader } from "../components/PageHeader"
 import { useGallery, GalleryImage } from "../hooks/useGallery"
+import { useCollections } from "../hooks/useCollections"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
-import { RefreshCw, Upload } from "lucide-react"
+import { RefreshCw, Upload, FolderOpen, Settings2 } from "lucide-react"
 import { detectBrowserTimezone, groupImagesByDate } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -28,6 +30,8 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     error,
     filter,
     setFilter,
+    collectionId,
+    setCollectionId,
     searchQuery,
     setSearchQuery,
     toggleFavorite,
@@ -36,12 +40,14 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     loadMore,
     refresh,
   } = useGallery()
+  const { collections } = useCollections()
 
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showCollectionManager, setShowCollectionManager] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
 
@@ -221,21 +227,21 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
                 className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  filter === "all"
+                  filter === "all" && !collectionId
                     ? "bg-primary text-primary-foreground"
                     : "bg-background hover:bg-muted"
                 }`}
-                onClick={() => setFilter("all")}
+                onClick={() => { setFilter("all"); setCollectionId(null) }}
               >
                 {t.gallery?.allImages}
               </button>
               <button
                 className={`px-4 py-2 text-sm font-medium transition-colors border-l border-border ${
-                  filter === "favorites"
+                  filter === "favorites" && !collectionId
                     ? "bg-primary text-primary-foreground"
                     : "bg-background hover:bg-muted"
                 }`}
-                onClick={() => setFilter("favorites")}
+                onClick={() => { setFilter("favorites"); setCollectionId(null) }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -252,6 +258,55 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                 {t.gallery?.favorites}
               </button>
             </div>
+
+            {/* Collection filter dropdown */}
+            {collections.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <select
+                    value={collectionId ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "") {
+                        setCollectionId(null)
+                        setFilter("all")
+                      } else {
+                        setCollectionId(parseInt(val, 10))
+                      }
+                    }}
+                    className="h-9 rounded-lg border border-border bg-background px-3 pr-8 text-sm font-medium transition-colors hover:bg-muted appearance-none cursor-pointer"
+                  >
+                    <option value="">{t.collections.title}</option>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.imageCount})
+                      </option>
+                    ))}
+                  </select>
+                  <FolderOpen className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCollectionManager(true)}
+                  title={t.collections.manageCollections}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {collections.length === 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setShowCollectionManager(true)}
+              >
+                <FolderOpen className="h-4 w-4 mr-1" />
+                {t.collections.title}
+              </Button>
+            )}
 
             {/* Search */}
             <form onSubmit={handleSearch} noValidate className="flex-1 flex gap-2 max-w-md">
@@ -304,6 +359,22 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
               </Button>
             </form>
           </div>
+
+          {/* Active collection indicator */}
+          {collectionId && (
+            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+              <FolderOpen className="h-3.5 w-3.5" />
+              <span>
+                {t.collections.title}: <strong>{collections.find(c => c.id === collectionId)?.name}</strong>
+              </span>
+              <button
+                className="text-primary hover:underline"
+                onClick={() => { setCollectionId(null); setFilter("all") }}
+              >
+                {t.gallery?.clearSearch}
+              </button>
+            </div>
+          )}
 
           {/* Active search indicator */}
           {searchQuery && (
@@ -384,7 +455,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                 ? t.gallery.noFavoritesHint
                 : t.gallery.noImagesHint}
             </p>
-            {(searchQuery || filter === "favorites") && (
+            {(searchQuery || filter === "favorites" || collectionId) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -392,6 +463,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                 onClick={() => {
                   clearSearch()
                   setFilter("all")
+                  setCollectionId(null)
                 }}
               >
                 {t.gallery.viewAllImages}
@@ -490,6 +562,12 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         hasPrev={currentIndex > 0}
         hasNext={currentIndex < images.length - 1}
         userTimezone={userTimezone}
+      />
+
+      {/* Collection manager modal */}
+      <CollectionManager
+        isOpen={showCollectionManager}
+        onClose={() => setShowCollectionManager(false)}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 import { log, toISODate } from "../utils"
 import { withAuth } from "../middleware/auth"
-import { generatedImageQueries, type GeneratedImage } from "../db"
+import { generatedImageQueries, collectionImageQueries, collectionQueries, type GeneratedImage } from "../db"
 import { config } from "../config"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
@@ -105,12 +105,22 @@ export const galleryRoutes = {
         const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 50)
         const favorites = url.searchParams.get("favorites") === "true"
         const search = url.searchParams.get("search") || ""
+        const collectionParam = url.searchParams.get("collection")
+        const collectionId = collectionParam ? parseInt(collectionParam, 10) : null
         const offset = (page - 1) * limit
 
         let images: GeneratedImage[]
         let totalCount: number
 
-        if (search) {
+        if (collectionId && !isNaN(collectionId)) {
+          // Verify collection belongs to user
+          const collection = collectionQueries.findByIdAndUserId.get(collectionId, user.id)
+          if (!collection) {
+            return Response.json({ error: "Collection not found" }, { status: 404 })
+          }
+          images = collectionImageQueries.findImagesByCollectionId.all(collectionId, limit, offset)
+          totalCount = collectionImageQueries.countImagesByCollectionId.get(collectionId)?.count || 0
+        } else if (search) {
           const searchPattern = `%${search}%`
           images = generatedImageQueries.search.all(user.id, searchPattern, searchPattern, limit, offset)
           // For search, we'd need a separate count query - for now estimate
