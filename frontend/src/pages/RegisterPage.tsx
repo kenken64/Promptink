@@ -44,7 +44,7 @@ export function RegisterPage({ onRegister, onSwitchToLogin, translations: t }: R
   const mapErrorMessage = (error: string): string => {
     if (error === "EMAIL_ALREADY_EXISTS") return t.emailAlreadyExists
     if (error === "Invalid email format") return t.invalidEmail
-    if (error.includes("Password must be")) return t.weakPassword
+    if (error.startsWith("Password must")) return t.weakPassword
     return t.genericError
   }
 
