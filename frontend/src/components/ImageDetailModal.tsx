@@ -91,9 +91,19 @@ export function ImageDetailModal({
     setSelectedDevices([])
   }, [image?.id])
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation and shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return
+
+    // Skip single-key shortcuts when focus is in an input (e.g. collection picker)
+    const inInput = (() => {
+      const el = document.activeElement
+      if (!el) return false
+      const tag = el.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return true
+      if ((el as HTMLElement).isContentEditable) return true
+      return false
+    })()
 
     switch (e.key) {
       case "Escape":
@@ -105,8 +115,33 @@ export function ImageDetailModal({
       case "ArrowRight":
         if (hasNext && onNavigate) onNavigate("next")
         break
+      case "f":
+      case "F":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleFavorite()
+        break
+      case "d":
+      case "D":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleDelete()
+        break
+      case "c":
+      case "C":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        if (showCollectionPicker) break
+        e.preventDefault()
+        setShowCollectionPicker(true)
+        break
+      case "e":
+      case "E":
+        if (inInput || e.ctrlKey || e.metaKey || e.altKey) break
+        e.preventDefault()
+        handleDownload()
+        break
     }
-  }, [isOpen, onClose, onNavigate, hasPrev, hasNext])
+  }, [isOpen, onClose, onNavigate, hasPrev, hasNext, handleFavorite, handleDelete, handleDownload, showCollectionPicker])
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
@@ -127,11 +162,11 @@ export function ImageDetailModal({
 
   if (!isOpen || !image) return null
 
-  const handleExport = async (format: "png" | "jpg" | "webp") => {
-    if (!token || isExporting) return
+  const handleExport = useCallback(async (format: "png" | "jpg" | "webp") => {
+    if (!token || isExporting || !image) return
     setIsExporting(true)
     setShowExportMenu(false)
-    
+
     try {
       const response = await fetch(
         `/api/gallery/export/${image.id}?format=${format}&quality=90`,
@@ -141,16 +176,16 @@ export function ImageDetailModal({
           },
         }
       )
-      
+
       if (!response.ok) {
         throw new Error("Export failed")
       }
-      
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      
+
       // Extract filename from Content-Disposition header or generate one
       const contentDisposition = response.headers.get("Content-Disposition")
       let filename = `promptink-${image.id}.${format}`
@@ -158,7 +193,7 @@ export function ImageDetailModal({
         const match = contentDisposition.match(/filename="(.+)"/)
         if (match) filename = match[1]
       }
-      
+
       a.download = filename
       document.body.appendChild(a)
       a.click()
@@ -169,22 +204,24 @@ export function ImageDetailModal({
     } finally {
       setIsExporting(false)
     }
-  }
+  }, [token, isExporting, image])
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     // Default to PNG for backward compatibility
     await handleExport("png")
-  }
+  }, [handleExport])
 
-  const handleFavorite = async () => {
+  const handleFavorite = useCallback(async () => {
+    if (!image) return
     try {
       await onToggleFavorite(image.id)
     } catch (err) {
       console.error("Failed to toggle favorite:", err)
     }
-  }
+  }, [image, onToggleFavorite])
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
+    if (!image) return
     if (!confirm(t.gallery.confirmDelete)) return
     try {
       await onDelete(image.id)
@@ -192,7 +229,7 @@ export function ImageDetailModal({
     } catch (err) {
       console.error("Failed to delete:", err)
     }
-  }
+  }, [image, t.gallery.confirmDelete, onDelete, onClose])
 
   const formatDate = (dateStr: string) => {
     // Function handles fallback to browser timezone when userTimezone is empty

@@ -49,6 +49,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showCollectionManager, setShowCollectionManager] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
 
   // Fetch user's saved timezone (only use if explicitly set, not default UTC)
@@ -70,6 +71,34 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     }
     fetchTimezone()
   }, [authFetch])
+
+  // Gallery keyboard shortcuts: / to focus search, R to refresh
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip when modal or collection manager is open
+      if (isModalOpen || showCollectionManager) return
+
+      // Skip when focus is in an input/textarea
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return
+      if ((document.activeElement as HTMLElement)?.isContentEditable) return
+
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        return
+      }
+
+      if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        refresh()
+        return
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isModalOpen, showCollectionManager, refresh])
 
   const dateGroups = useMemo(() => {
     const locale = language === "zh" ? "zh-CN" : "en-US"
@@ -307,6 +336,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
             <form onSubmit={handleSearch} noValidate className="flex gap-2 w-full sm:max-w-md">
               <div className="relative flex-1">
                 <Input
+                  ref={searchInputRef}
                   type="text"
                   placeholder={t.gallery?.searchPlaceholder}
                   value={localSearch}
