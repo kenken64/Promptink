@@ -176,8 +176,8 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
         </div>
 
         {/* Create new collection */}
-        <div className="p-3 sm:p-3 pb-safe border-t border-border">
-          <div className="flex gap-2">
+        <div className="p-3 pb-safe border-t border-border">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               type="text"
               placeholder={t.collections.namePlaceholder}
@@ -192,7 +192,7 @@ export function CollectionPicker({ imageId, isOpen, onClose }: CollectionPickerP
               size="sm"
               onClick={handleCreate}
               disabled={isCreating || !newName.trim()}
-              className="touch-manipulation"
+              className="w-full sm:w-auto touch-manipulation"
             >
               {isCreating ? "..." : t.collections.create}
             </Button>

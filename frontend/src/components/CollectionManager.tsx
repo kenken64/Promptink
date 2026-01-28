@@ -226,7 +226,7 @@ export function CollectionManager({ isOpen, onClose }: CollectionManagerProps) {
 
         {/* Create new collection */}
         <div className="p-3 pb-safe border-t border-border">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               type="text"
               placeholder={t.collections.namePlaceholder}
@@ -241,7 +241,7 @@ export function CollectionManager({ isOpen, onClose }: CollectionManagerProps) {
               size="sm"
               onClick={handleCreate}
               disabled={isCreating || !newName.trim()}
-              className="touch-manipulation"
+              className="w-full sm:w-auto touch-manipulation"
             >
               {isCreating ? "..." : t.collections.create}
             </Button>
