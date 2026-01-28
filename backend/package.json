@@ -15,6 +15,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "jszip": "3.10.1",
     "repomix": "^0.3.4",
     "sharp": "0.34.5"
   }

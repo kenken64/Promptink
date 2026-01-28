@@ -1,11 +1,12 @@
 import { log, toISODate } from "../utils"
 import { withAuth } from "../middleware/auth"
-import { db } from "../db"
+import { db, generatedImageQueries, type GeneratedImage } from "../db"
 import { config } from "../config"
 import { mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { randomBytes } from "crypto"
 import { escapeHtml } from "../services/seo-service"
+import { getGalleryImageUrl, getGalleryThumbnailUrl } from "./gallery"
 
 // Shared image type
 export interface SharedImage {
@@ -447,6 +448,240 @@ export const shareRoutes = {
         })
       } catch (error) {
         log("ERROR", "Failed to serve share page", error)
+        return new Response("Internal server error", { status: 500, headers: { "Content-Type": "text/html" } })
+      }
+    },
+  },
+
+  // Create a shared gallery from multiple images (authenticated)
+  "/api/share/create-gallery": {
+    POST: withAuth(async (req, user) => {
+      try {
+        const text = await req.text()
+        const { imageIds, title } = text ? JSON.parse(text) : {}
+
+        if (!Array.isArray(imageIds) || imageIds.length === 0) {
+          return Response.json({ error: "imageIds array is required" }, { status: 400 })
+        }
+
+        if (imageIds.length > 50) {
+          return Response.json({ error: "Maximum 50 images per shared gallery" }, { status: 400 })
+        }
+
+        if (!imageIds.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)) {
+          return Response.json({ error: "All imageIds must be positive integers" }, { status: 400 })
+        }
+
+        // Verify images exist and belong to user
+        const images = generatedImageQueries.findByIds(imageIds, user.id)
+        if (images.length === 0) {
+          return Response.json({ error: "No valid images found" }, { status: 404 })
+        }
+
+        const shareId = generateShareId()
+        const galleryTitle = title || "Shared Gallery"
+
+        // Insert gallery record
+        db.prepare(
+          "INSERT INTO shared_galleries (share_id, user_id, title) VALUES (?, ?, ?)"
+        ).run(shareId, user.id, galleryTitle)
+
+        // Insert gallery images with sort order
+        const insertImage = db.prepare(
+          "INSERT INTO shared_gallery_images (gallery_share_id, image_id, sort_order) VALUES (?, ?, ?)"
+        )
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i]!
+          insertImage.run(shareId, img.id, i)
+        }
+
+        const shareUrl = `${config.server.baseUrl}/s/gallery/${shareId}`
+
+        log("INFO", "Created shared gallery", {
+          shareId,
+          userId: user.id,
+          imageCount: images.length,
+        })
+
+        return Response.json({
+          success: true,
+          shareId,
+          shareUrl,
+          socialLinks: {
+            twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check out my AI-generated gallery on PromptInk!`)}`,
+            facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+            linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+            whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out my AI-generated gallery! ${shareUrl}`)}`,
+            telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Check out my AI-generated gallery!')}`,
+          }
+        })
+      } catch (error) {
+        log("ERROR", "Failed to create shared gallery", error)
+        return Response.json({ error: String(error) }, { status: 500 })
+      }
+    }),
+  },
+
+  // Shared gallery page (public) - serves HTML with image grid
+  "/s/gallery/:shareId": {
+    GET: async (req: Request & { params: { shareId: string } }) => {
+      try {
+        const { shareId } = req.params
+
+        const gallery = db.prepare<{ share_id: string; user_id: number; title: string | null; view_count: number; expires_at: string | null; created_at: string }, [string]>(
+          "SELECT * FROM shared_galleries WHERE share_id = ?"
+        ).get(shareId)
+
+        if (!gallery) {
+          return new Response("Gallery not found", { status: 404, headers: { "Content-Type": "text/html" } })
+        }
+
+        if (gallery.expires_at && new Date(gallery.expires_at) < new Date()) {
+          return new Response("This gallery has expired", { status: 410, headers: { "Content-Type": "text/html" } })
+        }
+
+        // Get images for this gallery
+        const galleryImages = db.prepare<GeneratedImage & { sort_order: number }, [string]>(
+          `SELECT gi.*, sgi.sort_order FROM generated_images gi
+           INNER JOIN shared_gallery_images sgi ON sgi.image_id = gi.id
+           WHERE sgi.gallery_share_id = ? AND gi.is_deleted = 0
+           ORDER BY sgi.sort_order ASC`
+        ).all(shareId)
+
+        // Increment view count
+        db.prepare("UPDATE shared_galleries SET view_count = view_count + 1 WHERE share_id = ?").run(shareId)
+
+        const title = escapeHtml(gallery.title || "Shared Gallery") + " | PromptInk"
+        const description = `A gallery of ${galleryImages.length} AI-generated images created with PromptInk`
+        const pageUrl = `${config.server.baseUrl}/s/gallery/${shareId}`
+        const firstImage = galleryImages[0]
+        const ogImageUrl = firstImage ? getGalleryImageUrl(firstImage.id) : ""
+
+        const imageCardsHtml = galleryImages.map(img => {
+          const imgUrl = getGalleryImageUrl(img.id)
+          const thumbUrl = getGalleryThumbnailUrl(img.id)
+          const prompt = escapeHtml(img.original_prompt || "")
+          return `
+            <div class="gallery-item">
+              <img src="${thumbUrl}" alt="${prompt}" loading="lazy" onclick="window.open('${imgUrl}', '_blank')">
+              ${prompt ? `<p class="caption">${prompt}</p>` : ""}
+            </div>`
+        }).join("\n")
+
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <meta name="description" content="${description}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${pageUrl}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  ${ogImageUrl ? `<meta property="og:image" content="${ogImageUrl}">` : ""}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${pageUrl}">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  ${ogImageUrl ? `<meta name="twitter:image" content="${ogImageUrl}">` : ""}
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: white;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #14b8a6, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gallery-title { font-size: 1.25rem; color: rgba(255,255,255,0.9); }
+    .gallery-meta { font-size: 0.875rem; color: rgba(255,255,255,0.5); margin-top: 0.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 16px;
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    }
+    .gallery-item {
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .gallery-item img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .gallery-item img:hover { transform: scale(1.03); }
+    .caption {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.7);
+      font-style: italic;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .cta-section { text-align: center; margin-top: 2rem; }
+    .cta {
+      display: inline-block;
+      background: linear-gradient(135deg, #14b8a6, #10b981);
+      color: white;
+      padding: 12px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(20, 184, 166, 0.3);
+    }
+    .views { margin-top: 1rem; font-size: 0.875rem; color: rgba(255,255,255,0.5); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">PromptInk</div>
+      <div class="gallery-title">${escapeHtml(gallery.title || "Shared Gallery")}</div>
+      <div class="gallery-meta">${galleryImages.length} images &middot; ${gallery.view_count + 1} views</div>
+    </div>
+    <div class="grid">
+      ${imageCardsHtml}
+    </div>
+    <div class="cta-section">
+      <a href="${config.server.baseUrl}" class="cta">Create Your Own AI Images</a>
+      <p class="views">${gallery.view_count + 1} views</p>
+    </div>
+  </div>
+</body>
+</html>`
+
+        return new Response(html, {
+          headers: { "Content-Type": "text/html" },
+        })
+      } catch (error) {
+        log("ERROR", "Failed to serve shared gallery page", error)
         return new Response("Internal server error", { status: 500, headers: { "Content-Type": "text/html" } })
       }
     },

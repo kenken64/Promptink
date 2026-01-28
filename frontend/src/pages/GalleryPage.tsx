@@ -4,12 +4,13 @@ import { Input } from "../components/ui/input"
 import { GalleryCard } from "../components/GalleryCard"
 import { ImageDetailModal } from "../components/ImageDetailModal"
 import { CollectionManager } from "../components/CollectionManager"
+import { BulkActionBar } from "../components/BulkActionBar"
 import { PageHeader } from "../components/PageHeader"
-import { useGallery, GalleryImage } from "../hooks/useGallery"
+import { useGallery, GalleryImage, BulkShareResult } from "../hooks/useGallery"
 import { useCollections } from "../hooks/useCollections"
 import { useLanguage } from "../hooks/useLanguage"
 import { useAuth } from "../hooks/useAuth"
-import { RefreshCw, Upload, FolderOpen, Settings2 } from "lucide-react"
+import { RefreshCw, Upload, FolderOpen, Settings2, CheckSquare, X } from "lucide-react"
 import { detectBrowserTimezone, groupImagesByDate } from "../utils"
 
 type AppPage = "chat" | "gallery" | "schedule" | "batch" | "orders" | "subscription" | "settings"
@@ -39,6 +40,16 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     uploadImage,
     loadMore,
     refresh,
+    isSelectMode,
+    selectedIds,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    enterSelectMode,
+    exitSelectMode,
+    bulkDelete,
+    bulkExport,
+    bulkShare,
   } = useGallery()
   const { collections, refresh: refreshCollections } = useCollections()
 
@@ -48,6 +59,11 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showCollectionManager, setShowCollectionManager] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [isBulkExporting, setIsBulkExporting] = useState(false)
+  const [isBulkSharing, setIsBulkSharing] = useState(false)
+  const [shareResult, setShareResult] = useState<BulkShareResult | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [userTimezone, setUserTimezone] = useState<string>(() => detectBrowserTimezone())
@@ -72,9 +88,17 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     fetchTimezone()
   }, [authFetch])
 
-  // Gallery keyboard shortcuts: / to focus search, R to refresh
+  // Gallery keyboard shortcuts: / to focus search, R to refresh, Escape to exit select mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape exits select mode from anywhere
+      if (e.key === "Escape" && isSelectMode) {
+        e.preventDefault()
+        exitSelectMode()
+        setShareResult(null)
+        return
+      }
+
       // Skip when modal or collection manager is open
       if (isModalOpen || showCollectionManager) return
 
@@ -98,7 +122,7 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isModalOpen, showCollectionManager, refresh])
+  }, [isModalOpen, showCollectionManager, refresh, isSelectMode, exitSelectMode])
 
   const dateGroups = useMemo(() => {
     const locale = language === "zh" ? "zh-CN" : "en-US"
@@ -109,6 +133,67 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
       thisMonth: t.gallery?.thisMonth || "This Month",
     })
   }, [images, userTimezone, language, t.gallery?.today, t.gallery?.yesterday, t.gallery?.thisWeek, t.gallery?.thisMonth])
+
+  // Bulk action handlers
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setIsBulkDeleting(true)
+    try {
+      const count = await bulkDelete(Array.from(selectedIds))
+      exitSelectMode()
+      // Show success via alert (simple approach matching existing patterns)
+      console.log(`Deleted ${count} images`)
+    } catch (err) {
+      console.error("Bulk delete failed:", err)
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }, [selectedIds, bulkDelete, exitSelectMode])
+
+  const handleBulkExport = useCallback(async (format: "png" | "jpg" | "webp") => {
+    if (selectedIds.size === 0) return
+    setIsBulkExporting(true)
+    try {
+      await bulkExport(Array.from(selectedIds), format)
+      exitSelectMode()
+    } catch (err) {
+      console.error("Bulk export failed:", err)
+    } finally {
+      setIsBulkExporting(false)
+    }
+  }, [selectedIds, bulkExport, exitSelectMode])
+
+  const handleBulkShare = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setIsBulkSharing(true)
+    try {
+      const result = await bulkShare(Array.from(selectedIds))
+      setShareResult(result)
+    } catch (err) {
+      console.error("Bulk share failed:", err)
+    } finally {
+      setIsBulkSharing(false)
+    }
+  }, [selectedIds, bulkShare])
+
+  const handleCopyShareLink = useCallback(async () => {
+    if (!shareResult) return
+    try {
+      await navigator.clipboard.writeText(shareResult.shareUrl)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      // Fallback
+      const textarea = document.createElement("textarea")
+      textarea.value = shareResult.shareUrl
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    }
+  }, [shareResult])
 
   const handleSelectImage = useCallback((image: GalleryImage) => {
     setSelectedImage(image)
@@ -170,29 +255,43 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
     ? images.findIndex((img) => img.id === selectedImage.id)
     : -1
 
-  // Header right content with upload and refresh buttons
+  // Header right content with upload, refresh, and select buttons
   const headerRightContent = (
     <div className="flex items-center gap-1">
+      {/* Select mode toggle */}
       <Button
-        variant="ghost"
+        variant={isSelectMode ? "default" : "ghost"}
         size="icon"
-        onClick={handleUploadClick}
-        disabled={isUploading}
-        className="h-9 w-9 text-muted-foreground hover:text-foreground"
-        title={t.gallery?.upload || "Upload"}
+        onClick={isSelectMode ? exitSelectMode : enterSelectMode}
+        className={`h-9 w-9 ${isSelectMode ? "" : "text-muted-foreground hover:text-foreground"}`}
+        title={t.gallery?.select || "Select"}
       >
-        <Upload className={`h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
+        {isSelectMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={refresh}
-        disabled={isLoading}
-        className="h-9 w-9 text-muted-foreground hover:text-foreground"
-        title={t.gallery?.refresh || "Refresh"}
-      >
-        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-      </Button>
+      {!isSelectMode && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleUploadClick}
+            disabled={isUploading}
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title={t.gallery?.upload || "Upload"}
+          >
+            <Upload className={`h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={refresh}
+            disabled={isLoading}
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title={t.gallery?.refresh || "Refresh"}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </>
+      )}
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -506,6 +605,9 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
                         onDelete={deleteImage}
                         userTimezone={userTimezone}
                         onCollectionsChange={refreshCollections}
+                        isSelectMode={isSelectMode}
+                        isSelected={selectedIds.has(image.id)}
+                        onToggleSelect={toggleSelect}
                       />
                     ))}
                   </div>
@@ -560,6 +662,55 @@ export function GalleryPage({ onNavigate, onLogout }: GalleryPageProps) {
         )}
       </div>
       </div>
+
+      {/* Bulk action bar */}
+      {isSelectMode && selectedIds.size > 0 && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          totalCount={images.length}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
+          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onShare={handleBulkShare}
+          onCancel={() => { exitSelectMode(); setShareResult(null) }}
+          isDeleting={isBulkDeleting}
+          isExporting={isBulkExporting}
+          isSharing={isBulkSharing}
+        />
+      )}
+
+      {/* Share result popover */}
+      {shareResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => { setShareResult(null); exitSelectMode() }}>
+          <div className="bg-background rounded-lg border border-border shadow-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-3">{t.gallery.bulkShareSuccess}</h3>
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                readOnly
+                value={shareResult.shareUrl}
+                className="flex-1 px-3 py-2 bg-muted rounded-md text-sm font-mono"
+              />
+              <Button
+                size="sm"
+                onClick={handleCopyShareLink}
+              >
+                {shareCopied ? t.copied : t.copyLink}
+              </Button>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setShareResult(null); exitSelectMode() }}
+              >
+                {t.close}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image detail modal */}
       <ImageDetailModal

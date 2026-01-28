@@ -29,6 +29,12 @@ export interface GalleryStats {
   favorites: number
 }
 
+export interface BulkShareResult {
+  shareId: string
+  shareUrl: string
+  socialLinks: Record<string, string>
+}
+
 interface GalleryState {
   images: GalleryImage[]
   pagination: GalleryPagination | null
@@ -55,6 +61,10 @@ export function useGallery() {
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Selection state for bulk operations
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
   // Debounce search query
   useEffect(() => {
@@ -271,6 +281,113 @@ export function useGallery() {
     fetchStats()
   }, [fetchImages, fetchStats])
 
+  // Selection helpers
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(state.images.map(img => img.id)))
+  }, [state.images])
+
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  const enterSelectMode = useCallback(() => {
+    setIsSelectMode(true)
+    setSelectedIds(new Set())
+  }, [])
+
+  const exitSelectMode = useCallback(() => {
+    setIsSelectMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  // Bulk delete
+  const bulkDelete = useCallback(async (ids: number[]) => {
+    const response = await authFetch("/api/gallery/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to bulk delete")
+    }
+
+    // Remove from local state
+    const deletedSet = new Set(ids)
+    setState(prev => ({
+      ...prev,
+      images: prev.images.filter(img => !deletedSet.has(img.id)),
+      stats: prev.stats
+        ? { ...prev.stats, total: Math.max(0, prev.stats.total - data.deletedCount) }
+        : null,
+      pagination: prev.pagination
+        ? { ...prev.pagination, total: Math.max(0, prev.pagination.total - data.deletedCount) }
+        : null,
+    }))
+
+    return data.deletedCount as number
+  }, [authFetch])
+
+  // Bulk export
+  const bulkExport = useCallback(async (ids: number[], format: "png" | "jpg" | "webp" = "png") => {
+    const response = await authFetch("/api/gallery/bulk-export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, format }),
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || "Failed to bulk export")
+    }
+
+    // Trigger download via hidden anchor
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `promptink-export-${Date.now()}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [authFetch])
+
+  // Bulk share
+  const bulkShare = useCallback(async (ids: number[], title?: string): Promise<BulkShareResult> => {
+    const response = await authFetch("/api/share/create-gallery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageIds: ids, title }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to create shared gallery")
+    }
+
+    return {
+      shareId: data.shareId,
+      shareUrl: data.shareUrl,
+      socialLinks: data.socialLinks,
+    }
+  }, [authFetch])
+
   // Initial fetch
   useEffect(() => {
     if (isAuthenticated) {
@@ -298,5 +415,16 @@ export function useGallery() {
     uploadImage,
     loadMore,
     refresh,
+    // Selection / bulk
+    isSelectMode,
+    selectedIds,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    enterSelectMode,
+    exitSelectMode,
+    bulkDelete,
+    bulkExport,
+    bulkShare,
   }
 }

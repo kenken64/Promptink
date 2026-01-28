@@ -660,6 +660,34 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_collection_images_collection_id ON collection_images(collection_id)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_collection_images_image_id ON collection_images(image_id)`)
 
+  // Shared galleries table (for bulk sharing multiple images)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shared_galleries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      share_id TEXT UNIQUE NOT NULL,
+      user_id INTEGER NOT NULL,
+      title TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      view_count INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_shared_galleries_share_id ON shared_galleries(share_id)`)
+
+  // Shared gallery images join table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shared_gallery_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      gallery_share_id TEXT NOT NULL,
+      image_id INTEGER NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (gallery_share_id) REFERENCES shared_galleries(share_id) ON DELETE CASCADE,
+      FOREIGN KEY (image_id) REFERENCES generated_images(id) ON DELETE CASCADE
+    )
+  `)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_shared_gallery_images_share_id ON shared_gallery_images(gallery_share_id)`)
+
   // Initialize prepared statements after tables are created
   initPreparedStatements()
 
@@ -1275,6 +1303,18 @@ export const generatedImageQueries = {
   get softDelete() { return _generatedImageQueries.softDelete },
   get updateImageUrl() { return _generatedImageQueries.updateImageUrl },
   get search() { return _generatedImageQueries.search },
+  // Dynamic query helpers (variable IN clause length)
+  bulkSoftDelete(ids: number[], userId: number): number {
+    const placeholders = ids.map(() => "?").join(",")
+    const stmt = db.prepare(`UPDATE generated_images SET is_deleted = 1 WHERE id IN (${placeholders}) AND user_id = ?`)
+    const result = stmt.run(...ids, userId)
+    return result.changes
+  },
+  findByIds(ids: number[], userId: number): GeneratedImage[] {
+    const placeholders = ids.map(() => "?").join(",")
+    const stmt = db.prepare<GeneratedImage, any[]>(`SELECT * FROM generated_images WHERE id IN (${placeholders}) AND user_id = ? AND is_deleted = 0`)
+    return stmt.all(...ids, userId)
+  },
 }
 
 export const orderQueries = {
